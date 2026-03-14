@@ -1,0 +1,227 @@
+import { get, post, put, patch, del } from './apiClient'
+
+// ============================================
+// AUTH API
+// ============================================
+export const adminLogin = async (credentials) => {
+  return post('/admin/auth/login', credentials)
+}
+
+export const getAdminProfile = async () => {
+  return get('/admin/auth/me')
+}
+
+export const updateAdminProfile = async (data) => {
+  return put('/admin/auth/profile', data)
+}
+
+export const changeAdminPassword = async (data) => {
+  return put('/admin/auth/change-password', data)
+}
+
+// ============================================
+// SALES USERS API
+// ============================================
+export const getSalesUsers = async (params) => {
+  return get('/admin/users', params)
+}
+
+export const getSalesUserById = async (id) => {
+  return get(`/admin/users/${id}`)
+}
+
+export const createSalesUser = async (data) => {
+  return post('/admin/users', data)
+}
+
+export const updateSalesUser = async (id, data) => {
+  return put(`/admin/users/${id}`, data)
+}
+
+export const deleteSalesUser = async (id) => {
+  return del(`/admin/users/${id}`)
+}
+
+export const toggleUserStatus = async (id) => {
+  return patch(`/admin/users/${id}/toggle-status`)
+}
+
+// ============================================
+// CUSTOMERS API
+// ============================================
+export const getAdminCustomers = async (params) => {
+  return get('/admin/customers', params)
+}
+
+export const getAdminCustomerById = async (id) => {
+  return get(`/admin/customers/${id}`)
+}
+
+export const createAdminCustomer = async (data) => {
+  return post('/admin/customers', data)
+}
+
+export const updateAdminCustomer = async (id, data) => {
+  return put(`/admin/customers/${id}`, data)
+}
+
+export const deleteAdminCustomer = async (id) => {
+  return del(`/admin/customers/${id}`)
+}
+
+// ============================================
+// INQUIRIES API
+// ============================================
+export const getAdminInquiries = async (params) => {
+  return get('/admin/inquiries', params)
+}
+
+export const getAdminInquiryById = async (id) => {
+  return get(`/admin/inquiries/${id}`)
+}
+
+export const updateInquiryStatus = async (id, status) => {
+  return patch(`/admin/inquiries/${id}/status`, { status })
+}
+
+export const deleteAdminInquiry = async (id) => {
+  return del(`/admin/inquiries/${id}`)
+}
+
+export const convertInquiryToOrder = async (id) => {
+  return post(`/admin/inquiries/${id}/convert`)
+}
+
+// ============================================
+// ORDERS API
+// ============================================
+export const getAdminOrders = async (params) => {
+  return get('/admin/orders', params)
+}
+
+export const getAdminOrderById = async (id) => {
+  return get(`/admin/orders/${id}`)
+}
+
+export const updateOrderStatus = async (id, status) => {
+  return patch(`/admin/orders/${id}/status`, { status })
+}
+
+export const deleteAdminOrder = async (id) => {
+  return del(`/admin/orders/${id}`)
+}
+
+// ============================================
+// PRODUCTS API
+// ============================================
+export const getAdminProducts = async (params) => {
+  return get('/admin/products', params)
+}
+
+export const getAdminProductById = async (id) => {
+  return get(`/admin/products/${id}`)
+}
+
+export const createAdminProduct = async (data) => {
+  return post('/admin/products', data)
+}
+
+export const updateAdminProduct = async (id, data) => {
+  return put(`/admin/products/${id}`, data)
+}
+
+export const deleteAdminProduct = async (id) => {
+  return del(`/admin/products/${id}`)
+}
+
+export const syncProducts = async () => {
+  return post('/admin/products/sync')
+}
+
+// ============================================
+// DASHBOARD API
+// ============================================
+export const getDashboardStats = async () => {
+  return get('/admin/dashboard/stats')
+}
+
+export const getRecentInquiries = async (limit = 5) => {
+  return get('/admin/dashboard/recent-inquiries', { limit })
+}
+
+export const getRecentOrders = async (limit = 5) => {
+  return get('/admin/dashboard/recent-orders', { limit })
+}
+
+export const getSalesReport = async (params) => {
+  return get('/admin/reports/sales', params)
+}
+
+export const getRevenueReport = async (params) => {
+  return get('/admin/reports/revenue', params)
+}
+
+// ============================================
+// NOTIFICATIONS API
+// ============================================
+export const getAdminNotifications = async () => {
+  return get('/admin/notifications')
+}
+
+export const markNotificationRead = async (id) => {
+  return patch(`/admin/notifications/${id}/read`)
+}
+
+export const markAllNotificationsRead = async () => {
+  return patch('/admin/notifications/read-all')
+}
+
+export default {
+  // Auth
+  adminLogin,
+  getAdminProfile,
+  updateAdminProfile,
+  changeAdminPassword,
+  // Users
+  getSalesUsers,
+  getSalesUserById,
+  createSalesUser,
+  updateSalesUser,
+  deleteSalesUser,
+  toggleUserStatus,
+  // Customers
+  getAdminCustomers,
+  getAdminCustomerById,
+  createAdminCustomer,
+  updateAdminCustomer,
+  deleteAdminCustomer,
+  // Inquiries
+  getAdminInquiries,
+  getAdminInquiryById,
+  updateInquiryStatus,
+  deleteAdminInquiry,
+  convertInquiryToOrder,
+  // Orders
+  getAdminOrders,
+  getAdminOrderById,
+  updateOrderStatus,
+  deleteAdminOrder,
+  // Products
+  getAdminProducts,
+  getAdminProductById,
+  createAdminProduct,
+  updateAdminProduct,
+  deleteAdminProduct,
+  syncProducts,
+  // Dashboard
+  getDashboardStats,
+  getRecentInquiries,
+  getRecentOrders,
+  // Reports
+  getSalesReport,
+  getRevenueReport,
+  // Notifications
+  getAdminNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+}
