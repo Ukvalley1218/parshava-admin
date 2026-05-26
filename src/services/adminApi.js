@@ -47,6 +47,55 @@ export const toggleUserStatus = async (id) => {
 }
 
 // ============================================
+// UPLOAD API
+// ============================================
+export const uploadFile = async (field, file) => {
+  const formData = new FormData()
+  formData.append(field, file)
+
+  const token = localStorage.getItem('admin_token')
+  // baseUrl already includes /api, so we don't add it again
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://parshava-backend.onrender.com/api'
+
+  const response = await fetch(`${baseUrl}/upload/single/${field}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: formData
+  })
+
+  return response.json()
+}
+
+export const uploadCustomerFiles = async (files) => {
+  const formData = new FormData()
+
+  Object.keys(files).forEach(field => {
+    if (Array.isArray(files[field])) {
+      files[field].forEach(file => {
+        formData.append(field, file)
+      })
+    } else {
+      formData.append(field, files[field])
+    }
+  })
+
+  const token = localStorage.getItem('admin_token')
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://parshava-backend.onrender.com/api'
+
+  const response = await fetch(`${baseUrl}/upload/customer`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: formData
+  })
+
+  return response.json()
+}
+
+// ============================================
 // CUSTOMERS API
 // ============================================
 export const getAdminCustomers = async (params) => {
@@ -176,6 +225,61 @@ export const markAllNotificationsRead = async () => {
   return patch('/admin/notifications/read-all')
 }
 
+// ============================================
+// BRANDS API
+// ============================================
+export const getBrands = async (params) => {
+  return get('/admin/brands', params)
+}
+
+export const getBrandById = async (id) => {
+  return get(`/admin/brands/${id}`)
+}
+
+export const getDistinctBrandsFromProducts = async () => {
+  return get('/admin/brands/distinct')
+}
+
+export const createBrand = async (data) => {
+  return post('/admin/brands', data)
+}
+
+export const updateBrand = async (id, data) => {
+  return put(`/admin/brands/${id}`, data)
+}
+
+export const deleteBrand = async (id) => {
+  return del(`/admin/brands/${id}`)
+}
+
+export const addCategoryToBrand = async (brandId, data) => {
+  return post(`/admin/brands/${brandId}/categories`, data)
+}
+
+export const updateCategory = async (brandId, categoryId, data) => {
+  return put(`/admin/brands/${brandId}/categories/${categoryId}`, data)
+}
+
+export const deleteCategory = async (brandId, categoryId) => {
+  return del(`/admin/brands/${brandId}/categories/${categoryId}`)
+}
+
+export const addSubcategoryToCategory = async (brandId, categoryId, data) => {
+  return post(`/admin/brands/${brandId}/categories/${categoryId}/subcategories`, data)
+}
+
+export const updateSubcategory = async (brandId, categoryId, subcategoryId, data) => {
+  return put(`/admin/brands/${brandId}/categories/${categoryId}/subcategories/${subcategoryId}`, data)
+}
+
+export const deleteSubcategory = async (brandId, categoryId, subcategoryId) => {
+  return del(`/admin/brands/${brandId}/categories/${categoryId}/subcategories/${subcategoryId}`)
+}
+
+export const importBrandsFromProducts = async (brands) => {
+  return post('/admin/brands/import-from-products', { brands })
+}
+
 export default {
   // Auth
   adminLogin,
@@ -224,4 +328,18 @@ export default {
   getAdminNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  // Brands
+  getBrands,
+  getBrandById,
+  getDistinctBrandsFromProducts,
+  createBrand,
+  updateBrand,
+  deleteBrand,
+  addCategoryToBrand,
+  updateCategory,
+  deleteCategory,
+  addSubcategoryToCategory,
+  updateSubcategory,
+  deleteSubcategory,
+  importBrandsFromProducts,
 }

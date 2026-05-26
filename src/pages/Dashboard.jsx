@@ -20,16 +20,7 @@ function StatCard({ title, value, icon: Icon, change, changeType, color }) {
         <div>
           <p className="text-gray-500 text-sm">{title}</p>
           <h3 className="text-3xl font-bold text-gray-900 mt-1">{value}</h3>
-          {change !== undefined && (
-            <div className={`flex items-center gap-1 mt-2 text-sm ${changeType === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-              {changeType === 'up' ? (
-                <ArrowUpRight className="w-4 h-4" />
-              ) : (
-                <ArrowDownRight className="w-4 h-4" />
-              )}
-              <span>{change}% from last month</span>
-            </div>
-          )}
+         
         </div>
         <div className={`p-3 rounded-xl ${colorClasses[color]}`}>
           <Icon className="w-6 h-6" />
@@ -240,10 +231,7 @@ export default function Dashboard() {
             <DollarSign className="w-6 h-6" />
           </div>
         </div>
-        <div className="mt-4 flex items-center gap-2 text-sm text-green-600">
-          <TrendingUp className="w-4 h-4" />
-          <span>15% increase from last month</span>
-        </div>
+        
       </div>
 
       {/* Recent Activity */}
@@ -265,7 +253,7 @@ export default function Dashboard() {
       {/* Quick Actions */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <a
             href="/admin/users"
             className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
@@ -287,13 +275,7 @@ export default function Dashboard() {
             <FileText className="w-6 h-6 text-amber-600" />
             <span className="text-sm font-medium text-gray-700">View Inquiries</span>
           </a>
-          <a
-            href="/admin/reports"
-            className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
-          >
-            <TrendingUp className="w-6 h-6 text-purple-600" />
-            <span className="text-sm font-medium text-gray-700">Reports</span>
-          </a>
+          
         </div>
       </div>
     </div>

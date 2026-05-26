@@ -9,6 +9,7 @@ import Customers from './pages/Customers'
 import Inquiries from './pages/Inquiries'
 import Orders from './pages/Orders'
 import Products from './pages/Products'
+import Brands from './pages/Brands'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 
@@ -32,6 +33,7 @@ function App() {
             <Route path="inquiries" element={<Inquiries />} />
             <Route path="orders" element={<Orders />} />
             <Route path="products" element={<Products />} />
+            <Route path="brands" element={<Brands />} />
             <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />
           </Route>

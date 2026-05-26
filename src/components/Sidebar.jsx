@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, UserCircle, FileText, ShoppingBag,
-  Package, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, X, Menu
+  Package, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, X, Menu, Tag
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAdminAuth } from '../context/AdminAuthContext'
@@ -13,8 +13,9 @@ const navItems = [
   { path: '/admin/inquiries', label: 'Inquiries', icon: FileText },
   { path: '/admin/orders', label: 'Orders', icon: ShoppingBag },
   { path: '/admin/products', label: 'Products', icon: Package },
-  { path: '/admin/reports', label: 'Reports', icon: BarChart3 },
-  { path: '/admin/settings', label: 'Settings', icon: Settings },
+  { path: '/admin/brands', label: 'Brands', icon: Tag },
+  // { path: '/admin/reports', label: 'Reports', icon: BarChart3 },
+  // { path: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function Sidebar({ isOpen, onClose, isMobile }) {

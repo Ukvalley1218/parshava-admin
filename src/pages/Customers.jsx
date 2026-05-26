@@ -1,18 +1,24 @@
 import { useState, useEffect } from 'react'
 import {
-  Plus, Search, Edit2, Trash2, X, Loader, AlertCircle,
-  UserCircle, Mail, Phone, MapPin, Building
+  Plus, Search, Edit2, Trash2, X, Loader, AlertCircle, Eye,
+  UserCircle, Mail, Phone, MapPin, Building, Globe, FileText, Tag, User, Upload
 } from 'lucide-react'
-import { getAdminCustomers, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer } from '../services/adminApi'
+import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, uploadFile } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 
 // Modal Component
-function Modal({ isOpen, onClose, title, children }) {
+function Modal({ isOpen, onClose, title, children, size = 'lg' }) {
   if (!isOpen) return null
+  const sizeClasses = {
+    sm: 'max-w-md',
+    md: 'max-w-xl',
+    lg: 'max-w-2xl',
+    xl: 'max-w-4xl'
+  }
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white">
+      <div className={`bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <X className="w-5 h-5 text-gray-500" />
@@ -27,84 +33,806 @@ function Modal({ isOpen, onClose, title, children }) {
 // Customer Form Component
 function CustomerForm({ customer, onSubmit, onCancel, loading }) {
   const [formData, setFormData] = useState({
+    // Personal Details
+    softwareId: customer?.softwareId || '',
+    firmName: customer?.firmName || '',
+    firmPhoto: customer?.firmPhoto || '',
     name: customer?.name || '',
-    email: customer?.email || '',
-    mobile: customer?.mobile || '',
-    phone: customer?.phone || '',
+    customerPhoto: customer?.customerPhoto || '',
+    designation: customer?.designation || '',
+
+    // Address
     address: customer?.address || '',
+    googleLocation: customer?.googleLocation || '',
+    landmark: customer?.landmark || '',
     city: customer?.city || '',
     state: customer?.state || '',
     pincode: customer?.pincode || '',
+    country: customer?.country || 'India',
+
+    // Contact - Mobile numbers
+    mobile: customer?.mobile || '',
+    isWhatsApp: customer?.isWhatsApp ?? true,
+    mobile2: customer?.mobile2 || '',
+    mobile2Whatsapp: customer?.mobile2Whatsapp || false,
+    mobile3: customer?.mobile3 || '',
+    mobile3Whatsapp: customer?.mobile3Whatsapp || false,
+    email: customer?.email || '',
+
+    // Business Details (Numbers)
     gstin: customer?.gstin || '',
-    companyName: customer?.companyName || '',
+    panNumber: customer?.panNumber || '',
+    aadharNumber: customer?.aadharNumber || '',
+    shopActNumber: customer?.shopActNumber || '',
+    msmeNumber: customer?.msmeNumber || '',
+
+    // Documents
+    documents: customer?.documents || [],
+
+    // Management
+    priceListCategory: customer?.priceListCategory || 'T1',
+    accountManager: customer?.accountManager || '',
+    productManager: customer?.productManager || '',
+    leadSource: customer?.leadSource || '',
+
+    // Status
+    customerType: customer?.customerType || 'customer',
+    customerStatus: customer?.customerStatus || 'active',
+    notes: customer?.notes || ''
   })
 
+  const [errors, setErrors] = useState({})
+  const [touched, setTouched] = useState({})
+
+  // Document types for upload
+  const documentTypes = [
+    { key: 'panCard', label: 'PAN Card' },
+    { key: 'aadharCard', label: 'Aadhar Card' },
+    { key: 'shopAct', label: 'Shop Act' },
+    { key: 'msme', label: 'MSME Certificate' },
+    { key: 'gstCertificate', label: 'GST Certificate' },
+    { key: 'other', label: 'Other Documents' }
+  ]
+
+  // Validation functions
+  const validators = {
+    firmName: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Firm name is required'
+        if (value.length > 150) return 'Firm name must be less than 150 characters'
+        return null
+      }
+    },
+    name: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Contact name is required'
+        if (value.length > 100) return 'Name must be less than 100 characters'
+        return null
+      }
+    },
+    mobile: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Mobile number is required'
+        if (!/^[6-9]\d{9}$/.test(value)) return 'Enter valid 10-digit mobile number'
+        return null
+      }
+    },
+    mobile2: {
+      required: false,
+      validate: (value) => {
+        if (value && !/^[6-9]\d{9}$/.test(value)) return 'Enter valid 10-digit mobile number'
+        return null
+      }
+    },
+    mobile3: {
+      required: false,
+      validate: (value) => {
+        if (value && !/^[6-9]\d{9}$/.test(value)) return 'Enter valid 10-digit mobile number'
+        return null
+      }
+    },
+    email: {
+      required: false,
+      validate: (value) => {
+        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Enter valid email address'
+        return null
+      }
+    },
+    pincode: {
+      required: false,
+      validate: (value) => {
+        if (value && !/^\d{6}$/.test(value)) return 'Enter valid 6-digit pincode'
+        return null
+      }
+    },
+    gstin: {
+      required: false,
+      validate: (value) => {
+        if (value && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(value.toUpperCase())) return 'Enter valid GSTIN (15 characters)'
+        return null
+      }
+    },
+    panNumber: {
+      required: false,
+      validate: (value) => {
+        if (value && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value.toUpperCase())) return 'Enter valid PAN (10 characters)'
+        return null
+      }
+    },
+    aadharNumber: {
+      required: false,
+      validate: (value) => {
+        if (value && !/^\d{12}$/.test(value)) return 'Enter valid 12-digit Aadhar number'
+        return null
+      }
+    },
+    city: {
+      required: false,
+      validate: (value) => {
+        if (value && value.length > 50) return 'City name too long'
+        return null
+      }
+    },
+    state: {
+      required: false,
+      validate: (value) => {
+        if (value && value.length > 50) return 'State name too long'
+        return null
+      }
+    }
+  }
+
+  // Validate single field
+  const validateField = (name, value) => {
+    const validator = validators[name]
+    if (!validator) return null
+    return validator.validate(value)
+  }
+
+  // Validate all fields
+  const validateForm = () => {
+    const newErrors = {}
+    Object.keys(validators).forEach(field => {
+      const error = validateField(field, formData[field])
+      if (error) newErrors[field] = error
+    })
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  // Handle field change
   const handleChange = (e) => {
+    const { name, value, type, checked } = e.target
+    const newValue = type === 'checkbox' ? checked : value
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: newValue
+    }))
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: null
+      }))
+    }
+  }
+
+  // Handle field blur for validation
+  const handleBlur = (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    setTouched((prev) => ({ ...prev, [name]: true }))
+
+    const error = validateField(name, value)
+    if (error) {
+      setErrors((prev) => ({ ...prev, [name]: error }))
+    }
+  }
+
+  // Input field component with error display
+  const InputField = ({ label, name, required, type = 'text', placeholder, ...props }) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        type={type}
+        name={name}
+        value={formData[name]}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        className={`input-field ${errors[name] && touched[name] ? 'border-red-500 focus:ring-red-500' : ''}`}
+        placeholder={placeholder}
+        {...props}
+      />
+      {errors[name] && touched[name] && (
+        <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
+      )}
+    </div>
+  )
+
+  const handleFileChange = async (e, field) => {
+    const file = e.target.files[0]
+    if (file) {
+      try {
+        const response = await uploadFile(field, file)
+        if (response.success && response.data?.url) {
+          setFormData((prev) => ({
+            ...prev,
+            [field]: response.data.url
+          }))
+        } else {
+          alert(response.message || 'Failed to upload file')
+        }
+      } catch (error) {
+        console.error('Upload error:', error)
+        alert('Failed to upload file')
+      }
+    }
+  }
+
+  const handleDocumentChange = async (e, docKey) => {
+    const file = e.target.files[0]
+    if (file) {
+      try {
+        const response = await uploadFile(docKey, file)
+        if (response.success && response.data?.url) {
+          setFormData((prev) => {
+            const docs = [...(prev.documents || [])]
+            const existingIndex = docs.findIndex(d => d.type === docKey)
+            const newDoc = { type: docKey, name: file.name, url: response.data.url }
+
+            if (existingIndex >= 0) {
+              docs[existingIndex] = newDoc
+            } else {
+              docs.push(newDoc)
+            }
+
+            return { ...prev, documents: docs }
+          })
+        } else {
+          alert(response.message || 'Failed to upload document')
+        }
+      } catch (error) {
+        console.error('Upload error:', error)
+        alert('Failed to upload document')
+      }
+    }
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
+
+    // Mark all fields as touched
+    const allTouched = {}
+    Object.keys(validators).forEach(field => {
+      allTouched[field] = true
+    })
+    setTouched(allTouched)
+
+    // Validate all fields
+    if (!validateForm()) {
+      return
+    }
+
     onSubmit(formData)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-          <input type="text" name="companyName" value={formData.companyName} onChange={handleChange}
-            className="input-field" placeholder="Enter company name" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Contact Name *</label>
-          <input type="text" name="name" value={formData.name} onChange={handleChange} required
-            className="input-field" placeholder="Enter contact name" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Mobile *</label>
-          <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange} required
-            className="input-field" placeholder="Enter mobile number" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <input type="email" name="email" value={formData.email} onChange={handleChange}
-            className="input-field" placeholder="Enter email" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-          <input type="tel" name="phone" value={formData.phone} onChange={handleChange}
-            className="input-field" placeholder="Enter phone number" />
-        </div>
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-          <input type="text" name="address" value={formData.address} onChange={handleChange}
-            className="input-field" placeholder="Enter address" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-          <input type="text" name="city" value={formData.city} onChange={handleChange}
-            className="input-field" placeholder="Enter city" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-          <input type="text" name="state" value={formData.state} onChange={handleChange}
-            className="input-field" placeholder="Enter state" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Pincode</label>
-          <input type="text" name="pincode" value={formData.pincode} onChange={handleChange}
-            className="input-field" placeholder="Enter pincode" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>
-          <input type="text" name="gstin" value={formData.gstin} onChange={handleChange}
-            className="input-field" placeholder="Enter GSTIN" />
+    <form onSubmit={handleSubmit} className="p-4 space-y-6">
+      {/* Personal Details Section */}
+      <div className="border-b border-gray-100 pb-4">
+        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Personal Details</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Software ID</label>
+            <input
+              type="text"
+              name="softwareId"
+              value={formData.softwareId}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="BK-0001"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Firm Name <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  name="firmName"
+                  value={formData.firmName}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`input-field flex-1 ${errors.firmName && touched.firmName ? 'border-red-500' : ''}`}
+                  placeholder="Enter firm name"
+                />
+                {errors.firmName && touched.firmName && (
+                  <p className="text-xs text-red-500 mt-1">{errors.firmName}</p>
+                )}
+              </div>
+              <label className="flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
+                <Upload className="w-4 h-4 text-gray-500" />
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => handleFileChange(e, 'firmPhoto')}
+                />
+              </label>
+            </div>
+            {formData.firmPhoto && (
+              <p className="text-xs text-green-600 mt-1">Shop photo uploaded</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Contact Name <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`input-field flex-1 ${errors.name && touched.name ? 'border-red-500' : ''}`}
+                  placeholder="Enter contact name"
+                />
+                {errors.name && touched.name && (
+                  <p className="text-xs text-red-500 mt-1">{errors.name}</p>
+                )}
+              </div>
+              <label className="flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
+                <Upload className="w-4 h-4 text-gray-500" />
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => handleFileChange(e, 'customerPhoto')}
+                />
+              </label>
+            </div>
+            {formData.customerPhoto && (
+              <p className="text-xs text-green-600 mt-1">Photo uploaded</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+            <input
+              type="text"
+              name="designation"
+              value={formData.designation}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="Owner / Manager / Proprietor"
+            />
+          </div>
         </div>
       </div>
+
+      {/* Address Section */}
+      <div className="border-b border-gray-100 pb-4">
+        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Address</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                className="input-field flex-1"
+                placeholder="Enter full address"
+              />
+              <label className="flex items-center gap-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors text-sm whitespace-nowrap">
+                <Globe className="w-4 h-4" />
+                <span>Map</span>
+                <input
+                  type="text"
+                  className="hidden"
+                  name="googleLocation"
+                  value={formData.googleLocation}
+                  onChange={handleChange}
+                />
+              </label>
+            </div>
+            <input
+              type="text"
+              name="googleLocation"
+              value={formData.googleLocation}
+              onChange={handleChange}
+              className="input-field mt-2 w-full"
+              placeholder="Paste Google Maps link here"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Landmark</label>
+            <input
+              type="text"
+              name="landmark"
+              value={formData.landmark}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="Near Metro Station / Landmark"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+            <input
+              type="text"
+              name="city"
+              value={formData.city}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="Enter city"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+            <input
+              type="text"
+              name="state"
+              value={formData.state}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="Enter state"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Pin Code</label>
+            <input
+              type="text"
+              name="pincode"
+              value={formData.pincode}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              maxLength={6}
+              className={`input-field ${errors.pincode && touched.pincode ? 'border-red-500' : ''}`}
+              placeholder="Enter 6-digit pincode"
+            />
+            {errors.pincode && touched.pincode && (
+              <p className="text-xs text-red-500 mt-1">{errors.pincode}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Contact Section */}
+      <div className="border-b border-gray-100 pb-4">
+        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Contact Numbers</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Mobile 1 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="tel"
+              name="mobile"
+              value={formData.mobile}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              maxLength={10}
+              className={`input-field ${errors.mobile && touched.mobile ? 'border-red-500' : ''}`}
+              placeholder="10-digit mobile number"
+            />
+            {errors.mobile && touched.mobile && (
+              <p className="text-xs text-red-500 mt-1">{errors.mobile}</p>
+            )}
+            <label className="flex items-center gap-2 mt-2 cursor-pointer">
+              <input
+                type="checkbox"
+                name="isWhatsApp"
+                checked={formData.isWhatsApp}
+                onChange={handleChange}
+                className="w-4 h-4 text-blue-600 rounded"
+              />
+              <span className="text-sm text-gray-600">WhatsApp</span>
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Mobile 2</label>
+            <input
+              type="tel"
+              name="mobile2"
+              value={formData.mobile2}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              maxLength={10}
+              className={`input-field ${errors.mobile2 && touched.mobile2 ? 'border-red-500' : ''}`}
+              placeholder="Alternate mobile (optional)"
+            />
+            {errors.mobile2 && touched.mobile2 && (
+              <p className="text-xs text-red-500 mt-1">{errors.mobile2}</p>
+            )}
+            <label className="flex items-center gap-2 mt-2 cursor-pointer">
+              <input
+                type="checkbox"
+                name="mobile2Whatsapp"
+                checked={formData.mobile2Whatsapp}
+                onChange={handleChange}
+                className="w-4 h-4 text-blue-600 rounded"
+              />
+              <span className="text-sm text-gray-600">WhatsApp</span>
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Mobile 3</label>
+            <input
+              type="tel"
+              name="mobile3"
+              value={formData.mobile3}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              maxLength={10}
+              className={`input-field ${errors.mobile3 && touched.mobile3 ? 'border-red-500' : ''}`}
+              placeholder="Additional mobile (optional)"
+            />
+            {errors.mobile3 && touched.mobile3 && (
+              <p className="text-xs text-red-500 mt-1">{errors.mobile3}</p>
+            )}
+            <label className="flex items-center gap-2 mt-2 cursor-pointer">
+              <input
+                type="checkbox"
+                name="mobile3Whatsapp"
+                checked={formData.mobile3Whatsapp}
+                onChange={handleChange}
+                className="w-4 h-4 text-blue-600 rounded"
+              />
+              <span className="text-sm text-gray-600">WhatsApp</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Documents Section */}
+      <div className="border-b border-gray-100 pb-4">
+        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Documents (Upload)</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {documentTypes.map((doc) => (
+            <div key={doc.key}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{doc.label}</label>
+              <div className="flex items-center gap-2">
+                <label className="flex-1 flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                  <Upload className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-gray-600 truncate">
+                    {formData.documents?.find(d => d.type === doc.key)?.name || 'Choose file'}
+                  </span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleDocumentChange(e, doc.key)}
+                  />
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Business Details Section */}
+      <div className="border-b border-gray-100 pb-4">
+        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Business Details (Numbers)</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>
+            <input
+              type="text"
+              name="gstin"
+              value={formData.gstin}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              maxLength={15}
+              className={`input-field uppercase ${errors.gstin && touched.gstin ? 'border-red-500' : ''}`}
+              placeholder="15-character GSTIN"
+            />
+            {errors.gstin && touched.gstin && (
+              <p className="text-xs text-red-500 mt-1">{errors.gstin}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">PAN Number</label>
+            <input
+              type="text"
+              name="panNumber"
+              value={formData.panNumber}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              maxLength={10}
+              className={`input-field uppercase ${errors.panNumber && touched.panNumber ? 'border-red-500' : ''}`}
+              placeholder="10-character PAN"
+            />
+            {errors.panNumber && touched.panNumber && (
+              <p className="text-xs text-red-500 mt-1">{errors.panNumber}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Number</label>
+            <input
+              type="text"
+              name="aadharNumber"
+              value={formData.aadharNumber}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              maxLength={12}
+              className={`input-field ${errors.aadharNumber && touched.aadharNumber ? 'border-red-500' : ''}`}
+              placeholder="12-digit Aadhar number"
+            />
+            {errors.aadharNumber && touched.aadharNumber && (
+              <p className="text-xs text-red-500 mt-1">{errors.aadharNumber}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Shop Act Number</label>
+            <input
+              type="text"
+              name="shopActNumber"
+              value={formData.shopActNumber}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="Enter Shop Act Number"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">MSME Number</label>
+            <input
+              type="text"
+              name="msmeNumber"
+              value={formData.msmeNumber}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="Enter MSME Number"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Management Section */}
+      <div className="border-b border-gray-100 pb-4">
+        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Management</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Price List</label>
+            <select
+              name="priceListCategory"
+              value={formData.priceListCategory}
+              onChange={handleChange}
+              className="input-field"
+            >
+              <option value="T1">T1</option>
+              <option value="T2">T2</option>
+              <option value="T3">T3</option>
+              <option value="T4">T4</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Customer Type</label>
+            <select
+              name="customerType"
+              value={formData.customerType}
+              onChange={handleChange}
+              className="input-field"
+            >
+              <option value="customer">Customer</option>
+              <option value="dealer">Dealer</option>
+              <option value="distributor">Distributor</option>
+              <option value="retailer">Retailer</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Customer Status</label>
+            <select
+              name="customerStatus"
+              value={formData.customerStatus}
+              onChange={handleChange}
+              className="input-field"
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Account Manager</label>
+            <input
+              type="text"
+              name="accountManager"
+              value={formData.accountManager}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="Manager name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Product Manager</label>
+            <input
+              type="text"
+              name="productManager"
+              value={formData.productManager}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="Manager name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Lead Source</label>
+            <input
+              type="text"
+              name="leadSource"
+              value={formData.leadSource}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="Website / Referral / etc."
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Info */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            className={`input-field ${errors.email && touched.email ? 'border-red-500' : ''}`}
+            placeholder="Enter email address"
+          />
+          {errors.email && touched.email && (
+            <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+          )}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+          <input
+            type="text"
+            name="country"
+            value={formData.country}
+            onChange={handleChange}
+            className="input-field"
+            placeholder="Enter country"
+          />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          <textarea
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            className="input-field"
+            rows={2}
+            placeholder="Additional notes"
+          />
+        </div>
+      </div>
+
+      {/* Submit Buttons */}
       <div className="flex gap-3 pt-4">
-        <button type="button" onClick={onCancel} className="btn-secondary flex-1" disabled={loading}>Cancel</button>
+        <button type="button" onClick={onCancel} className="btn-secondary flex-1" disabled={loading}>
+          Cancel
+        </button>
         <button type="submit" className="btn-primary flex-1 flex items-center justify-center gap-2" disabled={loading}>
           {loading && <Loader className="w-4 h-4 animate-spin" />}
           {customer ? 'Update' : 'Create'}
@@ -136,6 +864,301 @@ function DeleteModal({ customer, onConfirm, onCancel, loading }) {
   )
 }
 
+// Customer View Modal - Display all customer details
+function CustomerViewModal({ customer, onClose }) {
+  if (!customer) return null
+
+  const documentTypes = [
+    { key: 'panCard', label: 'PAN Card' },
+    { key: 'aadharCard', label: 'Aadhar Card' },
+    { key: 'shopAct', label: 'Shop Act' },
+    { key: 'msme', label: 'MSME Certificate' },
+    { key: 'gstCertificate', label: 'GST Certificate' },
+    { key: 'other', label: 'Other Documents' }
+  ]
+
+  // Get full URL for uploads
+  // In development: Vite proxy handles /uploads -> localhost:3000/uploads
+  // In production: /uploads goes to the production server
+  const getFileUrl = (url) => {
+    if (!url) return null
+    // If already a full URL, return as is
+    if (url.startsWith('http')) return url
+    // Ensure path starts with /uploads
+    return url.startsWith('/') ? url : `/${url}`
+  }
+
+  const DetailSection = ({ title, children }) => (
+    <div className="mb-4">
+      <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">{title}</h4>
+      <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+        {children}
+      </div>
+    </div>
+  )
+
+  const DetailRow = ({ label, value, icon: Icon }) => (
+    <div className="flex items-start gap-2">
+      {Icon && <Icon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />}
+      <div className="flex-1 min-w-0">
+        <span className="text-xs text-gray-500">{label}</span>
+        <p className="text-sm text-gray-900 break-words">{value || '-'}</p>
+      </div>
+    </div>
+  )
+
+  const WhatsAppBadge = ({ isWhatsApp }) => isWhatsApp ? (
+    <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full ml-2 whitespace-nowrap">
+      WhatsApp
+    </span>
+  ) : null
+
+  const StatusBadge = ({ status }) => {
+    const statusColors = {
+      active: 'bg-green-100 text-green-800',
+      inactive: 'bg-gray-100 text-gray-800',
+      blocked: 'bg-red-100 text-red-800'
+    }
+    return (
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[status] || 'bg-gray-100 text-gray-800'}`}>
+        {status || 'active'}
+      </span>
+    )
+  }
+
+  return (
+    <div className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
+      {/* Header with Photos */}
+      <div className="flex items-start gap-4 pb-4 border-b border-gray-100">
+        {/* Photos */}
+        <div className="flex gap-2">
+          {customer.firmPhoto ? (
+            <div className="relative group">
+              <img
+                src={getFileUrl(customer.firmPhoto)}
+                alt="Shop"
+                className="w-16 h-16 rounded-lg object-cover border border-gray-200 cursor-pointer hover:border-blue-400"
+                onClick={() => window.open(getFileUrl(customer.firmPhoto), '_blank')}
+              />
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
+                <Eye className="w-5 h-5 text-white" />
+              </div>
+            </div>
+          ) : (
+            <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Building className="w-8 h-8 text-blue-600" />
+            </div>
+          )}
+          {customer.customerPhoto ? (
+            <div className="relative group">
+              <img
+                src={getFileUrl(customer.customerPhoto)}
+                alt="Contact"
+                className="w-16 h-16 rounded-lg object-cover border border-gray-200 cursor-pointer hover:border-blue-400"
+                onClick={() => window.open(getFileUrl(customer.customerPhoto), '_blank')}
+              />
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
+                <Eye className="w-5 h-5 text-white" />
+              </div>
+            </div>
+          ) : (
+            <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+              <UserCircle className="w-8 h-8 text-gray-400" />
+            </div>
+          )}
+        </div>
+
+        {/* Name & Status */}
+        <div className="flex-1">
+          <h3 className="font-semibold text-lg text-gray-900">{customer.firmName || customer.name}</h3>
+          {customer.firmName && <p className="text-sm text-gray-500">{customer.name}</p>}
+          {customer.designation && <p className="text-xs text-gray-400">{customer.designation}</p>}
+          <div className="flex gap-2 mt-2">
+            <StatusBadge status={customer.customerStatus} />
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              {customer.customerType || 'customer'}
+            </span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+              {customer.priceListCategory || 'T1'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Personal Details */}
+      <DetailSection title="Personal Details">
+        <div className="grid grid-cols-2 gap-4">
+          <DetailRow label="Software ID" value={customer.softwareId} />
+          <DetailRow label="Firm Name" value={customer.firmName} />
+          <DetailRow label="Contact Name" value={customer.name} />
+          <DetailRow label="Designation" value={customer.designation} />
+        </div>
+      </DetailSection>
+
+      {/* Contact Numbers */}
+      <DetailSection title="Contact Numbers">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Phone className="w-4 h-4 text-gray-400" />
+              <div>
+                <span className="text-xs text-gray-500">Mobile 1</span>
+                <p className="text-sm text-gray-900">{customer.mobile || '-'}</p>
+              </div>
+            </div>
+            <WhatsAppBadge isWhatsApp={customer.isWhatsApp} />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Phone className="w-4 h-4 text-gray-400" />
+              <div>
+                <span className="text-xs text-gray-500">Mobile 2</span>
+                <p className="text-sm text-gray-900">{customer.mobile2 || '-'}</p>
+              </div>
+            </div>
+            <WhatsAppBadge isWhatsApp={customer.mobile2Whatsapp} />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Phone className="w-4 h-4 text-gray-400" />
+              <div>
+                <span className="text-xs text-gray-500">Mobile 3</span>
+                <p className="text-sm text-gray-900">{customer.mobile3 || '-'}</p>
+              </div>
+            </div>
+            <WhatsAppBadge isWhatsApp={customer.mobile3Whatsapp} />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-gray-400" />
+            <div>
+              <span className="text-xs text-gray-500">Email</span>
+              <p className="text-sm text-gray-900">{customer.email || '-'}</p>
+            </div>
+          </div>
+        </div>
+      </DetailSection>
+
+      {/* Address */}
+      <DetailSection title="Address">
+        <div className="space-y-2">
+          <div className="flex items-start gap-2">
+            <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-900">{customer.address || '-'}</p>
+              {customer.landmark && <p className="text-xs text-gray-500">Landmark: {customer.landmark}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 pl-6">
+            <DetailRow label="City" value={customer.city} />
+            <DetailRow label="State" value={customer.state} />
+          </div>
+          <div className="grid grid-cols-2 gap-4 pl-6">
+            <DetailRow label="Pincode" value={customer.pincode} />
+            <DetailRow label="Country" value={customer.country || 'India'} />
+          </div>
+          {customer.googleLocation && (
+            <a href={customer.googleLocation} target="_blank" rel="noopener noreferrer"
+               className="inline-flex items-center gap-1 text-blue-600 hover:underline text-sm mt-2">
+              <Globe className="w-4 h-4" />
+              View on Google Maps
+            </a>
+          )}
+        </div>
+      </DetailSection>
+
+      {/* Documents */}
+      <DetailSection title="Documents">
+        {customer.documents && customer.documents.length > 0 ? (
+          <div className="grid grid-cols-2 gap-2">
+            {customer.documents.map((doc, index) => (
+              <a
+                key={index}
+                href={getFileUrl(doc.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-2 bg-white rounded border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+              >
+                <FileText className="w-5 h-5 text-blue-500" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-500">{documentTypes.find(d => d.key === doc.type)?.label || doc.type}</p>
+                  <p className="text-sm text-gray-900 truncate">{doc.name || 'View File'}</p>
+                </div>
+                <Eye className="w-4 h-4 text-gray-400" />
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">No documents uploaded</p>
+        )}
+      </DetailSection>
+
+      {/* Business Details */}
+      <DetailSection title="Business Details">
+        <div className="grid grid-cols-2 gap-4">
+          <DetailRow label="GSTIN" value={customer.gstin} />
+          <DetailRow label="PAN Number" value={customer.panNumber} />
+          <DetailRow label="Aadhar Number" value={customer.aadharNumber} />
+          <DetailRow label="Shop Act" value={customer.shopActNumber} />
+          <DetailRow label="MSME Number" value={customer.msmeNumber} />
+        </div>
+      </DetailSection>
+
+      {/* Management */}
+      <DetailSection title="Management">
+        <div className="grid grid-cols-2 gap-4">
+          <DetailRow label="Account Manager" value={customer.accountManager} icon={User} />
+          <DetailRow label="Product Manager" value={customer.productManager} icon={User} />
+          <DetailRow label="Lead Source" value={customer.leadSource} />
+          <DetailRow label="Notes" value={customer.notes} />
+        </div>
+      </DetailSection>
+
+      {/* Sync Status */}
+      {(customer.accountgstId || customer.syncStatus || customer.outstanding) && (
+        <DetailSection title="System Info">
+          <div className="grid grid-cols-2 gap-4">
+            {customer.accountgstId && (
+              <DetailRow label="AccountGST ID" value={customer.accountgstId} />
+            )}
+            {customer.outstanding !== undefined && (
+              <DetailRow label="Outstanding" value={`₹${customer.outstanding?.toLocaleString() || 0}`} />
+            )}
+            {customer.syncStatus && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">Sync Status:</span>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                  customer.syncStatus === 'synced' ? 'bg-green-100 text-green-800' :
+                  customer.syncStatus === 'failed' ? 'bg-red-100 text-red-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {customer.syncStatus}
+                </span>
+              </div>
+            )}
+            {customer.lastSyncedAt && (
+              <DetailRow label="Last Synced" value={new Date(customer.lastSyncedAt).toLocaleString()} />
+            )}
+          </div>
+        </DetailSection>
+      )}
+
+      {/* Timestamps */}
+      <div className="pt-3 border-t border-gray-100 text-xs text-gray-400 flex justify-between">
+        <span>Created: {new Date(customer.createdAt).toLocaleString()}</span>
+        <span>Updated: {new Date(customer.updatedAt).toLocaleString()}</span>
+      </div>
+
+      {/* Close Button */}
+      <div className="pt-3">
+        <button onClick={onClose} className="btn-secondary w-full">Close</button>
+      </div>
+    </div>
+  )
+}
+
 export default function Customers() {
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -143,6 +1166,7 @@ export default function Customers() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showViewModal, setShowViewModal] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
 
@@ -202,7 +1226,7 @@ export default function Customers() {
     const query = searchQuery.toLowerCase()
     return (
       c.name?.toLowerCase().includes(query) ||
-      c.companyName?.toLowerCase().includes(query) ||
+      
       c.mobile?.toLowerCase().includes(query) ||
       c.email?.toLowerCase().includes(query) ||
       c.city?.toLowerCase().includes(query)
@@ -338,8 +1362,8 @@ export default function Customers() {
                   <tr key={customer._id} className="border-b border-gray-50 hover:bg-gray-50/50">
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-medium text-gray-900">{customer.companyName || customer.name}</p>
-                        {customer.companyName && <p className="text-sm text-gray-500">{customer.name}</p>}
+                        <p className="font-medium text-gray-900">{customer.firmName || customer.name}</p>
+                        {customer.firmName && <p className="text-sm text-gray-500">{customer.name}</p>}
                       </div>
                     </td>
                     <td className="px-6 py-4 hidden md:table-cell">
@@ -364,6 +1388,10 @@ export default function Customers() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => { setSelectedCustomer(customer); setShowViewModal(true) }}
+                          className="p-2 hover:bg-blue-50 rounded-lg transition-colors" title="View Details">
+                          <Eye className="w-4 h-4 text-blue-500" />
+                        </button>
                         <button onClick={() => { setSelectedCustomer(customer); setShowModal(true) }}
                           className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Edit">
                           <Edit2 className="w-4 h-4 text-gray-500" />
@@ -392,7 +1420,7 @@ export default function Customers() {
       </div>
 
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); setSelectedCustomer(null) }}
-        title={selectedCustomer ? 'Edit Customer' : 'Add Customer'}>
+        title={selectedCustomer ? 'Edit Customer' : 'Add Customer'} size="xl">
         <CustomerForm customer={selectedCustomer} onSubmit={selectedCustomer ? handleUpdate : handleCreate}
           onCancel={() => { setShowModal(false); setSelectedCustomer(null) }} loading={formLoading} />
       </Modal>
@@ -400,6 +1428,10 @@ export default function Customers() {
       <Modal isOpen={showDeleteModal} onClose={() => { setShowDeleteModal(false); setSelectedCustomer(null) }} title="Delete Customer">
         <DeleteModal customer={selectedCustomer} onConfirm={handleDelete}
           onCancel={() => { setShowDeleteModal(false); setSelectedCustomer(null) }} loading={formLoading} />
+      </Modal>
+
+      <Modal isOpen={showViewModal} onClose={() => { setShowViewModal(false); setSelectedCustomer(null) }} title="Customer Details" size="xl">
+        <CustomerViewModal customer={selectedCustomer} onClose={() => { setShowViewModal(false); setSelectedCustomer(null) }} />
       </Modal>
     </div>
   )

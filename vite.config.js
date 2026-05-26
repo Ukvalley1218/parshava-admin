@@ -7,7 +7,11 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': {
-        target: 'https://parshava-backend.onrender.com',
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:3000',
         changeOrigin: true,
       },
     },

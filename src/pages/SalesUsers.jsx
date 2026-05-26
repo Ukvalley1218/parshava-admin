@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import {
   Plus, Search, Edit2, Trash2, X, Loader, AlertCircle,
   MoreVertical, User, Mail, Phone, CheckCircle, XCircle
@@ -36,6 +37,7 @@ function Modal({ isOpen, onClose, title, children }) {
 
 // User Form Component
 function UserForm({ user, onSubmit, onCancel, loading }) {
+  const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -55,6 +57,18 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+     // Name validation
+  if (!/^[a-zA-Z\s]+$/.test(formData.name)) {
+    alert('Name should contain only letters')
+    return
+  }
+
+  // Phone validation (optional but recommended)
+  if (formData.phone && !/^\d{10}$/.test(formData.phone)) {
+    alert('Phone must be 10 digits')
+    return
+  }
+
     const data = { ...formData }
     if (!data.password) delete data.password
     onSubmit(data)
@@ -66,14 +80,21 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
         <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          required
-          className="input-field"
-          placeholder="Enter full name"
-        />
+  type="text"
+  name="name"
+  value={formData.name}
+  onChange={(e) => {
+    const value = e.target.value
+
+    // Allow only letters + space
+    if (/^[a-zA-Z\s]*$/.test(value)) {
+      handleChange(e)
+    }
+  }}
+  required
+  className="input-field"
+  placeholder="Enter full name"
+/>
       </div>
 
       {/* Email */}
@@ -92,31 +113,55 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
 
       {/* Password */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Password {user ? '(leave blank to keep current)' : '*'}
-        </label>
-        <input
-          type="password"
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          required={!user}
-          className="input-field"
-          placeholder="Enter password"
-        />
-      </div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    Password {user ? '(leave blank to keep current)' : '*'}
+  </label>
+
+  <div className="relative">
+    <input
+      type={showPassword ? 'text' : 'password'}
+      name="password"
+      value={formData.password}
+      onChange={handleChange}
+      required={!user}
+      className="input-field pr-10"
+      placeholder="Enter password"
+    />
+
+    {/* Eye Icon */}
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+    >
+      {showPassword ? (
+        <EyeOff className="w-5 h-5" />
+      ) : (
+        <Eye className="w-5 h-5" />
+      )}
+    </button>
+  </div>
+</div>
 
       {/* Phone */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
         <input
-          type="tel"
-          name="phone"
-          value={formData.phone}
-          onChange={handleChange}
-          className="input-field"
-          placeholder="Enter phone number"
-        />
+  type="tel"
+  name="phone"
+  value={formData.phone}
+  onChange={(e) => {
+    const value = e.target.value
+
+    // Allow only numbers
+    if (/^\d*$/.test(value)) {
+      handleChange(e)
+    }
+  }}
+  className="input-field"
+  placeholder="Enter phone number"
+  maxLength={10}
+/>
       </div>
 
       {/* Role */}
