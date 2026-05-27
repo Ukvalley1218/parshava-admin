@@ -203,10 +203,34 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
     return Object.keys(newErrors).length === 0
   }
 
-  // Handle field change
+  // Handle field change with input filtering
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    const newValue = type === 'checkbox' ? checked : value
+    let newValue = type === 'checkbox' ? checked : value
+
+    // Auto-uppercase for certain fields
+    if (name === 'gstin' || name === 'panNumber') {
+      newValue = value.toUpperCase()
+    }
+
+    // Filter input based on field type
+    if (name === 'mobile' || name === 'mobile2' || name === 'mobile3') {
+      // Only allow digits, max 10
+      newValue = value.replace(/\D/g, '').slice(0, 10)
+    } else if (name === 'pincode') {
+      // Only allow digits, max 6
+      newValue = value.replace(/\D/g, '').slice(0, 6)
+    } else if (name === 'aadharNumber') {
+      // Only allow digits, max 12
+      newValue = value.replace(/\D/g, '').slice(0, 12)
+    } else if (name === 'gstin') {
+      // Alphanumeric, max 15
+      newValue = value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 15).toUpperCase()
+    } else if (name === 'panNumber') {
+      // Alphanumeric, max 10
+      newValue = value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10).toUpperCase()
+    }
+    // Name fields (firmName, name, etc.) - allow free input, validation handles errors on submit
 
     setFormData((prev) => ({
       ...prev,
@@ -232,28 +256,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
       setErrors((prev) => ({ ...prev, [name]: error }))
     }
   }
-
-  // Input field component with error display
-  const InputField = ({ label, name, required, type = 'text', placeholder, ...props }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={formData[name]}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        className={`input-field ${errors[name] && touched[name] ? 'border-red-500 focus:ring-red-500' : ''}`}
-        placeholder={placeholder}
-        {...props}
-      />
-      {errors[name] && touched[name] && (
-        <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
-      )}
-    </div>
-  )
 
   const handleFileChange = async (e, field) => {
     const file = e.target.files[0]
@@ -503,7 +505,24 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
               value={formData.pincode}
               onChange={handleChange}
               onBlur={handleBlur}
+              onKeyDown={(e) => {
+                if ([8, 46, 9, 27, 13].includes(e.keyCode) ||
+                    (e.ctrlKey && [65, 67, 86, 88].includes(e.keyCode)) ||
+                    (e.keyCode >= 35 && e.keyCode <= 39)) {
+                  return
+                }
+                if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                  e.preventDefault()
+                }
+              }}
+              onPaste={(e) => {
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text')
+                if (!/^\d*$/.test(pastedText)) {
+                  e.preventDefault()
+                }
+              }}
               maxLength={6}
+              inputMode="numeric"
               className={`input-field ${errors.pincode && touched.pincode ? 'border-red-500' : ''}`}
               placeholder="Enter 6-digit pincode"
             />
@@ -528,7 +547,29 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
               value={formData.mobile}
               onChange={handleChange}
               onBlur={handleBlur}
+              onKeyDown={(e) => {
+                // Allow: backspace, delete, tab, escape, enter, arrows
+                if ([8, 46, 9, 27, 13].includes(e.keyCode) ||
+                    // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                    (e.ctrlKey && [65, 67, 86, 88].includes(e.keyCode)) ||
+                    // Allow: home, end, left, right
+                    (e.keyCode >= 35 && e.keyCode <= 39)) {
+                  return
+                }
+                // Block non-numeric keys
+                if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                  e.preventDefault()
+                }
+              }}
+              onPaste={(e) => {
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text')
+                if (!/^\d*$/.test(pastedText)) {
+                  e.preventDefault()
+                }
+              }}
               maxLength={10}
+              inputMode="numeric"
+              pattern="[6-9][0-9]{9}"
               className={`input-field ${errors.mobile && touched.mobile ? 'border-red-500' : ''}`}
               placeholder="10-digit mobile number"
             />
@@ -555,7 +596,24 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
               value={formData.mobile2}
               onChange={handleChange}
               onBlur={handleBlur}
+              onKeyDown={(e) => {
+                if ([8, 46, 9, 27, 13].includes(e.keyCode) ||
+                    (e.ctrlKey && [65, 67, 86, 88].includes(e.keyCode)) ||
+                    (e.keyCode >= 35 && e.keyCode <= 39)) {
+                  return
+                }
+                if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                  e.preventDefault()
+                }
+              }}
+              onPaste={(e) => {
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text')
+                if (!/^\d*$/.test(pastedText)) {
+                  e.preventDefault()
+                }
+              }}
               maxLength={10}
+              inputMode="numeric"
               className={`input-field ${errors.mobile2 && touched.mobile2 ? 'border-red-500' : ''}`}
               placeholder="Alternate mobile (optional)"
             />
@@ -582,7 +640,24 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
               value={formData.mobile3}
               onChange={handleChange}
               onBlur={handleBlur}
+              onKeyDown={(e) => {
+                if ([8, 46, 9, 27, 13].includes(e.keyCode) ||
+                    (e.ctrlKey && [65, 67, 86, 88].includes(e.keyCode)) ||
+                    (e.keyCode >= 35 && e.keyCode <= 39)) {
+                  return
+                }
+                if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                  e.preventDefault()
+                }
+              }}
+              onPaste={(e) => {
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text')
+                if (!/^\d*$/.test(pastedText)) {
+                  e.preventDefault()
+                }
+              }}
               maxLength={10}
+              inputMode="numeric"
               className={`input-field ${errors.mobile3 && touched.mobile3 ? 'border-red-500' : ''}`}
               placeholder="Additional mobile (optional)"
             />
@@ -641,7 +716,25 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
               value={formData.gstin}
               onChange={handleChange}
               onBlur={handleBlur}
+              onKeyDown={(e) => {
+                if ([8, 46, 9, 27, 13].includes(e.keyCode) ||
+                    (e.ctrlKey && [65, 67, 86, 88].includes(e.keyCode)) ||
+                    (e.keyCode >= 35 && e.keyCode <= 39)) {
+                  return
+                }
+                // Block special characters but allow alphanumeric
+                if (!/^[a-zA-Z0-9]$/.test(e.key) && e.key.length === 1) {
+                  e.preventDefault()
+                }
+              }}
+              onPaste={(e) => {
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text')
+                if (!/^[a-zA-Z0-9]*$/.test(pastedText)) {
+                  e.preventDefault()
+                }
+              }}
               maxLength={15}
+              style={{ textTransform: 'uppercase' }}
               className={`input-field uppercase ${errors.gstin && touched.gstin ? 'border-red-500' : ''}`}
               placeholder="15-character GSTIN"
             />
@@ -657,7 +750,24 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
               value={formData.panNumber}
               onChange={handleChange}
               onBlur={handleBlur}
+              onKeyDown={(e) => {
+                if ([8, 46, 9, 27, 13].includes(e.keyCode) ||
+                    (e.ctrlKey && [65, 67, 86, 88].includes(e.keyCode)) ||
+                    (e.keyCode >= 35 && e.keyCode <= 39)) {
+                  return
+                }
+                if (!/^[a-zA-Z0-9]$/.test(e.key) && e.key.length === 1) {
+                  e.preventDefault()
+                }
+              }}
+              onPaste={(e) => {
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text')
+                if (!/^[a-zA-Z0-9]*$/.test(pastedText)) {
+                  e.preventDefault()
+                }
+              }}
               maxLength={10}
+              style={{ textTransform: 'uppercase' }}
               className={`input-field uppercase ${errors.panNumber && touched.panNumber ? 'border-red-500' : ''}`}
               placeholder="10-character PAN"
             />
@@ -673,7 +783,24 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
               value={formData.aadharNumber}
               onChange={handleChange}
               onBlur={handleBlur}
+              onKeyDown={(e) => {
+                if ([8, 46, 9, 27, 13].includes(e.keyCode) ||
+                    (e.ctrlKey && [65, 67, 86, 88].includes(e.keyCode)) ||
+                    (e.keyCode >= 35 && e.keyCode <= 39)) {
+                  return
+                }
+                if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                  e.preventDefault()
+                }
+              }}
+              onPaste={(e) => {
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text')
+                if (!/^\d*$/.test(pastedText)) {
+                  e.preventDefault()
+                }
+              }}
               maxLength={12}
+              inputMode="numeric"
               className={`input-field ${errors.aadharNumber && touched.aadharNumber ? 'border-red-500' : ''}`}
               placeholder="12-digit Aadhar number"
             />

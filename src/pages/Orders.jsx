@@ -28,7 +28,9 @@ function OrderDetailModal({ order, onClose, onStatusChange, loading }) {
   if (!order) return null
 
   const items = order.items || []
-  const customer = order.customerDetails || order.customerId || {}
+  // Get customer from customerDetails (new orders) or populated customerId (old orders)
+  const customer = order.customerDetails ||
+    (order.customerId && typeof order.customerId === 'object' ? order.customerId : {}) || {}
   const shippingAddress = order.shippingAddress || {}
 
   return (
@@ -54,7 +56,7 @@ function OrderDetailModal({ order, onClose, onStatusChange, loading }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-gray-500">Name</p>
-              <p className="font-medium text-gray-900">{customer.name || 'N/A'}</p>
+              <p className="font-medium text-gray-900">{customer.firmName || customer.name || 'N/A'}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500">Mobile</p>
@@ -345,11 +347,17 @@ export default function Orders() {
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => (
+                filteredOrders.map((order) => {
+                  // Get customer from customerDetails (new) or populated customerId (old)
+                  const customer = order.customerDetails ||
+                    (order.customerId && typeof order.customerId === 'object' ? order.customerId : {}) || {}
+                  const customerName = customer.firmName || customer.name || 'N/A'
+
+                  return (
                   <tr key={order._id} className="border-b border-gray-50 hover:bg-gray-50/50">
                     <td className="px-6 py-4 text-sm text-gray-600">#{order.orderId || order._id?.slice(-8).toUpperCase()}</td>
                     <td className="px-6 py-4">
-                      <p className="font-medium text-gray-900">{order.customerDetails?.name || order.customerId?.name || 'N/A'}</p>
+                      <p className="font-medium text-gray-900">{customerName}</p>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 hidden sm:table-cell">{order.items?.length || 0} items</td>
                     <td className="px-6 py-4 font-medium text-gray-900">
@@ -374,7 +382,7 @@ export default function Orders() {
                       </div>
                     </td>
                   </tr>
-                ))
+                )})
               )}
             </tbody>
           </table>

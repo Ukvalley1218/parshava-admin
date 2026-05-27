@@ -9,6 +9,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [emailError, setEmailError] = useState('')
 
   const { login } = useAdminAuth()
   const navigate = useNavigate()
@@ -16,9 +17,42 @@ export default function Login() {
 
   const from = location.state?.from?.pathname || '/admin'
 
+  // Email validation
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const handleEmailChange = (e) => {
+    const value = e.target.value
+    setEmail(value)
+    // Clear email error when user starts typing
+    if (emailError) {
+      setEmailError('')
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setEmailError('')
+
+    // Validate email format
+    if (!email.trim()) {
+      setEmailError('Email is required')
+      return
+    }
+    if (!validateEmail(email)) {
+      setEmailError('Please enter a valid email address')
+      return
+    }
+
+    // Validate password
+    if (!password) {
+      setError('Password is required')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -69,12 +103,22 @@ export default function Login() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={handleEmailChange}
+                  onBlur={() => {
+                    if (email && !validateEmail(email)) {
+                      setEmailError('Please enter a valid email address')
+                    }
+                  }}
                   placeholder="admin@example.com"
                   required
-                  className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${
+                    emailError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
+                  }`}
                 />
               </div>
+              {emailError && (
+                <p className="text-xs text-red-500 mt-1">{emailError}</p>
+              )}
             </div>
 
             {/* Password */}

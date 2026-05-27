@@ -1,7 +1,16 @@
 import { useState, useEffect } from 'react'
 import { Search, Plus, Edit2, Trash2, X, Loader, AlertCircle, Package, RefreshCw, Eye } from 'lucide-react'
-import { getAdminProducts, createAdminProduct, updateAdminProduct, deleteAdminProduct, syncProducts, getBrands } from '../services/adminApi'
+import {
+  getAdminProducts,
+  createAdminProduct,
+  updateAdminProduct,
+  deleteAdminProduct,
+  syncProducts,
+  getBrands,
+  uploadFile
+} from '../services/adminApi'
 import Pagination from '../components/Pagination'
+import { getImageUrl } from '../utils/imageUtils'
 
 // Modal Component
 function Modal({ isOpen, onClose, title, children, size = 'md' }) {
@@ -90,6 +99,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
   const [categories, setCategories] = useState([])
   const [subcategories, setSubcategories] = useState([])
   const [initialized, setInitialized] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   const getInitialState = () => {
     const state = {
@@ -124,72 +134,122 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
   }
 
   const [formData, setFormData] = useState(getInitialState)
+  const [errors, setErrors] = useState({})
+  const [touched, setTouched] = useState({})
+
+  // Validation functions
+  const validators = {
+    name: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Product name is required'
+        if (value.length > 200) return 'Product name must be less than 200 characters'
+        return null
+      }
+    },
+    stock: {
+      required: false,
+      validate: (value) => {
+        if (value && isNaN(parseInt(value))) return 'Stock must be a number'
+        if (value && parseInt(value) < 0) return 'Stock cannot be negative'
+        return null
+      }
+    },
+    hsn: {
+      required: false,
+      validate: (value) => {
+        if (value && !/^\d{4,8}$/.test(value)) return 'HSN code must be 4-8 digits'
+        return null
+      }
+    }
+  }
+
+  // Validate single field
+  const validateField = (name, value) => {
+    const validator = validators[name]
+    if (!validator) return null
+    return validator.validate(value)
+  }
+
+  // Validate all fields
+  const validateForm = () => {
+    const newErrors = {}
+    Object.keys(validators).forEach(field => {
+      const error = validateField(field, formData[field])
+      if (error) newErrors[field] = error
+    })
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   // Initialize brandId and categoryId from existing product data (by name matching)
   useEffect(() => {
-    if (brands.length > 0 && product && !initialized) {
-      let brandId = product.brandId
-      let categoryId = product.categoryId
+    // Set initialized to true once brands are loaded (for both new and edit modes)
+    if (brands.length > 0 && !initialized) {
+      if (product) {
+        let brandId = product.brandId
+        let categoryId = product.categoryId
 
-      // Find brand by name if brandId not set
-      if (product.brand && !brandId) {
-        const foundBrand = brands.find(b => b.name.toLowerCase() === product.brand.toLowerCase())
-        if (foundBrand) {
-          brandId = foundBrand._id
-        }
-      }
-
-      // Set categories based on brand
-      if (brandId) {
-        const selectedBrand = brands.find(b => b._id === brandId)
-        if (selectedBrand && selectedBrand.categories) {
-          setCategories(selectedBrand.categories.filter(c => c.active))
-
-          // Find category by name if categoryId not set
-          if (product.category && !categoryId) {
-            const foundCategory = selectedBrand.categories.find(
-              c => c.name.toLowerCase() === product.category.toLowerCase()
-            )
-            if (foundCategory) {
-              categoryId = foundCategory._id
-            }
+        // Find brand by name if brandId not set
+        if (product.brand && !brandId) {
+          const foundBrand = brands.find(b => b.name.toLowerCase() === product.brand.toLowerCase())
+          if (foundBrand) {
+            brandId = foundBrand._id
           }
+        }
 
-          // Set subcategories based on category
-          if (categoryId) {
-            const selectedCategory = selectedBrand.categories.find(c => c._id === categoryId)
-            if (selectedCategory && selectedCategory.subcategories) {
-              setSubcategories(selectedCategory.subcategories.filter(s => s.active))
+        // Set categories based on brand
+        if (brandId) {
+          const selectedBrand = brands.find(b => b._id === brandId)
+          if (selectedBrand && selectedBrand.categories) {
+            setCategories(selectedBrand.categories.filter(c => c.active))
 
-              // Find subcategory by name if subcategoryId not set
-              if (product.subcategory && !product.subcategoryId) {
-                const foundSubcategory = selectedCategory.subcategories.find(
-                  s => s.name.toLowerCase() === product.subcategory.toLowerCase()
-                )
-                if (foundSubcategory) {
-                  setFormData(prev => ({
-                    ...prev,
-                    brandId: brandId,
-                    brand: product.brand,
-                    categoryId: categoryId,
-                    category: product.category,
-                    subcategoryId: foundSubcategory._id,
-                    subcategory: product.subcategory
-                  }))
-                  setInitialized(true)
-                  return
+            // Find category by name if categoryId not set
+            if (product.category && !categoryId) {
+              const foundCategory = selectedBrand.categories.find(
+                c => c.name.toLowerCase() === product.category.toLowerCase()
+              )
+              if (foundCategory) {
+                categoryId = foundCategory._id
+              }
+            }
+
+            // Set subcategories based on category
+            if (categoryId) {
+              const selectedCategory = selectedBrand.categories.find(c => c._id === categoryId)
+              if (selectedCategory && selectedCategory.subcategories) {
+                setSubcategories(selectedCategory.subcategories.filter(s => s.active))
+
+                // Find subcategory by name if subcategoryId not set
+                if (product.subcategory && !product.subcategoryId) {
+                  const foundSubcategory = selectedCategory.subcategories.find(
+                    s => s.name.toLowerCase() === product.subcategory.toLowerCase()
+                  )
+                  if (foundSubcategory) {
+                    setFormData(prev => ({
+                      ...prev,
+                      brandId: brandId,
+                      brand: product.brand,
+                      categoryId: categoryId,
+                      category: product.category,
+                      subcategoryId: foundSubcategory._id,
+                      subcategory: product.subcategory
+                    }))
+                    setInitialized(true)
+                    return
+                  }
                 }
               }
             }
           }
         }
-      }
 
-      setFormData(prev => ({
-        ...prev,
-        brandId: brandId || product.brandId || '',
-        categoryId: categoryId || product.categoryId || ''
-      }))
+        setFormData(prev => ({
+          ...prev,
+          brandId: brandId || product.brandId || '',
+          categoryId: categoryId || product.categoryId || ''
+        }))
+      }
       setInitialized(true)
     }
   }, [brands, product, initialized])
@@ -219,6 +279,33 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
       setSubcategories([])
     }
   }, [formData.categoryId, categories, initialized])
+
+
+  const handleImageUpload = async (e) => {
+  const file = e.target.files[0]
+
+  if (!file) return
+
+  try {
+    setUploadingImage(true)
+
+    const response = await uploadFile('productImage', file)
+
+    if (response.success) {
+      setFormData(prev => ({
+        ...prev,
+        imageUrl: response.data.url
+      }))
+    } else {
+      alert(response.message || 'Upload failed')
+    }
+
+  } catch (error) {
+    alert('Failed to upload image')
+  } finally {
+    setUploadingImage(false)
+  }
+}
 
   const handleBrandChange = (e) => {
     const brandId = e.target.value
@@ -257,12 +344,64 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
   }
 
   const handleChange = (e) => {
+    const { name, value, type } = e.target
+    let newValue = value
+
+    // Filter numeric fields to only allow numbers and decimals
+    const numericFields = ['mrp', 'mop', 'purchasePrice', 'cnlc', 'mnlc', 'opPrice', 't1', 't2', 't3', 't4', 'bottomPrice']
+    const integerFields = ['stock']
+
+    if (numericFields.includes(name)) {
+      // Allow numbers and decimals only
+      newValue = value.replace(/[^0-9.]/g, '')
+      // Ensure only one decimal point
+      const parts = newValue.split('.')
+      if (parts.length > 2) {
+        newValue = parts[0] + '.' + parts.slice(1).join('')
+      }
+    } else if (integerFields.includes(name)) {
+      // Allow only integers
+      newValue = value.replace(/[^0-9]/g, '')
+    } else if (name === 'hsn') {
+      // HSN code - digits only, max 8
+      newValue = value.replace(/[^0-9]/g, '').slice(0, 8)
+    }
+    // Don't filter name and partNumber - let users type freely
+    // Validation will handle any issues on submit
+
+    setFormData(prev => ({ ...prev, [name]: newValue }))
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }))
+    }
+  }
+
+  // Handle blur for validation
+  const handleBlur = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setTouched(prev => ({ ...prev, [name]: true }))
+    const error = validateField(name, value)
+    if (error) {
+      setErrors(prev => ({ ...prev, [name]: error }))
+    }
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
+
+    // Mark all fields as touched
+    const allTouched = {}
+    Object.keys(validators).forEach(field => {
+      allTouched[field] = true
+    })
+    setTouched(allTouched)
+
+    // Validate all fields
+    if (!validateForm()) {
+      return
+    }
+
     const submitData = {
       ...formData,
       mrp: parseFloat(formData.mrp) || 0,
@@ -281,24 +420,6 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
     }
     onSubmit(submitData)
   }
-
-  const InputField = ({ label, name, type = 'text', required = false, placeholder, ...props }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}{required && <span className="text-red-500">*</span>}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={formData[name]}
-        onChange={handleChange}
-        required={required}
-        placeholder={placeholder}
-        className="input-field"
-        {...props}
-      />
-    </div>
-  )
 
   return (
     <form onSubmit={handleSubmit} className="p-4 space-y-6">
@@ -363,11 +484,75 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
       <div className="border-b pb-4">
         <h4 className="font-medium text-gray-800 mb-3">Basic Information</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <InputField label="Item Name" name="name" required placeholder="Enter product name" />
-          <InputField label="Part Number" name="partNumber" placeholder="Enter part number" />
-          <InputField label="Image URL" name="imageUrl" placeholder="Enter image URL" />
-          <InputField label="Unit" name="unit" placeholder="e.g., PCS, KG" />
-          <InputField label="HSN Code" name="hsn" placeholder="Enter HSN code" />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Item Name <span className="text-red-500">*</span></label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              required
+              placeholder="Enter product name"
+              className={`input-field ${errors.name && touched.name ? 'border-red-500 focus:ring-red-500' : ''}`}
+            />
+            {errors.name && touched.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Part Number</label>
+            <input
+              type="text"
+              name="partNumber"
+              value={formData.partNumber}
+              onChange={handleChange}
+              placeholder="Enter part number"
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="input-field"
+            />
+            {formData.imageUrl && (
+              <img
+                src={getImageUrl(formData.imageUrl)}
+                alt="Preview"
+                className="mt-2 w-24 h-24 object-cover rounded-lg border"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = 'https://img.freepik.com/free-photo/modern-stationary-collection-arrangement_23-2149309643.jpg?semt=ais_rp_progressive&w=740&q=80';
+                }}
+              />
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+            <input
+              type="text"
+              name="unit"
+              value={formData.unit}
+              onChange={handleChange}
+              placeholder="e.g., PCS, KG"
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">HSN Code</label>
+            <input
+              type="text"
+              name="hsn"
+              value={formData.hsn}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="Enter HSN code"
+              className={`input-field ${errors.hsn && touched.hsn ? 'border-red-500 focus:ring-red-500' : ''}`}
+            />
+            {errors.hsn && touched.hsn && <p className="text-xs text-red-500 mt-1">{errors.hsn}</p>}
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">GST Rate (%)</label>
             <select name="gstRate" value={formData.gstRate} onChange={handleChange} className="input-field">
@@ -386,7 +571,19 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
               <option value="Back to Back">Back to Back</option>
             </select>
           </div>
-          <InputField label="Stock" name="stock" type="number" placeholder="Stock quantity" />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+            <input
+              type="number"
+              name="stock"
+              value={formData.stock}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="Stock quantity"
+              className={`input-field ${errors.stock && touched.stock ? 'border-red-500 focus:ring-red-500' : ''}`}
+            />
+            {errors.stock && touched.stock && <p className="text-xs text-red-500 mt-1">{errors.stock}</p>}
+          </div>
         </div>
         <div className="mt-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -399,11 +596,61 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
       <div className="border-b pb-4">
         <h4 className="font-medium text-gray-800 mb-3">Cost Pricing</h4>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <InputField label="MRP" name="mrp" type="number" placeholder="₹0.00" />
-          <InputField label="MOP" name="mop" type="number" placeholder="₹0.00" />
-          <InputField label="Purchase Price" name="purchasePrice" type="number" placeholder="₹0.00" />
-          <InputField label="CNLC" name="cnlc" type="number" placeholder="₹0.00" />
-          <InputField label="MNLC" name="mnlc" type="number" placeholder="₹0.00" />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">MRP</label>
+            <input
+              type="number"
+              name="mrp"
+              value={formData.mrp}
+              onChange={handleChange}
+              placeholder="₹0.00"
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">MOP</label>
+            <input
+              type="number"
+              name="mop"
+              value={formData.mop}
+              onChange={handleChange}
+              placeholder="₹0.00"
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Price</label>
+            <input
+              type="number"
+              name="purchasePrice"
+              value={formData.purchasePrice}
+              onChange={handleChange}
+              placeholder="₹0.00"
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CNLC</label>
+            <input
+              type="number"
+              name="cnlc"
+              value={formData.cnlc}
+              onChange={handleChange}
+              placeholder="₹0.00"
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">MNLC</label>
+            <input
+              type="number"
+              name="mnlc"
+              value={formData.mnlc}
+              onChange={handleChange}
+              placeholder="₹0.00"
+              className="input-field"
+            />
+          </div>
         </div>
       </div>
 
@@ -411,12 +658,72 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
       <div className="border-b pb-4">
         <h4 className="font-medium text-gray-800 mb-3">Selling Pricing</h4>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          <InputField label="OP Price" name="opPrice" type="number" placeholder="₹0.00" />
-          <InputField label="T1" name="t1" type="number" placeholder="₹0.00" />
-          <InputField label="T2" name="t2" type="number" placeholder="₹0.00" />
-          <InputField label="T3" name="t3" type="number" placeholder="₹0.00" />
-          <InputField label="T4" name="t4" type="number" placeholder="₹0.00" />
-          <InputField label="Bottom Price" name="bottomPrice" type="number" placeholder="₹0.00" />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">OP Price</label>
+            <input
+              type="number"
+              name="opPrice"
+              value={formData.opPrice}
+              onChange={handleChange}
+              placeholder="₹0.00"
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">T1</label>
+            <input
+              type="number"
+              name="t1"
+              value={formData.t1}
+              onChange={handleChange}
+              placeholder="₹0.00"
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">T2</label>
+            <input
+              type="number"
+              name="t2"
+              value={formData.t2}
+              onChange={handleChange}
+              placeholder="₹0.00"
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">T3</label>
+            <input
+              type="number"
+              name="t3"
+              value={formData.t3}
+              onChange={handleChange}
+              placeholder="₹0.00"
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">T4</label>
+            <input
+              type="number"
+              name="t4"
+              value={formData.t4}
+              onChange={handleChange}
+              placeholder="₹0.00"
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Bottom Price</label>
+            <input
+              type="number"
+              name="bottomPrice"
+              value={formData.bottomPrice}
+              onChange={handleChange}
+              placeholder="₹0.00"
+              className="input-field"
+            />
+          </div>
         </div>
       </div>
 

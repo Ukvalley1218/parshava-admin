@@ -77,8 +77,8 @@ export default function Settings() {
 
   const tabs = [
     { key: 'profile', label: 'Profile', icon: User },
-    { key: 'security', label: 'Security', icon: Lock },
-    { key: 'notifications', label: 'Notifications', icon: Bell },
+    // { key: 'security', label: 'Security', icon: Lock },
+    // { key: 'notifications', label: 'Notifications', icon: Bell },
   ]
 
   return (

@@ -41,9 +41,32 @@ function BrandForm({ brand, onSubmit, onCancel, loading }) {
   const [formData, setFormData] = useState({
     name: brand?.name || '',
   })
+  const [error, setError] = useState('')
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    // Just set the value - validation happens on submit
+    setFormData({ ...formData, [name]: value })
+    setError('')
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
+
+    // Validation
+    if (!formData.name.trim()) {
+      setError('Brand name is required')
+      return
+    }
+    if (formData.name.trim().length < 2) {
+      setError('Brand name must be at least 2 characters')
+      return
+    }
+    if (formData.name.trim().length > 100) {
+      setError('Brand name must be less than 100 characters')
+      return
+    }
+
     onSubmit(formData)
   }
 
@@ -55,11 +78,13 @@ function BrandForm({ brand, onSubmit, onCancel, loading }) {
           type="text"
           name="name"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={handleChange}
           required
-          className="input-field"
+          maxLength={100}
+          className={`input-field ${error ? 'border-red-500' : ''}`}
           placeholder="Enter brand name"
         />
+        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
       </div>
       <div className="flex gap-3 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary flex-1" disabled={loading}>Cancel</button>
@@ -75,9 +100,27 @@ function BrandForm({ brand, onSubmit, onCancel, loading }) {
 // Category Form Component
 function CategoryForm({ onSubmit, onCancel, loading }) {
   const [name, setName] = useState('')
+  const [error, setError] = useState('')
+
+  const handleChange = (e) => {
+    const value = e.target.value
+    // Just set the value - validation happens on submit
+    setName(value)
+    setError('')
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
+
+    if (!name.trim()) {
+      setError('Category name is required')
+      return
+    }
+    if (name.trim().length < 2) {
+      setError('Category name must be at least 2 characters')
+      return
+    }
+
     onSubmit({ name })
     setName('')
   }
@@ -89,11 +132,13 @@ function CategoryForm({ onSubmit, onCancel, loading }) {
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={handleChange}
           required
-          className="input-field"
+          maxLength={100}
+          className={`input-field ${error ? 'border-red-500' : ''}`}
           placeholder="Enter category name"
         />
+        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
       </div>
       <button type="submit" className="btn-primary px-4 py-2" disabled={loading}>
         {loading ? <Loader className="w-4 h-4 animate-spin" /> : 'Add'}
@@ -105,9 +150,27 @@ function CategoryForm({ onSubmit, onCancel, loading }) {
 // Subcategory Form Component
 function SubcategoryForm({ onSubmit, onCancel, loading }) {
   const [name, setName] = useState('')
+  const [error, setError] = useState('')
+
+  const handleChange = (e) => {
+    const value = e.target.value
+    // Just set the value - validation happens on submit
+    setName(value)
+    setError('')
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
+
+    if (!name.trim()) {
+      setError('Subcategory name is required')
+      return
+    }
+    if (name.trim().length < 2) {
+      setError('Subcategory name must be at least 2 characters')
+      return
+    }
+
     onSubmit({ name })
     setName('')
   }
@@ -118,11 +181,13 @@ function SubcategoryForm({ onSubmit, onCancel, loading }) {
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={handleChange}
           required
-          className="input-field text-sm"
+          maxLength={100}
+          className={`input-field text-sm ${error ? 'border-red-500' : ''}`}
           placeholder="Enter subcategory name"
         />
+        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
       </div>
       <button type="submit" className="btn-secondary px-3 py-1.5 text-sm" disabled={loading}>
         {loading ? <Loader className="w-4 h-4 animate-spin" /> : 'Add'}
