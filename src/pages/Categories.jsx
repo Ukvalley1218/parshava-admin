@@ -1,20 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Search, Plus, Edit2, Trash2, X, Loader, AlertCircle, Tag } from 'lucide-react'
-import {
-  getBrands,
-  createBrand,
-  updateBrand,
-  deleteBrand
-} from '../services/adminApi'
+import { Search, Plus, Edit2, Trash2, X, Loader, AlertCircle, FolderTree } from 'lucide-react'
+import { getCategories, createCategory, updateCategory, deleteCategory } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 
 // Modal Component
-function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+function Modal({ isOpen, onClose, title, children }) {
   if (!isOpen) return null
-  const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-4xl' }
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className={`bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto`}
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
@@ -28,11 +22,11 @@ function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   )
 }
 
-// Brand Form Component
-function BrandForm({ brand, onSubmit, onCancel, loading }) {
+// Category Form Component
+function CategoryForm({ category, onSubmit, onCancel, loading }) {
   const [formData, setFormData] = useState({
-    name: brand?.name || '',
-    active: brand?.active ?? true
+    name: category?.name || '',
+    active: category?.active ?? true
   })
   const [error, setError] = useState('')
 
@@ -44,27 +38,21 @@ function BrandForm({ brand, onSubmit, onCancel, loading }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-
     if (!formData.name.trim()) {
-      setError('Brand name is required')
+      setError('Category name is required')
       return
     }
     if (formData.name.trim().length < 2) {
-      setError('Brand name must be at least 2 characters')
+      setError('Category name must be at least 2 characters')
       return
     }
-    if (formData.name.trim().length > 100) {
-      setError('Brand name must be less than 100 characters')
-      return
-    }
-
     onSubmit(formData)
   }
 
   return (
     <form onSubmit={handleSubmit} className="p-4 space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Brand Name *</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Category Name *</label>
         <input
           type="text"
           name="name"
@@ -73,7 +61,7 @@ function BrandForm({ brand, onSubmit, onCancel, loading }) {
           required
           maxLength={100}
           className={`input-field ${error ? 'border-red-500' : ''}`}
-          placeholder="Enter brand name"
+          placeholder="Enter category name"
         />
         {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
       </div>
@@ -92,20 +80,20 @@ function BrandForm({ brand, onSubmit, onCancel, loading }) {
         <button type="button" onClick={onCancel} className="btn-secondary flex-1" disabled={loading}>Cancel</button>
         <button type="submit" className="btn-primary flex-1 flex items-center justify-center gap-2" disabled={loading}>
           {loading && <Loader className="w-4 h-4 animate-spin" />}
-          {brand ? 'Update' : 'Create'}
+          {category ? 'Update' : 'Create'}
         </button>
       </div>
     </form>
   )
 }
 
-export default function Brands() {
-  const [brands, setBrands] = useState([])
+export default function Categories() {
+  const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [selectedBrand, setSelectedBrand] = useState(null)
+  const [selectedCategory, setSelectedCategory] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
 
   // Pagination state
@@ -116,55 +104,55 @@ export default function Brands() {
     limit: 10,
   })
 
-  const fetchBrands = async (page = currentPage, limit = pagination.limit) => {
+  const fetchCategories = async (page = currentPage, limit = pagination.limit) => {
     setLoading(true)
     setError(null)
     try {
-      const response = await getBrands({ page, limit, search: searchQuery || undefined })
+      const response = await getCategories({ page, limit, search: searchQuery || undefined })
       if (response.success !== false) {
-        setBrands(response.data || [])
+        setCategories(response.data || [])
         setPagination({
           total: response.pagination?.totalItems || 0,
           totalPages: response.pagination?.totalPages || 1,
           limit: response.pagination?.limit || 10,
         })
       } else {
-        setError(response.message || 'Failed to fetch brands')
+        setError(response.message || 'Failed to fetch categories')
       }
     } catch (err) {
-      setError('Failed to fetch brands')
+      setError('Failed to fetch categories')
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchBrands(1)
+    fetchCategories(1)
   }, [])
 
   const handlePageChange = (page) => {
     setCurrentPage(page)
-    fetchBrands(page)
+    fetchCategories(page)
   }
 
   const handleSearch = () => {
     setCurrentPage(1)
-    fetchBrands(1)
+    fetchCategories(1)
   }
 
   const handleCreate = async (data) => {
     setFormLoading(true)
     try {
-      const response = await createBrand(data)
+      const response = await createCategory(data)
       if (response.success !== false) {
-        fetchBrands(currentPage)
+        fetchCategories(currentPage)
         setShowModal(false)
-        setSelectedBrand(null)
+        setSelectedCategory(null)
       } else {
-        alert(response.message || 'Failed to create brand')
+        alert(response.message || 'Failed to create category')
       }
     } catch (err) {
-      alert('Failed to create brand')
+      alert('Failed to create category')
     } finally {
       setFormLoading(false)
     }
@@ -173,32 +161,32 @@ export default function Brands() {
   const handleUpdate = async (data) => {
     setFormLoading(true)
     try {
-      const response = await updateBrand(selectedBrand._id, data)
+      const response = await updateCategory(selectedCategory._id, data)
       if (response.success !== false) {
-        setBrands(prev => prev.map(b => b._id === selectedBrand._id ? response.data : b))
+        setCategories(prev => prev.map(c => c._id === selectedCategory._id ? response.data : c))
         setShowModal(false)
-        setSelectedBrand(null)
+        setSelectedCategory(null)
       } else {
-        alert(response.message || 'Failed to update brand')
+        alert(response.message || 'Failed to update category')
       }
     } catch (err) {
-      alert('Failed to update brand')
+      alert('Failed to update category')
     } finally {
       setFormLoading(false)
     }
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this brand?')) return
+    if (!confirm('Are you sure you want to delete this category? This will also delete all subcategories and series linked to it.')) return
     try {
-      const response = await deleteBrand(id)
+      const response = await deleteCategory(id)
       if (response.success !== false) {
-        fetchBrands(currentPage)
+        fetchCategories(currentPage)
       } else {
-        alert(response.message || 'Failed to delete brand')
+        alert(response.message || 'Failed to delete category')
       }
     } catch (err) {
-      alert('Failed to delete brand')
+      alert('Failed to delete category')
     }
   }
 
@@ -211,7 +199,7 @@ export default function Brands() {
       <div className="flex flex-col items-center justify-center h-64">
         <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
         <p className="text-gray-600 mb-4">{error}</p>
-        <button onClick={() => fetchBrands(1)} className="btn-primary">Retry</button>
+        <button onClick={() => fetchCategories(1)} className="btn-primary">Retry</button>
       </div>
     )
   }
@@ -220,18 +208,16 @@ export default function Brands() {
     <div className="space-y-6 animate-fadeIn">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Brands</h1>
-          <p className="text-gray-500 mt-1">Manage product brands</p>
+          <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
+          <p className="text-gray-500 mt-1">Manage product categories independently</p>
         </div>
-        <div className="flex gap-3 flex-wrap">
-          <button
-            onClick={() => { setSelectedBrand(null); setShowModal(true) }}
-            className="btn-primary flex items-center gap-2 whitespace-nowrap"
-          >
-            <Plus className="w-5 h-5" />
-            Add Brand
-          </button>
-        </div>
+        <button
+          onClick={() => { setSelectedCategory(null); setShowModal(true) }}
+          className="btn-primary flex items-center gap-2 whitespace-nowrap"
+        >
+          <Plus className="w-5 h-5" />
+          Add Category
+        </button>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -240,7 +226,7 @@ export default function Brands() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search brands..."
+              placeholder="Search categories..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -251,11 +237,11 @@ export default function Brands() {
         </div>
       </div>
 
-      {brands.length === 0 ? (
+      {categories.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-          <Tag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 mb-2">No brands found</p>
-          <p className="text-sm text-gray-400">Create your first brand to get started</p>
+          <FolderTree className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 mb-2">No categories found</p>
+          <p className="text-sm text-gray-400">Create your first category to get started</p>
         </div>
       ) : (
         <>
@@ -270,30 +256,30 @@ export default function Brands() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {brands.map((brand) => (
-                  <tr key={brand._id} className="hover:bg-gray-50 transition-colors">
+                {categories.map((category) => (
+                  <tr key={category._id} className="hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4">
-                      <span className="font-medium text-gray-900">{brand.name}</span>
+                      <span className="font-medium text-gray-900">{category.name}</span>
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`px-2 py-1 text-xs rounded-full ${brand.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                        {brand.active ? 'Active' : 'Inactive'}
+                      <span className={`px-2 py-1 text-xs rounded-full ${category.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {category.active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-500">
-                      {new Date(brand.createdAt).toLocaleDateString()}
+                      {new Date(category.createdAt).toLocaleDateString()}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => { setSelectedBrand(brand); setShowModal(true) }}
+                          onClick={() => { setSelectedCategory(category); setShowModal(true) }}
                           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                           title="Edit"
                         >
                           <Edit2 className="w-4 h-4 text-gray-500" />
                         </button>
                         <button
-                          onClick={() => handleDelete(brand._id)}
+                          onClick={() => handleDelete(category._id)}
                           className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete"
                         >
@@ -319,13 +305,13 @@ export default function Brands() {
 
       <Modal
         isOpen={showModal}
-        onClose={() => { setShowModal(false); setSelectedBrand(null) }}
-        title={selectedBrand ? 'Edit Brand' : 'Add Brand'}
+        onClose={() => { setShowModal(false); setSelectedCategory(null) }}
+        title={selectedCategory ? 'Edit Category' : 'Add Category'}
       >
-        <BrandForm
-          brand={selectedBrand}
-          onSubmit={selectedBrand ? handleUpdate : handleCreate}
-          onCancel={() => { setShowModal(false); setSelectedBrand(null) }}
+        <CategoryForm
+          category={selectedCategory}
+          onSubmit={selectedCategory ? handleUpdate : handleCreate}
+          onCancel={() => { setShowModal(false); setSelectedCategory(null) }}
           loading={formLoading}
         />
       </Modal>

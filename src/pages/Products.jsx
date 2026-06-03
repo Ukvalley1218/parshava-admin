@@ -7,7 +7,10 @@ import {
   deleteAdminProduct,
   syncProducts,
   getBrands,
-  uploadFile
+  uploadFile,
+  getCategories,
+  getSubcategories,
+  getSeries
 } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 import { getImageUrl } from '../utils/imageUtils'
@@ -37,9 +40,13 @@ function ProductViewModal({ product, onClose }) {
   if (!product) return null
 
   const formatPrice = (price) => price ? `₹${Number(price).toLocaleString('en-IN')}` : '-'
+  const formatDiscount = (value, type) => {
+    if (!value) return '-'
+    return type === 'percent' ? `${value}%` : `₹${Number(value).toLocaleString('en-IN')}`
+  }
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-h-[80vh] overflow-y-auto">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Basic Info */}
         <div className="space-y-4">
@@ -50,6 +57,7 @@ function ProductViewModal({ product, onClose }) {
             <div><span className="text-gray-500">Brand:</span><p className="font-medium">{product.brand || '-'}</p></div>
             <div><span className="text-gray-500">Category:</span><p className="font-medium">{product.category || '-'}</p></div>
             <div><span className="text-gray-500">Subcategory:</span><p className="font-medium">{product.subcategory || '-'}</p></div>
+            <div><span className="text-gray-500">Series:</span><p className="font-medium">{product.series || '-'}</p></div>
             <div><span className="text-gray-500">Unit:</span><p className="font-medium">{product.unit || '-'}</p></div>
             <div><span className="text-gray-500">HSN Code:</span><p className="font-medium">{product.hsn || '-'}</p></div>
             <div><span className="text-gray-500">GST Rate:</span><p className="font-medium">{product.gstRate || 0}%</p></div>
@@ -64,26 +72,86 @@ function ProductViewModal({ product, onClose }) {
           )}
         </div>
 
-        {/* Pricing */}
+        {/* Pricing Calculator */}
         <div className="space-y-4">
-          <h4 className="font-semibold text-gray-800 border-b pb-2">Pricing</h4>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><span className="text-gray-500">MRP:</span><p className="font-medium">{formatPrice(product.mrp)}</p></div>
-            <div><span className="text-gray-500">MOP:</span><p className="font-medium">{formatPrice(product.mop)}</p></div>
-            <div><span className="text-gray-500">Purchase Price:</span><p className="font-medium">{formatPrice(product.purchasePrice)}</p></div>
-            <div><span className="text-gray-500">CNLC:</span><p className="font-medium">{formatPrice(product.cnlc)}</p></div>
-            <div><span className="text-gray-500">MNLC:</span><p className="font-medium">{formatPrice(product.mnlc)}</p></div>
+          <h4 className="font-semibold text-gray-800 border-b pb-2">Pricing Calculator</h4>
+
+          {/* Base Price */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <h5 className="text-sm font-medium text-gray-700 mb-2">Base Price</h5>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div><span className="text-gray-500">Type:</span><p className="font-medium">{product.basePriceType === 'mop' ? 'MOP' : 'Purchase Price'}</p></div>
+              <div><span className="text-gray-500">MRP:</span><p className="font-medium">{formatPrice(product.mrp)}</p></div>
+              <div><span className="text-gray-500">MOP:</span><p className="font-medium">{formatPrice(product.mop)}</p></div>
+              <div><span className="text-gray-500">Purchase:</span><p className="font-medium">{formatPrice(product.purchasePrice)}</p></div>
+            </div>
           </div>
 
-          <h5 className="font-medium text-gray-700 pt-2">Selling Prices</h5>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><span className="text-gray-500">OP Price:</span><p className="font-medium">{formatPrice(product.opPrice)}</p></div>
-            <div><span className="text-gray-500">T1:</span><p className="font-medium">{formatPrice(product.t1)}</p></div>
-            <div><span className="text-gray-500">T2:</span><p className="font-medium">{formatPrice(product.t2)}</p></div>
-            <div><span className="text-gray-500">T3:</span><p className="font-medium">{formatPrice(product.t3)}</p></div>
-            <div><span className="text-gray-500">T4:</span><p className="font-medium">{formatPrice(product.t4)}</p></div>
-            <div><span className="text-gray-500">Bottom Price:</span><p className="font-medium">{formatPrice(product.bottomPrice)}</p></div>
+          {/* Discounts */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <h5 className="text-sm font-medium text-gray-700 mb-2">Discounts</h5>
+            <div className="grid grid-cols-5 gap-2 text-sm">
+              <div><span className="text-gray-500 text-xs">Disc 1:</span><p className="font-medium">{formatDiscount(product.dis1, product.dis1Type)}</p></div>
+              <div><span className="text-gray-500 text-xs">Disc 2:</span><p className="font-medium">{formatDiscount(product.dis2, product.dis2Type)}</p></div>
+              <div><span className="text-gray-500 text-xs">Disc 3:</span><p className="font-medium">{formatDiscount(product.dis3, product.dis3Type)}</p></div>
+              <div><span className="text-gray-500 text-xs">Disc 4:</span><p className="font-medium">{formatDiscount(product.dis4, product.dis4Type)}</p></div>
+              <div><span className="text-gray-500 text-xs">Disc 5:</span><p className="font-medium">{formatDiscount(product.dis5, product.dis5Type)}</p></div>
+            </div>
           </div>
+
+          {/* NLC & Profit */}
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-500">NLC (Net Landing Cost):</span>
+                <p className="font-bold text-blue-700 text-lg">{formatPrice(product.nlc)}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Profit:</span>
+                <p className="font-medium">{formatDiscount(product.profit, product.profitType)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tier Prices (T1-T4) */}
+          <div className="bg-green-50 p-3 rounded-lg">
+            <h5 className="text-sm font-medium text-gray-700 mb-2">Tier Prices (Customer Price Lists)</h5>
+            <div className="grid grid-cols-4 gap-3 text-sm">
+              <div>
+                <span className="text-gray-500 text-xs">T1 Price:</span>
+                <p className="font-medium text-green-700">{formatPrice(product.op1 || product.t1)}</p>
+                <span className="text-xs text-gray-400">Tier 1 customers</span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs">T2 Price:</span>
+                <p className="font-medium text-green-700">{formatPrice(product.op2 || product.t2)}</p>
+                <span className="text-xs text-gray-400">Tier 2 customers</span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs">T3 Price:</span>
+                <p className="font-medium text-green-700">{formatPrice(product.op3 || product.t3)}</p>
+                <span className="text-xs text-gray-400">Tier 3 customers</span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs">T4 Price:</span>
+                <p className="font-medium text-green-700">{formatPrice(product.op4 || product.t4)}</p>
+                <span className="text-xs text-gray-400">Tier 4 customers</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Legacy Pricing */}
+          {(product.cnlc || product.mnlc || product.opPrice) && (
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <h5 className="text-sm font-medium text-gray-700 mb-2">Legacy Pricing</h5>
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div><span className="text-gray-500">CNLC:</span><p className="font-medium">{formatPrice(product.cnlc)}</p></div>
+                <div><span className="text-gray-500">MNLC:</span><p className="font-medium">{formatPrice(product.mnlc)}</p></div>
+                <div><span className="text-gray-500">OP Price:</span><p className="font-medium">{formatPrice(product.opPrice)}</p></div>
+                <div><span className="text-gray-500">Bottom:</span><p className="font-medium">{formatPrice(product.bottomPrice)}</p></div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -95,9 +163,10 @@ function ProductViewModal({ product, onClose }) {
 }
 
 // Product Form Component
-function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
-  const [categories, setCategories] = useState([])
-  const [subcategories, setSubcategories] = useState([])
+function ProductForm({ product, onSubmit, onCancel, loading, brands, categories: propCategories, subcategories: propSubcategories, series: propSeries }) {
+  const [categories, setCategories] = useState(propCategories || [])
+  const [subcategories, setSubcategories] = useState(propSubcategories || [])
+  const [series, setSeries] = useState(propSeries || [])
   const [initialized, setInitialized] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
 
@@ -113,12 +182,37 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
       categoryId: product?.categoryId || '',
       subcategory: product?.subcategory || '',
       subcategoryId: product?.subcategoryId || '',
+      series: product?.series || '',
+      seriesId: product?.seriesId || '',
       unit: product?.unit || '',
       hsn: product?.hsn || '',
       gstRate: product?.gstRate || 18,
       mrp: product?.mrp || '',
       mop: product?.mop || '',
       purchasePrice: product?.purchasePrice || '',
+      // Pricing calculator fields
+      basePriceType: product?.basePriceType || 'mop', // 'mop' or 'purchase'
+      dis1: product?.dis1 || '',
+      dis1Type: product?.dis1Type || 'percent', // 'percent' or 'flat'
+      dis2: product?.dis2 || '',
+      dis2Type: product?.dis2Type || 'percent',
+      dis3: product?.dis3 || '',
+      dis3Type: product?.dis3Type || 'percent',
+      dis4: product?.dis4 || '',
+      dis4Type: product?.dis4Type || 'percent',
+      dis5: product?.dis5 || '',
+      dis5Type: product?.dis5Type || 'percent',
+      nlc: product?.nlc || '',
+      profit: product?.profit || '',
+      profitType: product?.profitType || 'percent',
+      op1: product?.op1 || '',
+      op1Type: product?.op1Type || 'percent',
+      op2: product?.op2 || '',
+      op2Type: product?.op2Type || 'percent',
+      op3: product?.op3 || '',
+      op3Type: product?.op3Type || 'percent',
+      op4: product?.op4 || '',
+      // Legacy fields for backward compatibility
       cnlc: product?.cnlc || '',
       mnlc: product?.mnlc || '',
       opPrice: product?.opPrice || '',
@@ -182,103 +276,65 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
     return Object.keys(newErrors).length === 0
   }
 
-  // Initialize brandId and categoryId from existing product data (by name matching)
+  // Initialize from product data
   useEffect(() => {
-    // Set initialized to true once brands are loaded (for both new and edit modes)
-    if (brands.length > 0 && !initialized) {
-      if (product) {
-        let brandId = product.brandId
-        let categoryId = product.categoryId
+    if (!initialized && product) {
+      // Set initial form data from product
+      setFormData(getInitialState())
 
-        // Find brand by name if brandId not set
-        if (product.brand && !brandId) {
-          const foundBrand = brands.find(b => b.name.toLowerCase() === product.brand.toLowerCase())
-          if (foundBrand) {
-            brandId = foundBrand._id
-          }
-        }
-
-        // Set categories based on brand
-        if (brandId) {
-          const selectedBrand = brands.find(b => b._id === brandId)
-          if (selectedBrand && selectedBrand.categories) {
-            setCategories(selectedBrand.categories.filter(c => c.active))
-
-            // Find category by name if categoryId not set
-            if (product.category && !categoryId) {
-              const foundCategory = selectedBrand.categories.find(
-                c => c.name.toLowerCase() === product.category.toLowerCase()
-              )
-              if (foundCategory) {
-                categoryId = foundCategory._id
-              }
-            }
-
-            // Set subcategories based on category
-            if (categoryId) {
-              const selectedCategory = selectedBrand.categories.find(c => c._id === categoryId)
-              if (selectedCategory && selectedCategory.subcategories) {
-                setSubcategories(selectedCategory.subcategories.filter(s => s.active))
-
-                // Find subcategory by name if subcategoryId not set
-                if (product.subcategory && !product.subcategoryId) {
-                  const foundSubcategory = selectedCategory.subcategories.find(
-                    s => s.name.toLowerCase() === product.subcategory.toLowerCase()
-                  )
-                  if (foundSubcategory) {
-                    setFormData(prev => ({
-                      ...prev,
-                      brandId: brandId,
-                      brand: product.brand,
-                      categoryId: categoryId,
-                      category: product.category,
-                      subcategoryId: foundSubcategory._id,
-                      subcategory: product.subcategory
-                    }))
-                    setInitialized(true)
-                    return
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        setFormData(prev => ({
-          ...prev,
-          brandId: brandId || product.brandId || '',
-          categoryId: categoryId || product.categoryId || ''
-        }))
+      // Load subcategories and series based on category
+      if (product.categoryId) {
+        loadSubcategories(product.categoryId)
+        loadSeries(product.categoryId)
       }
       setInitialized(true)
+    } else if (!initialized) {
+      setInitialized(true)
     }
-  }, [brands, product, initialized])
+  }, [product, initialized])
 
-  // Update categories when brand changes
-  useEffect(() => {
-    if (initialized && formData.brandId) {
-      const selectedBrand = brands.find(b => b._id === formData.brandId)
-      if (selectedBrand && selectedBrand.categories) {
-        setCategories(selectedBrand.categories.filter(c => c.active))
-        setSubcategories([])
-      }
-    } else if (initialized && !formData.brandId) {
-      setCategories([])
+  // Load subcategories when category changes
+  const loadSubcategories = async (categoryId) => {
+    if (!categoryId) {
       setSubcategories([])
+      return
     }
-  }, [formData.brandId, brands, initialized])
+    try {
+      const response = await getSubcategories({ category: categoryId, limit: 100, active: true })
+      if (response.success !== false) {
+        setSubcategories(response.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch subcategories:', err)
+    }
+  }
 
-  // Update subcategories when category changes
-  useEffect(() => {
-    if (initialized && formData.categoryId && categories.length > 0) {
-      const selectedCategory = categories.find(c => c._id === formData.categoryId)
-      if (selectedCategory && selectedCategory.subcategories) {
-        setSubcategories(selectedCategory.subcategories.filter(s => s.active))
-      }
-    } else if (initialized && !formData.categoryId) {
-      setSubcategories([])
+  // Load series when category changes
+  const loadSeries = async (categoryId) => {
+    if (!categoryId) {
+      setSeries([])
+      return
     }
-  }, [formData.categoryId, categories, initialized])
+    try {
+      const response = await getSeries({ category: categoryId, limit: 100, active: true })
+      if (response.success !== false) {
+        setSeries(response.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch series:', err)
+    }
+  }
+
+  // Handle category change
+  useEffect(() => {
+    if (initialized && formData.categoryId) {
+      loadSubcategories(formData.categoryId)
+      loadSeries(formData.categoryId)
+    } else if (initialized) {
+      setSubcategories([])
+      setSeries([])
+    }
+  }, [formData.categoryId, initialized])
 
 
   const handleImageUpload = async (e) => {
@@ -313,11 +369,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
     setFormData(prev => ({
       ...prev,
       brandId,
-      brand: selectedBrand?.name || '',
-      category: '',
-      categoryId: '',
-      subcategory: '',
-      subcategoryId: ''
+      brand: selectedBrand?.name || ''
     }))
   }
 
@@ -328,8 +380,10 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
       ...prev,
       categoryId,
       category: selectedCategory?.name || '',
+      subcategoryId: '',
       subcategory: '',
-      subcategoryId: ''
+      seriesId: '',
+      series: ''
     }))
   }
 
@@ -343,12 +397,22 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
     }))
   }
 
+  const handleSeriesChange = (e) => {
+    const seriesId = e.target.value
+    const selectedSeries = series.find(s => s._id === seriesId)
+    setFormData(prev => ({
+      ...prev,
+      seriesId,
+      series: selectedSeries?.name || ''
+    }))
+  }
+
   const handleChange = (e) => {
     const { name, value, type } = e.target
     let newValue = value
 
     // Filter numeric fields to only allow numbers and decimals
-    const numericFields = ['mrp', 'mop', 'purchasePrice', 'cnlc', 'mnlc', 'opPrice', 't1', 't2', 't3', 't4', 'bottomPrice']
+    const numericFields = ['mrp', 'mop', 'purchasePrice', 'cnlc', 'mnlc', 'opPrice', 't1', 't2', 't3', 't4', 'bottomPrice', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'op1', 'op2', 'op3', 'op4', 'nlc']
     const integerFields = ['stock']
 
     if (numericFields.includes(name)) {
@@ -377,6 +441,84 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
     }
   }
 
+  // Calculate prices based on pricing calculator inputs
+  const calculatePrices = () => {
+    const basePrice = formData.basePriceType === 'mop'
+      ? parseFloat(formData.mop) || 0
+      : parseFloat(formData.purchasePrice) || 0
+
+    let price = basePrice
+
+    // Apply discounts 1-5
+    const discounts = [
+      { value: parseFloat(formData.dis1) || 0, type: formData.dis1Type },
+      { value: parseFloat(formData.dis2) || 0, type: formData.dis2Type },
+      { value: parseFloat(formData.dis3) || 0, type: formData.dis3Type },
+      { value: parseFloat(formData.dis4) || 0, type: formData.dis4Type },
+      { value: parseFloat(formData.dis5) || 0, type: formData.dis5Type },
+    ]
+
+    discounts.forEach(discount => {
+      if (discount.type === 'percent') {
+        price = price - (price * discount.value / 100)
+      } else {
+        price = price - discount.value
+      }
+    })
+
+    // NLC (Net Landing Cost)
+    const nlc = Math.round(price * 100) / 100
+
+    // Add profit
+    let profitAmount = 0
+    const profitValue = parseFloat(formData.profit) || 0
+    if (formData.profitType === 'percent') {
+      profitAmount = nlc * profitValue / 100
+    } else {
+      profitAmount = profitValue
+    }
+
+    const priceWithProfit = nlc + profitAmount
+
+    // Calculate OP prices
+    const opPrices = []
+    const opFields = [
+      { value: parseFloat(formData.op1) || 0, type: formData.op1Type },
+      { value: parseFloat(formData.op2) || 0, type: formData.op2Type },
+      { value: parseFloat(formData.op3) || 0, type: formData.op3Type },
+      { value: parseFloat(formData.op4) || 0, type: formData.op4Type || 'flat' },
+    ]
+
+    opFields.forEach(op => {
+      if (op.type === 'percent') {
+        opPrices.push(Math.round((priceWithProfit * (1 + op.value / 100)) * 100) / 100)
+      } else {
+        opPrices.push(Math.round((priceWithProfit + op.value) * 100) / 100)
+      }
+    })
+
+    return {
+      nlc,
+      op1: opPrices[0] || 0,
+      op2: opPrices[1] || 0,
+      op3: opPrices[2] || 0,
+      op4: opPrices[3] || 0,
+    }
+  }
+
+  // Update form data with calculated prices
+  const updateCalculatedPrices = () => {
+    const calculated = calculatePrices()
+    setFormData(prev => ({
+      ...prev,
+      nlc: calculated.nlc,
+      op1: calculated.op1,
+      op2: calculated.op2,
+      op3: calculated.op3,
+      op4: calculated.op4,
+    }))
+  }
+
   // Handle blur for validation
   const handleBlur = (e) => {
     const { name, value } = e.target
@@ -402,17 +544,45 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
       return
     }
 
+    const calculated = calculatePrices()
     const submitData = {
       ...formData,
       mrp: parseFloat(formData.mrp) || 0,
       mop: parseFloat(formData.mop) || 0,
       purchasePrice: parseFloat(formData.purchasePrice) || 0,
-      cnlc: parseFloat(formData.cnlc) || 0,
+      // Pricing calculator fields
+      basePriceType: formData.basePriceType,
+      dis1: parseFloat(formData.dis1) || 0,
+      dis1Type: formData.dis1Type,
+      dis2: parseFloat(formData.dis2) || 0,
+      dis2Type: formData.dis2Type,
+      dis3: parseFloat(formData.dis3) || 0,
+      dis3Type: formData.dis3Type,
+      dis4: parseFloat(formData.dis4) || 0,
+      dis4Type: formData.dis4Type,
+      dis5: parseFloat(formData.dis5) || 0,
+      dis5Type: formData.dis5Type,
+      nlc: calculated.nlc,
+      profit: parseFloat(formData.profit) || 0,
+      profitType: formData.profitType,
+      // OP Prices (T1-T4)
+      op1: calculated.op1,
+      op1Type: formData.op1Type,
+      op2: calculated.op2,
+      op2Type: formData.op2Type,
+      op3: calculated.op3,
+      op3Type: formData.op3Type,
+      op4: calculated.op4,
+      // T1-T4 prices = OP prices for customer price lists
+      t1: calculated.op1,
+      t2: calculated.op2,
+      t3: calculated.op3,
+      t4: calculated.op4,
+      opPrice: calculated.op1, // Default OP Price is T1
+      // Legacy fields for backward compatibility
+      cnlc: calculated.nlc,
       mnlc: parseFloat(formData.mnlc) || 0,
-      opPrice: parseFloat(formData.opPrice) || 0,
-      t1: parseFloat(formData.t1) || 0,
-      t2: parseFloat(formData.t2) || 0,
-      t3: parseFloat(formData.t3) || 0,
+      bottomPrice: parseFloat(formData.bottomPrice) || calculated.op4,
       t4: parseFloat(formData.t4) || 0,
       bottomPrice: parseFloat(formData.bottomPrice) || 0,
       gstRate: parseFloat(formData.gstRate) || 0,
@@ -423,19 +593,18 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
 
   return (
     <form onSubmit={handleSubmit} className="p-4 space-y-6">
-      {/* Brand, Category, Subcategory */}
+      {/* Brand, Category, Subcategory, Series - All Independent */}
       <div className="border-b pb-4">
         <h4 className="font-medium text-gray-800 mb-3">Classification</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Brand <span className="text-red-500">*</span>
+              Brand
             </label>
             <select
               name="brandId"
               value={formData.brandId}
               onChange={handleBrandChange}
-              required
               className="input-field"
             >
               <option value="">Select Brand</option>
@@ -446,14 +615,12 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category <span className="text-red-500">*</span>
+              Category
             </label>
             <select
               name="categoryId"
               value={formData.categoryId}
               onChange={handleCategoryChange}
-              required
-              disabled={!formData.brandId}
               className="input-field"
             >
               <option value="">Select Category</option>
@@ -469,13 +636,30 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
               value={formData.subcategoryId}
               onChange={handleSubcategoryChange}
               disabled={!formData.categoryId}
-              className="input-field"
+              className="input-field disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               <option value="">Select Subcategory</option>
               {subcategories.map(sub => (
                 <option key={sub._id} value={sub._id}>{sub.name}</option>
               ))}
             </select>
+            {!formData.categoryId && <p className="text-xs text-gray-400 mt-1">Select a category first</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Series</label>
+            <select
+              name="seriesId"
+              value={formData.seriesId}
+              onChange={handleSeriesChange}
+              disabled={!formData.categoryId}
+              className="input-field disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">Select Series</option>
+              {series.map(s => (
+                <option key={s._id} value={s._id}>{s.name}</option>
+              ))}
+            </select>
+            {!formData.categoryId && <p className="text-xs text-gray-400 mt-1">Select a category first</p>}
           </div>
         </div>
       </div>
@@ -592,138 +776,198 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
         </div>
       </div>
 
-      {/* Cost Pricing */}
+      {/* Pricing Calculator */}
       <div className="border-b pb-4">
-        <h4 className="font-medium text-gray-800 mb-3">Cost Pricing</h4>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">MRP</label>
-            <input
-              type="number"
-              name="mrp"
-              value={formData.mrp}
-              onChange={handleChange}
-              placeholder="₹0.00"
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">MOP</label>
-            <input
-              type="number"
-              name="mop"
-              value={formData.mop}
-              onChange={handleChange}
-              placeholder="₹0.00"
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Price</label>
-            <input
-              type="number"
-              name="purchasePrice"
-              value={formData.purchasePrice}
-              onChange={handleChange}
-              placeholder="₹0.00"
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">CNLC</label>
-            <input
-              type="number"
-              name="cnlc"
-              value={formData.cnlc}
-              onChange={handleChange}
-              placeholder="₹0.00"
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">MNLC</label>
-            <input
-              type="number"
-              name="mnlc"
-              value={formData.mnlc}
-              onChange={handleChange}
-              placeholder="₹0.00"
-              className="input-field"
-            />
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="font-medium text-gray-800 text-lg">Pricing Calculator</h4>
+          <button
+            type="button"
+            onClick={updateCalculatedPrices}
+            className="btn-primary text-sm py-1.5 px-4 flex items-center gap-1"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Calculate
+          </button>
+        </div>
+
+        {/* Step 1: Base Price */}
+        <div className="bg-gray-50 rounded-xl p-4 mb-4">
+          <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">1</span>
+            Base Price
+          </h5>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Base Type</label>
+              <select
+                name="basePriceType"
+                value={formData.basePriceType}
+                onChange={handleChange}
+                className="input-field"
+              >
+                <option value="mop">MOP (Manual)</option>
+                <option value="purchase">Purchase (API)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">MRP</label>
+              <input
+                type="number"
+                name="mrp"
+                value={formData.mrp}
+                onChange={handleChange}
+                placeholder="₹0"
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">MOP</label>
+              <input
+                type="number"
+                name="mop"
+                value={formData.mop}
+                onChange={handleChange}
+                placeholder="₹0"
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Purchase Price</label>
+              <input
+                type="number"
+                name="purchasePrice"
+                value={formData.purchasePrice}
+                onChange={handleChange}
+                placeholder="₹0"
+                className="input-field"
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Selling Pricing */}
-      <div className="border-b pb-4">
-        <h4 className="font-medium text-gray-800 mb-3">Selling Pricing</h4>
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">OP Price</label>
-            <input
-              type="number"
-              name="opPrice"
-              value={formData.opPrice}
-              onChange={handleChange}
-              placeholder="₹0.00"
-              className="input-field"
-            />
+        {/* Step 2: Discounts */}
+        <div className="bg-gray-50 rounded-xl p-4 mb-4">
+          <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">2</span>
+            Discounts (Applied Sequentially)
+          </h5>
+          <div className="grid grid-cols-5 gap-3">
+            {[
+              { field: 'dis1', label: 'Disc 1' },
+              { field: 'dis2', label: 'Disc 2' },
+              { field: 'dis3', label: 'Disc 3' },
+              { field: 'dis4', label: 'Disc 4' },
+              { field: 'dis5', label: 'Disc 5' },
+            ].map((discount) => (
+              <div key={discount.field} className="text-center">
+                <label className="block text-xs text-gray-500 mb-1">{discount.label}</label>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white">
+                  <input
+                    type="number"
+                    name={discount.field}
+                    value={formData[discount.field]}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="w-full px-2 py-2 text-center text-sm focus:outline-none"
+                  />
+                  <select
+                    name={`${discount.field}Type`}
+                    value={formData[`${discount.field}Type`]}
+                    onChange={handleChange}
+                    className="w-10 text-xs bg-gray-50 border-l focus:outline-none"
+                  >
+                    <option value="percent">%</option>
+                    <option value="flat">₹</option>
+                  </select>
+                </div>
+              </div>
+            ))}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">T1</label>
-            <input
-              type="number"
-              name="t1"
-              value={formData.t1}
-              onChange={handleChange}
-              placeholder="₹0.00"
-              className="input-field"
-            />
+        </div>
+
+        {/* Step 3: NLC & Profit */}
+        <div className="bg-blue-50 rounded-xl p-4 mb-4">
+          <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">3</span>
+            Net Landing Cost & Profit
+          </h5>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+            <div className="bg-white rounded-lg p-3 text-center">
+              <label className="block text-xs text-gray-500 mb-1">NLC (After Discounts)</label>
+              <div className="text-2xl font-bold text-blue-700">
+                ₹{calculatePrices().nlc.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Add Profit</label>
+              <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white">
+                <input
+                  type="number"
+                  name="profit"
+                  value={formData.profit}
+                  onChange={handleChange}
+                  placeholder="0"
+                  className="w-full px-3 py-2 text-sm focus:outline-none"
+                />
+                <select
+                  name="profitType"
+                  value={formData.profitType}
+                  onChange={handleChange}
+                  className="w-12 text-xs bg-gray-50 border-l focus:outline-none"
+                >
+                  <option value="percent">%</option>
+                  <option value="flat">₹</option>
+                </select>
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">T2</label>
-            <input
-              type="number"
-              name="t2"
-              value={formData.t2}
-              onChange={handleChange}
-              placeholder="₹0.00"
-              className="input-field"
-            />
+        </div>
+
+        {/* Step 4: T1-T4 Prices (OP Prices) */}
+        <div className="bg-green-50 rounded-xl p-4">
+          <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-green-600 text-white text-xs flex items-center justify-center">4</span>
+            Tier Prices (T1, T2, T3, T4) - For Customer Price Lists
+          </h5>
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { field: 'op1', label: 'T1 Price', tier: 'Tier 1' },
+              { field: 'op2', label: 'T2 Price', tier: 'Tier 2' },
+              { field: 'op3', label: 'T3 Price', tier: 'Tier 3' },
+              { field: 'op4', label: 'T4 Price', tier: 'Tier 4' },
+            ].map((op, index) => (
+              <div key={op.field} className="bg-white rounded-lg p-3 text-center">
+                <label className="block text-xs text-gray-500 mb-1">{op.label}</label>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white mb-1">
+                  <input
+                    type="number"
+                    name={op.field}
+                    value={formData[op.field]}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="w-full px-2 py-2 text-center text-sm font-medium focus:outline-none"
+                  />
+                  {index < 3 && (
+                    <select
+                      name={`${op.field}Type`}
+                      value={formData[`${op.field}Type`]}
+                      onChange={handleChange}
+                      className="w-10 text-xs bg-gray-50 border-l focus:outline-none"
+                    >
+                      <option value="percent">%</option>
+                      <option value="flat">₹</option>
+                    </select>
+                  )}
+                </div>
+                <div className="text-xs text-green-600 font-medium">
+                  ₹{calculatePrices()[op.field].toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+                </div>
+              </div>
+            ))}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">T3</label>
-            <input
-              type="number"
-              name="t3"
-              value={formData.t3}
-              onChange={handleChange}
-              placeholder="₹0.00"
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">T4</label>
-            <input
-              type="number"
-              name="t4"
-              value={formData.t4}
-              onChange={handleChange}
-              placeholder="₹0.00"
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Bottom Price</label>
-            <input
-              type="number"
-              name="bottomPrice"
-              value={formData.bottomPrice}
-              onChange={handleChange}
-              placeholder="₹0.00"
-              className="input-field"
-            />
-          </div>
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            These T1-T4 prices are used for different customer price lists. Select markup % or flat ₹ to add on NLC+Profit.
+          </p>
         </div>
       </div>
 
@@ -741,12 +985,16 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands }) {
 export default function Products() {
   const [products, setProducts] = useState([])
   const [brands, setBrands] = useState([])
+  const [categories, setCategories] = useState([])
+  const [subcategories, setSubcategories] = useState([])
+  const [series, setSeries] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [brandFilter, setBrandFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [subcategoryFilter, setSubcategoryFilter] = useState('')
+  const [seriesFilter, setSeriesFilter] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -761,9 +1009,9 @@ export default function Products() {
     limit: 10,
   })
 
-  // Dynamic filter options from brands
-  const [filterCategories, setFilterCategories] = useState([])
+  // Filter subcategories and series when category filter changes
   const [filterSubcategories, setFilterSubcategories] = useState([])
+  const [filterSeries, setFilterSeries] = useState([])
 
   const fetchBrands = async () => {
     try {
@@ -776,6 +1024,17 @@ export default function Products() {
     }
   }
 
+  const fetchCategories = async () => {
+    try {
+      const response = await getCategories({ limit: 1000 })
+      if (response.success !== false) {
+        setCategories(response.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch categories:', err)
+    }
+  }
+
   const fetchProducts = async (page = currentPage, limit = pagination.limit) => {
     setLoading(true)
     setError(null)
@@ -784,6 +1043,7 @@ export default function Products() {
       if (brandFilter) params.brand = brandFilter
       if (categoryFilter) params.category = categoryFilter
       if (subcategoryFilter) params.subcategory = subcategoryFilter
+      if (seriesFilter) params.series = seriesFilter
       if (searchQuery) params.search = searchQuery
 
       const response = await getAdminProducts(params)
@@ -815,33 +1075,40 @@ export default function Products() {
 
   useEffect(() => {
     fetchBrands()
+    fetchCategories()
     fetchProducts(1)
   }, [])
 
+  // Load subcategories and series when category filter changes
   useEffect(() => {
-    // Update filter categories when brand filter changes
-    if (brandFilter) {
-      const selectedBrand = brands.find(b => b.name === brandFilter)
-      setFilterCategories(selectedBrand?.categories?.filter(c => c.active) || [])
-      setFilterSubcategories([])
-      setCategoryFilter('')
-      setSubcategoryFilter('')
-    } else {
-      setFilterCategories([])
-      setFilterSubcategories([])
-    }
-  }, [brandFilter, brands])
+    if (categoryFilter) {
+      // Fetch subcategories for this category
+      getSubcategories({ category: categoryFilter, limit: 100, active: true })
+        .then(res => {
+          if (res.success !== false) {
+            setFilterSubcategories(res.data || [])
+          }
+        })
+        .catch(() => setFilterSubcategories([]))
 
-  useEffect(() => {
-    // Update filter subcategories when category filter changes
-    if (categoryFilter && filterCategories.length > 0) {
-      const selectedCategory = filterCategories.find(c => c.name === categoryFilter)
-      setFilterSubcategories(selectedCategory?.subcategories?.filter(s => s.active) || [])
+      // Fetch series for this category
+      getSeries({ category: categoryFilter, limit: 100, active: true })
+        .then(res => {
+          if (res.success !== false) {
+            setFilterSeries(res.data || [])
+          }
+        })
+        .catch(() => setFilterSeries([]))
+
       setSubcategoryFilter('')
+      setSeriesFilter('')
     } else {
       setFilterSubcategories([])
+      setFilterSeries([])
+      setSubcategoryFilter('')
+      setSeriesFilter('')
     }
-  }, [categoryFilter, filterCategories])
+  }, [categoryFilter])
 
   const handlePageChange = (page) => {
     setCurrentPage(page)
@@ -858,7 +1125,11 @@ export default function Products() {
     try {
       const response = await syncProducts()
       if (response.success) {
-        alert('Products synced successfully!')
+        const { total, synced, failed } = response.data || {}
+        const message = failed > 0
+          ? `Synced ${synced} of ${total} products. ${failed} failed.`
+          : `Successfully synced ${synced} products from AccountGST.`
+        alert(message)
         fetchProducts(currentPage)
         fetchBrands()
       } else {
@@ -950,7 +1221,23 @@ export default function Products() {
           <p className="text-gray-500 mt-1">Manage your product catalog</p>
         </div>
         <div className="flex gap-3 flex-wrap">
-         
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="btn-secondary flex items-center gap-2 whitespace-nowrap"
+          >
+            {syncing ? (
+              <>
+                <Loader className="w-5 h-5 animate-spin" />
+                Syncing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-5 h-5" />
+                Sync from AccountGST
+              </>
+            )}
+          </button>
           <button onClick={() => { setSelectedProduct(null); setShowModal(true) }} className="btn-primary flex items-center gap-2 whitespace-nowrap">
             <Plus className="w-5 h-5" />
             Add Product
@@ -983,11 +1270,10 @@ export default function Products() {
           <select
             value={categoryFilter}
             onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1) }}
-            disabled={!brandFilter}
-            className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50"
+            className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
           >
             <option value="">All Categories</option>
-            {filterCategories.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
+            {categories.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
           </select>
           <select
             value={subcategoryFilter}
@@ -997,6 +1283,15 @@ export default function Products() {
           >
             <option value="">All Subcategories</option>
             {filterSubcategories.map(s => <option key={s._id} value={s.name}>{s.name}</option>)}
+          </select>
+          <select
+            value={seriesFilter}
+            onChange={(e) => { setSeriesFilter(e.target.value); setCurrentPage(1) }}
+            disabled={!categoryFilter}
+            className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50"
+          >
+            <option value="">All Series</option>
+            {filterSeries.map(s => <option key={s._id} value={s.name}>{s.name}</option>)}
           </select>
           <button onClick={handleSearch} className="btn-secondary">Search</button>
         </div>
@@ -1012,6 +1307,7 @@ export default function Products() {
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Brand</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Category</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden xl:table-cell">Subcategory</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden xl:table-cell">Series</th>
                 <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">MRP</th>
                 <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Stock</th>
                 <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
@@ -1020,7 +1316,7 @@ export default function Products() {
             <tbody>
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12">
+                  <td colSpan={8} className="text-center py-12">
                     <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500">No products found</p>
                   </td>
@@ -1035,6 +1331,7 @@ export default function Products() {
                     <td className="px-6 py-4 text-sm text-gray-600 hidden lg:table-cell">{product.brand || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-600 hidden lg:table-cell">{product.category || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-600 hidden xl:table-cell">{product.subcategory || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 hidden xl:table-cell">{product.series || '-'}</td>
                     <td className="px-6 py-4 text-right font-medium text-gray-900">{formatPrice(product.mrp)}</td>
                     <td className="px-6 py-4 text-right hidden sm:table-cell">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -1099,6 +1396,7 @@ export default function Products() {
           onCancel={() => { setShowModal(false); setSelectedProduct(null) }}
           loading={formLoading}
           brands={brands}
+          categories={categories}
         />
       </Modal>
 

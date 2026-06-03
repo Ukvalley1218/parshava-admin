@@ -1,7 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, UserCircle, FileText, ShoppingBag,
-  Package, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, X, Menu, Tag
+  Package, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, X, Menu, Tag,
+  FolderTree, FolderOpen, Layers, Mail, Briefcase, Award
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAdminAuth } from '../context/AdminAuthContext'
@@ -9,11 +10,17 @@ import { useAdminAuth } from '../context/AdminAuthContext'
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { path: '/admin/users', label: 'Sales Users', icon: Users },
-  { path: '/admin/customers', label: 'Customers', icon: UserCircle },
+  { path: '/admin/firms', label: 'Firms', icon: UserCircle },
+  { path: '/admin/contacts', label: 'Contacts', icon: Mail },
   { path: '/admin/inquiries', label: 'Inquiries', icon: FileText },
   { path: '/admin/orders', label: 'Orders', icon: ShoppingBag },
   { path: '/admin/products', label: 'Products', icon: Package },
   { path: '/admin/brands', label: 'Brands', icon: Tag },
+  { path: '/admin/categories', label: 'Categories', icon: FolderTree },
+  { path: '/admin/subcategories', label: 'Subcategories', icon: FolderOpen },
+  { path: '/admin/series', label: 'Series', icon: Layers },
+  { path: '/admin/business-categories', label: 'Business Categories', icon: Briefcase },
+  { path: '/admin/brand-categories', label: 'Brand Categories', icon: Award },
   // { path: '/admin/reports', label: 'Reports', icon: BarChart3 },
   // { path: '/admin/settings', label: 'Settings', icon: Settings },
 ]

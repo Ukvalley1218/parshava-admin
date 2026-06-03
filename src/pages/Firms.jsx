@@ -3,7 +3,7 @@ import {
   Plus, Search, Edit2, Trash2, X, Loader, AlertCircle, Eye,
   UserCircle, Mail, Phone, MapPin, Building, Globe, FileText, Tag, User, Upload
 } from 'lucide-react'
-import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, uploadFile } from '../services/adminApi'
+import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, uploadFile, getBusinessCategories, getBrandCategoryList } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 
 // Modal Component
@@ -30,8 +30,8 @@ function Modal({ isOpen, onClose, title, children, size = 'lg' }) {
   )
 }
 
-// Customer Form Component
-function CustomerForm({ customer, onSubmit, onCancel, loading }) {
+// Firm Form Component
+function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategories, brandCategories }) {
   const [formData, setFormData] = useState({
     // Personal Details
     softwareId: customer?.softwareId || '',
@@ -68,6 +68,10 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
 
     // Documents
     documents: customer?.documents || [],
+
+    // Categories
+    businessCategory: customer?.businessCategory || '',
+    brandCategory: customer?.brandCategory || '',
 
     // Management
     priceListCategory: customer?.priceListCategory || 'T1',
@@ -838,6 +842,34 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
         <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Management</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Business Category</label>
+            <select
+              name="businessCategory"
+              value={formData.businessCategory}
+              onChange={handleChange}
+              className="input-field"
+            >
+              <option value="">Select Business Category</option>
+              {businessCategories?.map((cat) => (
+                <option key={cat._id} value={cat._id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Brand Category</label>
+            <select
+              name="brandCategory"
+              value={formData.brandCategory}
+              onChange={handleChange}
+              className="input-field"
+            >
+              <option value="">Select Brand Category</option>
+              {brandCategories?.map((cat) => (
+                <option key={cat._id} value={cat._id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Price List</label>
             <select
               name="priceListCategory"
@@ -976,7 +1008,7 @@ function DeleteModal({ customer, onConfirm, onCancel, loading }) {
       <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
         <AlertCircle className="w-6 h-6 text-red-600" />
       </div>
-      <h3 className="font-semibold text-gray-900 mb-2">Delete Customer</h3>
+      <h3 className="font-semibold text-gray-900 mb-2">Delete Firm</h3>
       <p className="text-gray-500 mb-6">
         Are you sure you want to delete <strong>{customer?.name}</strong>? This action cannot be undone.
       </p>
@@ -991,7 +1023,7 @@ function DeleteModal({ customer, onConfirm, onCancel, loading }) {
   )
 }
 
-// Customer View Modal - Display all customer details
+// Firm View Modal - Display all firm details
 function CustomerViewModal({ customer, onClose }) {
   if (!customer) return null
 
@@ -1342,7 +1374,7 @@ function CustomerViewModal({ customer, onClose }) {
   )
 }
 
-export default function Customers() {
+export default function Firms() {
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -1352,6 +1384,8 @@ export default function Customers() {
   const [showViewModal, setShowViewModal] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
+  const [businessCategories, setBusinessCategories] = useState([])
+  const [brandCategories, setBrandCategories] = useState([])
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -1394,8 +1428,26 @@ export default function Customers() {
     }
   }
 
+  const fetchCategories = async () => {
+    try {
+      const [businessRes, brandRes] = await Promise.all([
+        getBusinessCategories({ limit: 100 }),
+        getBrandCategoryList({ limit: 100 })
+      ])
+      if (businessRes.success !== false) {
+        setBusinessCategories(businessRes.data || [])
+      }
+      if (brandRes.success !== false) {
+        setBrandCategories(brandRes.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch categories:', err)
+    }
+  }
+
   useEffect(() => {
     fetchCustomers(1)
+    fetchCategories()
   }, [])
 
   const handlePageChange = (page) => {
@@ -1501,19 +1553,19 @@ export default function Customers() {
     <div className="space-y-6 animate-fadeIn">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-          <p className="text-gray-500 mt-1">Manage your customer database</p>
+          <h1 className="text-2xl font-bold text-gray-900">Firms</h1>
+          <p className="text-gray-500 mt-1">Manage your firm database</p>
         </div>
         <button onClick={() => { setSelectedCustomer(null); setShowModal(true) }} className="btn-primary flex items-center gap-2 whitespace-nowrap">
           <Plus className="w-5 h-5" />
-          Add Customer
+          Add Firm
         </button>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input type="text" placeholder="Search customers..." value={searchQuery}
+          <input type="text" placeholder="Search firms..." value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
         </div>
@@ -1524,7 +1576,7 @@ export default function Customers() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Customer</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Firm</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Contact</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Location</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">GSTIN</th>
@@ -1537,7 +1589,7 @@ export default function Customers() {
                 <tr>
                   <td colSpan={6} className="text-center py-12">
                     <UserCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">No customers found</p>
+                    <p className="text-gray-500">No firms found</p>
                   </td>
                 </tr>
               ) : (
@@ -1603,17 +1655,18 @@ export default function Customers() {
       </div>
 
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); setSelectedCustomer(null) }}
-        title={selectedCustomer ? 'Edit Customer' : 'Add Customer'} size="xl">
+        title={selectedCustomer ? 'Edit Firm' : 'Add Firm'} size="xl">
         <CustomerForm customer={selectedCustomer} onSubmit={selectedCustomer ? handleUpdate : handleCreate}
-          onCancel={() => { setShowModal(false); setSelectedCustomer(null) }} loading={formLoading} />
+          onCancel={() => { setShowModal(false); setSelectedCustomer(null) }} loading={formLoading}
+          businessCategories={businessCategories} brandCategories={brandCategories} />
       </Modal>
 
-      <Modal isOpen={showDeleteModal} onClose={() => { setShowDeleteModal(false); setSelectedCustomer(null) }} title="Delete Customer">
+      <Modal isOpen={showDeleteModal} onClose={() => { setShowDeleteModal(false); setSelectedCustomer(null) }} title="Delete Firm">
         <DeleteModal customer={selectedCustomer} onConfirm={handleDelete}
           onCancel={() => { setShowDeleteModal(false); setSelectedCustomer(null) }} loading={formLoading} />
       </Modal>
 
-      <Modal isOpen={showViewModal} onClose={() => { setShowViewModal(false); setSelectedCustomer(null) }} title="Customer Details" size="xl">
+      <Modal isOpen={showViewModal} onClose={() => { setShowViewModal(false); setSelectedCustomer(null) }} title="Firm Details" size="xl">
         <CustomerViewModal customer={selectedCustomer} onClose={() => { setShowViewModal(false); setSelectedCustomer(null) }} />
       </Modal>
     </div>

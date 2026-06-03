@@ -256,11 +256,11 @@ export const addCategoryToBrand = async (brandId, data) => {
   return post(`/admin/brands/${brandId}/categories`, data)
 }
 
-export const updateCategory = async (brandId, categoryId, data) => {
+export const updateBrandCategory = async (brandId, categoryId, data) => {
   return put(`/admin/brands/${brandId}/categories/${categoryId}`, data)
 }
 
-export const deleteCategory = async (brandId, categoryId) => {
+export const deleteBrandCategory = async (brandId, categoryId) => {
   return del(`/admin/brands/${brandId}/categories/${categoryId}`)
 }
 
@@ -268,16 +268,162 @@ export const addSubcategoryToCategory = async (brandId, categoryId, data) => {
   return post(`/admin/brands/${brandId}/categories/${categoryId}/subcategories`, data)
 }
 
-export const updateSubcategory = async (brandId, categoryId, subcategoryId, data) => {
+export const updateBrandSubcategory = async (brandId, categoryId, subcategoryId, data) => {
   return put(`/admin/brands/${brandId}/categories/${categoryId}/subcategories/${subcategoryId}`, data)
 }
 
-export const deleteSubcategory = async (brandId, categoryId, subcategoryId) => {
+export const deleteBrandSubcategory = async (brandId, categoryId, subcategoryId) => {
   return del(`/admin/brands/${brandId}/categories/${categoryId}/subcategories/${subcategoryId}`)
 }
 
 export const importBrandsFromProducts = async (brands) => {
   return post('/admin/brands/import-from-products', { brands })
+}
+
+// ============================================
+// CATEGORIES API
+// ============================================
+export const getCategories = async (params) => {
+  return get('/categories', params)
+}
+
+export const getCategoryById = async (id) => {
+  return get(`/categories/${id}`)
+}
+
+export const createCategory = async (data) => {
+  return post('/categories', data)
+}
+
+export const updateCategory = async (id, data) => {
+  return put(`/categories/${id}`, data)
+}
+
+export const deleteCategory = async (id) => {
+  return del(`/categories/${id}`)
+}
+
+export const getCategorySubcategories = async (id) => {
+  return get(`/categories/${id}/subcategories`)
+}
+
+export const getCategorySeries = async (id) => {
+  return get(`/categories/${id}/series`)
+}
+
+// ============================================
+// SUBCATEGORIES API
+// ============================================
+export const getSubcategories = async (params) => {
+  return get('/subcategories', params)
+}
+
+export const getSubcategoryById = async (id) => {
+  return get(`/subcategories/${id}`)
+}
+
+export const createSubcategory = async (data) => {
+  return post('/subcategories', data)
+}
+
+export const updateSubcategory = async (id, data) => {
+  return put(`/subcategories/${id}`, data)
+}
+
+export const deleteSubcategory = async (id) => {
+  return del(`/subcategories/${id}`)
+}
+
+// ============================================
+// SERIES API
+// ============================================
+export const getSeries = async (params) => {
+  return get('/series', params)
+}
+
+export const getSeriesById = async (id) => {
+  return get(`/series/${id}`)
+}
+
+export const createSeries = async (data) => {
+  return post('/series', data)
+}
+
+export const updateSeries = async (id, data) => {
+  return put(`/series/${id}`, data)
+}
+
+export const deleteSeries = async (id) => {
+  return del(`/series/${id}`)
+}
+
+// ============================================
+// CONTACTS API
+// ============================================
+export const getContacts = async (params) => {
+  return get('/admin/contacts', params)
+}
+
+export const getContactById = async (id) => {
+  return get(`/admin/contacts/${id}`)
+}
+
+export const createContact = async (data) => {
+  return post('/admin/contacts', data)
+}
+
+export const updateContact = async (id, data) => {
+  return put(`/admin/contacts/${id}`, data)
+}
+
+export const deleteContact = async (id) => {
+  return del(`/admin/contacts/${id}`)
+}
+
+// ============================================
+// BUSINESS CATEGORIES API
+// ============================================
+export const getBusinessCategories = async (params) => {
+  return get('/business-categories', params)
+}
+
+export const getBusinessCategoryById = async (id) => {
+  return get(`/business-categories/${id}`)
+}
+
+export const createBusinessCategory = async (data) => {
+  return post('/business-categories', data)
+}
+
+export const updateBusinessCategory = async (id, data) => {
+  return put(`/business-categories/${id}`, data)
+}
+
+export const deleteBusinessCategory = async (id) => {
+  return del(`/business-categories/${id}`)
+}
+
+// ============================================
+// BRAND CATEGORY ENTITY API (separate from brand management)
+// ============================================
+export const getBrandCategoryList = async (params) => {
+  return get('/brand-categories', params)
+}
+
+export const getBrandCategoryEntityById = async (id) => {
+  return get(`/brand-categories/${id}`)
+}
+
+export const createBrandCategoryEntity = async (data) => {
+  return post('/brand-categories', data)
+}
+
+export const updateBrandCategoryEntity = async (id, data) => {
+  return put(`/brand-categories/${id}`, data)
+}
+
+export const deleteBrandCategoryEntity = async (id) => {
+  return del(`/brand-categories/${id}`)
 }
 
 export default {
@@ -336,10 +482,48 @@ export default {
   updateBrand,
   deleteBrand,
   addCategoryToBrand,
+  updateBrandCategory,
+  deleteBrandCategory,
+  addSubcategoryToCategory,
+  updateBrandSubcategory,
+  deleteBrandSubcategory,
+  importBrandsFromProducts,
+  // Categories
+  getCategories,
+  getCategoryById,
+  createCategory,
   updateCategory,
   deleteCategory,
-  addSubcategoryToCategory,
+  getCategorySubcategories,
+  getCategorySeries,
+  // Subcategories
+  getSubcategories,
+  getSubcategoryById,
+  createSubcategory,
   updateSubcategory,
   deleteSubcategory,
-  importBrandsFromProducts,
+  // Series
+  getSeries,
+  getSeriesById,
+  createSeries,
+  updateSeries,
+  deleteSeries,
+  // Contacts
+  getContacts,
+  getContactById,
+  createContact,
+  updateContact,
+  deleteContact,
+  // Business Categories
+  getBusinessCategories,
+  getBusinessCategoryById,
+  createBusinessCategory,
+  updateBusinessCategory,
+  deleteBusinessCategory,
+  // Brand Category Entity (separate from brand management)
+  getBrandCategoryList,
+  getBrandCategoryEntityById,
+  createBrandCategoryEntity,
+  updateBrandCategoryEntity,
+  deleteBrandCategoryEntity,
 }

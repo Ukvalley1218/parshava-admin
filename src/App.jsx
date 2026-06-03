@@ -5,11 +5,17 @@ import AdminLayout from './layouts/AdminLayout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import SalesUsers from './pages/SalesUsers'
-import Customers from './pages/Customers'
+import Firms from './pages/Firms'
+import Contacts from './pages/Contacts'
 import Inquiries from './pages/Inquiries'
 import Orders from './pages/Orders'
 import Products from './pages/Products'
 import Brands from './pages/Brands'
+import Categories from './pages/Categories'
+import Subcategories from './pages/Subcategories'
+import Series from './pages/Series'
+import BusinessCategories from './pages/BusinessCategories'
+import BrandCategories from './pages/BrandCategories'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 
@@ -29,11 +35,18 @@ function App() {
           }>
             <Route index element={<Dashboard />} />
             <Route path="users" element={<SalesUsers />} />
-            <Route path="customers" element={<Customers />} />
+            <Route path="firms" element={<Firms />} />
+            <Route path="customers" element={<Navigate to="/admin/firms" replace />} />
+            <Route path="contacts" element={<Contacts />} />
             <Route path="inquiries" element={<Inquiries />} />
             <Route path="orders" element={<Orders />} />
             <Route path="products" element={<Products />} />
             <Route path="brands" element={<Brands />} />
+            <Route path="categories" element={<Categories />} />
+            <Route path="subcategories" element={<Subcategories />} />
+            <Route path="series" element={<Series />} />
+            <Route path="business-categories" element={<BusinessCategories />} />
+            <Route path="brand-categories" element={<BrandCategories />} />
             <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />
           </Route>

@@ -1,26 +1,161 @@
-import { useState, useEffect } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
-import {
-  Plus, Search, Edit2, Trash2, X, Loader, AlertCircle,
+import { useState, useEffect, useRef } from 'react'
+import { Eye, EyeOff, ChevronDown, Check, X, Loader2, Plus, Search, Edit2, Trash2, Loader, AlertCircle,
   MoreVertical, User, Mail, Phone, CheckCircle, XCircle
 } from 'lucide-react'
 import {
   getSalesUsers, createSalesUser, updateSalesUser,
-  deleteSalesUser, toggleUserStatus
+  deleteSalesUser, toggleUserStatus, getDistinctBrandsFromProducts
 } from '../services/adminApi'
 import Pagination from '../components/Pagination'
+
+// Brand Multi-Select Component
+function BrandMultiSelect({ selectedBrands, onChange, disabled }) {
+  const [brands, setBrands] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const dropdownRef = useRef(null)
+
+  // Fetch all available brands
+  useEffect(() => {
+    const fetchBrands = async () => {
+      try {
+        const response = await getDistinctBrandsFromProducts()
+        if (response.success && response.data?.brands) {
+          setBrands(response.data.brands)
+        } else if (response.data) {
+          // Handle case where data is directly the array
+          setBrands(Array.isArray(response.data) ? response.data : [])
+        }
+      } catch (err) {
+        console.error('Failed to fetch brands:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchBrands()
+  }, [])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const toggleBrand = (brand) => {
+    if (selectedBrands.includes(brand)) {
+      onChange(selectedBrands.filter(b => b !== brand))
+    } else {
+      onChange([...selectedBrands, brand])
+    }
+  }
+
+  const filteredBrands = brands.filter(brand =>
+    brand.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <div
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`input-field min-h-[42px] cursor-pointer flex flex-wrap gap-1 items-center ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        {selectedBrands.length === 0 ? (
+          <span className="text-gray-400">Select brands...</span>
+        ) : (
+          selectedBrands.slice(0, 3).map(brand => (
+            <span
+              key={brand}
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs"
+            >
+              {brand}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleBrand(brand)
+                }}
+                className="hover:text-blue-600"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))
+        )}
+        {selectedBrands.length > 3 && (
+          <span className="text-xs text-gray-500">+{selectedBrands.length - 3} more</span>
+        )}
+        <ChevronDown className="w-4 h-4 text-gray-400 ml-auto" />
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+          <div className="sticky top-0 bg-white p-2 border-b border-gray-100">
+            <input
+              type="text"
+              placeholder="Search brands..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-1.5 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          {loading ? (
+            <div className="p-3 text-center text-gray-400">
+              <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+            </div>
+          ) : filteredBrands.length === 0 ? (
+            <div className="p-3 text-center text-gray-400 text-sm">No brands found</div>
+          ) : (
+            <div className="p-1">
+              {filteredBrands.map(brand => (
+                <button
+                  key={brand}
+                  type="button"
+                  onClick={() => toggleBrand(brand)}
+                  className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                    selectedBrands.includes(brand)
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                      selectedBrands.includes(brand)
+                        ? 'bg-blue-500 border-blue-500'
+                        : 'border-gray-300'
+                    }`}>
+                      {selectedBrands.includes(brand) && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                    {brand}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Modal Component
 function Modal({ isOpen, onClose, title, children }) {
   if (!isOpen) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-6" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn"
+        className="bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn my-8"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+        <div className="sticky top-0 bg-white flex items-center justify-between p-4 border-b border-gray-100 rounded-t-2xl z-10">
           <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
           <button
             onClick={onClose}
@@ -29,7 +164,9 @@ function Modal({ isOpen, onClose, title, children }) {
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
-        {children}
+        <div className="max-h-[70vh] overflow-y-auto">
+          {children}
+        </div>
       </div>
     </div>
   )
@@ -44,6 +181,7 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
     password: '',
     phone: user?.phone || '',
     role: user?.role || 'user',
+    assignedBrands: user?.assignedBrands || [],
     isActive: user?.isActive ?? true,
   })
 
@@ -52,6 +190,23 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
+    }))
+  }
+
+  const handleRoleChange = (e) => {
+    const { value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      role: value,
+      // Clear assigned brands if role is admin/superadmin (they see all)
+      assignedBrands: (value === 'admin' || value === 'superadmin') ? [] : prev.assignedBrands,
+    }))
+  }
+
+  const handleBrandsChange = (brands) => {
+    setFormData((prev) => ({
+      ...prev,
+      assignedBrands: brands,
     }))
   }
 
@@ -80,21 +235,20 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
         <input
-  type="text"
-  name="name"
-  value={formData.name}
-  onChange={(e) => {
-    const value = e.target.value
-
-    // Allow only letters + space
-    if (/^[a-zA-Z\s]*$/.test(value)) {
-      handleChange(e)
-    }
-  }}
-  required
-  className="input-field"
-  placeholder="Enter full name"
-/>
+          type="text"
+          name="name"
+          value={formData.name}
+          onChange={(e) => {
+            const value = e.target.value
+            // Allow only letters + space
+            if (/^[a-zA-Z\s]*$/.test(value)) {
+              handleChange(e)
+            }
+          }}
+          required
+          className="input-field"
+          placeholder="Enter full name"
+        />
       </div>
 
       {/* Email */}
@@ -113,55 +267,51 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
 
       {/* Password */}
       <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">
-    Password {user ? '(leave blank to keep current)' : '*'}
-  </label>
-
-  <div className="relative">
-    <input
-      type={showPassword ? 'text' : 'password'}
-      name="password"
-      value={formData.password}
-      onChange={handleChange}
-      required={!user}
-      className="input-field pr-10"
-      placeholder="Enter password"
-    />
-
-    {/* Eye Icon */}
-    <button
-      type="button"
-      onClick={() => setShowPassword(!showPassword)}
-      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-    >
-      {showPassword ? (
-        <EyeOff className="w-5 h-5" />
-      ) : (
-        <Eye className="w-5 h-5" />
-      )}
-    </button>
-  </div>
-</div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Password {user ? '(leave blank to keep current)' : '*'}
+        </label>
+        <div className="relative">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required={!user}
+            className="input-field pr-10"
+            placeholder="Enter password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+          >
+            {showPassword ? (
+              <EyeOff className="w-5 h-5" />
+            ) : (
+              <Eye className="w-5 h-5" />
+            )}
+          </button>
+        </div>
+      </div>
 
       {/* Phone */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
         <input
-  type="tel"
-  name="phone"
-  value={formData.phone}
-  onChange={(e) => {
-    const value = e.target.value
-
-    // Allow only numbers
-    if (/^\d*$/.test(value)) {
-      handleChange(e)
-    }
-  }}
-  className="input-field"
-  placeholder="Enter phone number"
-  maxLength={10}
-/>
+          type="tel"
+          name="phone"
+          value={formData.phone}
+          onChange={(e) => {
+            const value = e.target.value
+            // Allow only numbers
+            if (/^\d*$/.test(value)) {
+              handleChange(e)
+            }
+          }}
+          className="input-field"
+          placeholder="Enter phone number"
+          maxLength={10}
+        />
       </div>
 
       {/* Role */}
@@ -170,13 +320,39 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
         <select
           name="role"
           value={formData.role}
-          onChange={handleChange}
+          onChange={handleRoleChange}
           className="input-field"
         >
           <option value="user">Sales User</option>
+          <option value="product_manager">Product Manager</option>
+          <option value="account_manager">Account Manager</option>
           <option value="admin">Admin</option>
         </select>
+        {(formData.role === 'product_manager' || formData.role === 'account_manager') && (
+          <p className="text-xs text-gray-500 mt-1">
+            Users with this role can only see products from their assigned brands.
+          </p>
+        )}
       </div>
+
+      {/* Assigned Brands - Show for product_manager and account_manager */}
+      {(formData.role === 'product_manager' || formData.role === 'account_manager') && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Assigned Brands *
+          </label>
+          <BrandMultiSelect
+            selectedBrands={formData.assignedBrands}
+            onChange={handleBrandsChange}
+            disabled={loading}
+          />
+          {formData.assignedBrands.length === 0 && (
+            <p className="text-xs text-amber-600 mt-1">
+              Please select at least one brand for this role.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Active Status */}
       <div className="flex items-center gap-2">
@@ -194,7 +370,7 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-4 pb-2">
         <button
           type="button"
           onClick={onCancel}
@@ -508,15 +684,32 @@ export default function SalesUsers() {
                     <td className="px-6 py-4 text-gray-600 hidden md:table-cell">{user.email}</td>
                     <td className="px-6 py-4 text-gray-600 hidden lg:table-cell">{user.phone || '-'}</td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          user.role === 'admin'
-                            ? 'bg-purple-100 text-purple-700'
-                            : 'bg-blue-100 text-blue-700'
-                        }`}
-                      >
-                        {user.role === 'admin' ? 'Admin' : 'Sales'}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium inline-block w-fit ${
+                            user.role === 'admin'
+                              ? 'bg-purple-100 text-purple-700'
+                              : user.role === 'product_manager'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : user.role === 'account_manager'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}
+                        >
+                          {user.role === 'admin'
+                            ? 'Admin'
+                            : user.role === 'product_manager'
+                            ? 'Product Mgr'
+                            : user.role === 'account_manager'
+                            ? 'Account Mgr'
+                            : 'Sales'}
+                        </span>
+                        {(user.role === 'product_manager' || user.role === 'account_manager') && (
+                          <span className="text-xs text-gray-500">
+                            {user.assignedBrands?.length || 0} brand{(user.assignedBrands?.length || 0) !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <button
