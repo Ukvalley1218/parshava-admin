@@ -104,6 +104,7 @@ export default function Brands() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [selectedBrand, setSelectedBrand] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
@@ -116,11 +117,19 @@ export default function Brands() {
     limit: 10,
   })
 
+  // Debounce search - trigger API after 300ms of no typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
   const fetchBrands = async (page = currentPage, limit = pagination.limit) => {
     setLoading(true)
     setError(null)
     try {
-      const response = await getBrands({ page, limit, search: searchQuery || undefined })
+      const response = await getBrands({ page, limit, search: debouncedSearch || undefined })
       if (response.success !== false) {
         setBrands(response.data || [])
         setPagination({
@@ -139,17 +148,17 @@ export default function Brands() {
   }
 
   useEffect(() => {
+    setCurrentPage(1)
+    fetchBrands(1)
+  }, [debouncedSearch])
+
+  useEffect(() => {
     fetchBrands(1)
   }, [])
 
   const handlePageChange = (page) => {
     setCurrentPage(page)
     fetchBrands(page)
-  }
-
-  const handleSearch = () => {
-    setCurrentPage(1)
-    fetchBrands(1)
   }
 
   const handleCreate = async (data) => {
@@ -235,19 +244,15 @@ export default function Brands() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-        <div className="flex gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search brands..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-            />
-          </div>
-          <button onClick={handleSearch} className="btn-secondary">Search</button>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search brands..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+          />
         </div>
       </div>
 
@@ -260,51 +265,53 @@ export default function Brands() {
       ) : (
         <>
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Name</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Status</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Created</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {brands.map((brand) => (
-                  <tr key={brand._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-4">
-                      <span className="font-medium text-gray-900">{brand.name}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 text-xs rounded-full ${brand.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                        {brand.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-500">
-                      {new Date(brand.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => { setSelectedBrand(brand); setShowModal(true) }}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4 text-gray-500" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(brand._id)}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
-                      </div>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[500px]">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Name</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Status</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Created</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {brands.map((brand) => (
+                    <tr key={brand._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-4">
+                        <span className="font-medium text-gray-900">{brand.name}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-1 text-xs rounded-full ${brand.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                          {brand.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-500">
+                        {new Date(brand.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => { setSelectedBrand(brand); setShowModal(true) }}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-4 h-4 text-gray-500" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(brand._id)}
+                            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <Pagination

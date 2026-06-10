@@ -189,9 +189,9 @@ export default function Orders() {
         if (response.pagination) {
           setOrders(response.data || [])
           setPagination({
-            total: response.pagination.total || 0,
+            total: response.pagination.totalItems || response.pagination.total || 0,
             totalPages: response.pagination.totalPages || 1,
-            limit: response.pagination.limit || 10,
+            limit: response.pagination.itemsPerPage || response.pagination.limit || 10,
           })
         } else {
           // Fallback for non-paginated API response
@@ -326,7 +326,7 @@ export default function Orders() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Order ID</th>

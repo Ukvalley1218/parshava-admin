@@ -2,7 +2,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, UserCircle, FileText, ShoppingBag,
   Package, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, X, Menu, Tag,
-  FolderTree, FolderOpen, Layers, Mail, Briefcase, Award
+  FolderTree, FolderOpen, Layers, Mail, Briefcase, Award,
+  BracesIcon
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAdminAuth } from '../context/AdminAuthContext'
@@ -20,7 +21,7 @@ const navItems = [
   { path: '/admin/subcategories', label: 'Subcategories', icon: FolderOpen },
   { path: '/admin/series', label: 'Series', icon: Layers },
   { path: '/admin/business-categories', label: 'Business Categories', icon: Briefcase },
-  { path: '/admin/brand-categories', label: 'Brand Categories', icon: Award },
+  { path: '/admin/brand-categories', label: 'Brand Categories', icon: BracesIcon },
   // { path: '/admin/reports', label: 'Reports', icon: BarChart3 },
   // { path: '/admin/settings', label: 'Settings', icon: Settings },
 ]

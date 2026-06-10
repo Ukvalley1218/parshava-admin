@@ -183,7 +183,15 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+         <StatCard
+  title="Total Revenue"
+  value={`₹${(stats.totalRevenue || 0).toLocaleString('en-IN')}`}
+  icon={DollarSign}
+  change={2}
+  changeType="up"
+  color="purple"
+/>
         <StatCard
           title="Total Inquiries"
           value={stats.totalInquiries || 0}
@@ -216,23 +224,10 @@ export default function Dashboard() {
           changeType="up"
           color="purple"
         />
+      
       </div>
 
-      {/* Revenue Card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-gray-500 text-sm">Total Revenue</p>
-            <h3 className="text-3xl font-bold text-gray-900 mt-1">
-              ₹{(stats.totalRevenue || 0).toLocaleString('en-IN')}
-            </h3>
-          </div>
-          <div className="p-3 rounded-xl bg-green-50 text-green-600">
-            <DollarSign className="w-6 h-6" />
-          </div>
-        </div>
-        
-      </div>
+      
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

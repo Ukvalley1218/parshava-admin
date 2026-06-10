@@ -8,7 +8,7 @@ function Modal({ isOpen, onClose, title, children }) {
   if (!isOpen) return null
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto"
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn mx-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
@@ -116,6 +116,7 @@ export default function Series() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [selectedSeries, setSelectedSeries] = useState(null)
@@ -128,6 +129,14 @@ export default function Series() {
     totalPages: 0,
     limit: 10,
   })
+
+  // Debounce search - trigger API after 300ms of no typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   const fetchCategories = async () => {
     try {
@@ -144,7 +153,7 @@ export default function Series() {
     setLoading(true)
     setError(null)
     try {
-      const params = { page, limit, search: searchQuery || undefined }
+      const params = { page, limit, search: debouncedSearch || undefined }
       if (selectedCategory) {
         params.category = selectedCategory
       }
@@ -174,16 +183,11 @@ export default function Series() {
   useEffect(() => {
     setCurrentPage(1)
     fetchSeries(1)
-  }, [selectedCategory])
+  }, [selectedCategory, debouncedSearch])
 
   const handlePageChange = (page) => {
     setCurrentPage(page)
     fetchSeries(page)
-  }
-
-  const handleSearch = () => {
-    setCurrentPage(1)
-    fetchSeries(1)
   }
 
   const handleCreate = async (data) => {
@@ -275,7 +279,6 @@ export default function Series() {
               placeholder="Search series..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
@@ -292,7 +295,6 @@ export default function Series() {
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
           </div>
-          <button onClick={handleSearch} className="btn-secondary">Search</button>
         </div>
       </div>
 
@@ -305,55 +307,57 @@ export default function Series() {
       ) : (
         <>
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Name</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Category</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Status</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Created</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {seriesList.map((series) => (
-                  <tr key={series._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-4">
-                      <span className="font-medium text-gray-900">{series.name}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="text-gray-600">{series.category?.name || '-'}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 text-xs rounded-full ${series.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                        {series.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-500">
-                      {new Date(series.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => { setSelectedSeries(series); setShowModal(true) }}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4 text-gray-500" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(series._id)}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
-                      </div>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[600px]">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Name</th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Category</th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Created</th>
+                    <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {seriesList.map((series) => (
+                    <tr key={series._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <span className="font-medium text-gray-900">{series.name}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-gray-600">{series.category?.name || '-'}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 text-xs rounded-full ${series.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                          {series.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {new Date(series.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => { setSelectedSeries(series); setShowModal(true) }}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-4 h-4 text-gray-500" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(series._id)}
+                            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <Pagination

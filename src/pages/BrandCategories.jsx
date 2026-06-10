@@ -14,8 +14,8 @@ function Modal({ isOpen, onClose, title, children }) {
   if (!isOpen) return null
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <X className="w-5 h-5 text-gray-500" />
@@ -32,6 +32,7 @@ export default function BrandCategories() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState(null)
@@ -45,21 +46,29 @@ export default function BrandCategories() {
     limit: 10,
   })
 
+  // Debounce search - trigger API after 300ms of no typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
   const fetchCategories = async (page = currentPage, limit = pagination.limit) => {
     setLoading(true)
     setError(null)
     try {
       const params = { page, limit }
-      if (searchQuery) params.search = searchQuery
+      if (debouncedSearch) params.search = debouncedSearch
 
       const response = await getBrandCategoryList(params)
       if (response.success !== false) {
         setCategories(response.data || [])
         if (response.pagination) {
           setPagination({
-            total: response.pagination.total || 0,
+            total: response.pagination.totalItems || response.pagination.total || 0,
             totalPages: response.pagination.totalPages || 1,
-            limit: response.pagination.limit || 10,
+            limit: response.pagination.itemsPerPage || response.pagination.limit || 10,
           })
         }
       } else {
@@ -73,17 +82,17 @@ export default function BrandCategories() {
   }
 
   useEffect(() => {
+    setCurrentPage(1)
+    fetchCategories(1)
+  }, [debouncedSearch])
+
+  useEffect(() => {
     fetchCategories(1)
   }, [])
 
   const handlePageChange = (page) => {
     setCurrentPage(page)
     fetchCategories(page)
-  }
-
-  const handleSearch = () => {
-    setCurrentPage(1)
-    fetchCategories(1)
   }
 
   const handleCreate = async (data) => {
@@ -233,7 +242,6 @@ export default function BrandCategories() {
             placeholder="Search categories..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
           />
         </div>
@@ -242,12 +250,12 @@ export default function BrandCategories() {
       {/* Categories List */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[500px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Name</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Description</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Status</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Description</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
                 <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
               </tr>
             </thead>
@@ -264,10 +272,10 @@ export default function BrandCategories() {
                     <td className="px-6 py-4">
                       <p className="font-medium text-gray-900">{category.name}</p>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 hidden md:table-cell">
+                    <td className="px-6 py-4 text-sm text-gray-600">
                       {category.description || '-'}
                     </td>
-                    <td className="px-6 py-4 hidden sm:table-cell">
+                    <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${category.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {category.active ? 'Active' : 'Inactive'}
                       </span>

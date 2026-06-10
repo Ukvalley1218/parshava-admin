@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Plus, Search, Edit2, Trash2, X, Loader, AlertCircle, Eye,
-  User, Building, Phone, MapPin, Upload, FileText
+  User, Building, Phone
 } from 'lucide-react'
-import { getContacts, getContactById, createContact, updateContact, deleteContact, uploadFile } from '../services/adminApi'
+import { getContacts, getContactById, createContact, updateContact, deleteContact, getAdminCustomers } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 
 // Modal Component
@@ -31,25 +31,34 @@ function Modal({ isOpen, onClose, title, children, size = 'md' }) {
 }
 
 // Contact Form Component
-function ContactForm({ contact, onSubmit, onCancel, loading }) {
+function ContactForm({ contact, onSubmit, onCancel, loading, customers }) {
   const [formData, setFormData] = useState({
     name: contact?.name || '',
+    customer: contact?.customer?._id || contact?.customer || '',
     firmName: contact?.firmName || '',
     designation: contact?.designation || '',
-    landmark: contact?.landmark || '',
-    city: contact?.city || '',
     mobile1: contact?.mobile1 || '',
-    mobile2: contact?.mobile2 || '',
-    mobile3: contact?.mobile3 || '',
-    photo: contact?.photo || '',
-    aadharNumber: contact?.aadharNumber || '',
-    panNumber: contact?.panNumber || '',
-    status: contact?.status || 'new',
+    email: contact?.email || '',
+    isPrimary: contact?.isPrimary || false,
+    isWhatsApp: contact?.isWhatsApp !== false,
     notes: contact?.notes || '',
   })
 
   const [errors, setErrors] = useState({})
-  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
+  const [customerSearch, setCustomerSearch] = useState('')
+  const dropdownRef = useRef(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowCustomerDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const validators = {
     name: {
@@ -67,34 +76,13 @@ function ContactForm({ contact, onSubmit, onCancel, loading }) {
         return null
       }
     },
-    mobile2: {
+    email: {
       required: false,
       validate: (value) => {
-        if (value && !/^[6-9]\d{9}$/.test(value)) return 'Enter valid 10-digit mobile number'
+        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Enter valid email address'
         return null
       }
-    },
-    mobile3: {
-      required: false,
-      validate: (value) => {
-        if (value && !/^[6-9]\d{9}$/.test(value)) return 'Enter valid 10-digit mobile number'
-        return null
-      }
-    },
-    aadharNumber: {
-      required: false,
-      validate: (value) => {
-        if (value && !/^\d{12}$/.test(value)) return 'Enter valid 12-digit Aadhar number'
-        return null
-      }
-    },
-    panNumber: {
-      required: false,
-      validate: (value) => {
-        if (value && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value.toUpperCase())) return 'Enter valid PAN (10 characters)'
-        return null
-      }
-    },
+    }
   }
 
   const validateField = (name, value) => {
@@ -114,21 +102,12 @@ function ContactForm({ contact, onSubmit, onCancel, loading }) {
   }
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    let newValue = value
-
-    // Auto-uppercase for PAN
-    if (name === 'panNumber') {
-      newValue = value.toUpperCase()
-    }
+    const { name, value, type, checked } = e.target
+    let newValue = type === 'checkbox' ? checked : value
 
     // Filter input based on field type
-    if (name === 'mobile1' || name === 'mobile2' || name === 'mobile3') {
+    if (name === 'mobile1') {
       newValue = value.replace(/\D/g, '').slice(0, 10)
-    } else if (name === 'aadharNumber') {
-      newValue = value.replace(/\D/g, '').slice(0, 12)
-    } else if (name === 'panNumber') {
-      newValue = value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10).toUpperCase()
     }
 
     setFormData((prev) => ({
@@ -144,29 +123,6 @@ function ContactForm({ contact, onSubmit, onCancel, loading }) {
     }
   }
 
-  const handlePhotoUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    setUploadingPhoto(true)
-    try {
-      const response = await uploadFile('photo', file)
-      if (response.success && response.data?.url) {
-        setFormData((prev) => ({
-          ...prev,
-          photo: response.data.url
-        }))
-      } else {
-        alert(response.message || 'Failed to upload photo')
-      }
-    } catch (error) {
-      console.error('Upload error:', error)
-      alert('Failed to upload photo')
-    } finally {
-      setUploadingPhoto(false)
-    }
-  }
-
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!validateForm()) {
@@ -175,244 +131,226 @@ function ContactForm({ contact, onSubmit, onCancel, loading }) {
     onSubmit(formData)
   }
 
+  // Filter customers based on search
+  const filteredCustomers = customers.filter(c => {
+    const searchLower = customerSearch.toLowerCase()
+    if (!searchLower) return true // Show all when no search
+    return (
+      c.firmName?.toLowerCase().includes(searchLower) ||
+      c.name?.toLowerCase().includes(searchLower) ||
+      c.mobile?.toLowerCase().includes(searchLower)
+    )
+  })
+
+  // Get selected customer name
+  const selectedCustomer = customers.find(c => c._id === formData.customer)
+
+  // Handle customer selection
+  const handleCustomerSelect = (customer) => {
+    setFormData((prev) => ({
+      ...prev,
+      customer: customer._id,
+      firmName: customer.firmName || customer.name
+    }))
+    setCustomerSearch('')
+    setShowCustomerDropdown(false)
+  }
+
+  // Clear customer selection
+  const handleClearCustomer = () => {
+    setFormData((prev) => ({
+      ...prev,
+      customer: '',
+      firmName: ''
+    }))
+    setCustomerSearch('')
+  }
+
   return (
     <form onSubmit={handleSubmit} className="p-4 space-y-4">
-      {/* Personal Details */}
-      <div className="border-b border-gray-100 pb-4">
-        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Personal Details</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className={`input-field ${errors.name ? 'border-red-500' : ''}`}
-              placeholder="Enter name"
-            />
-            {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+      {/* Link to Client/Firm */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Link to Client/Firm</label>
+        {formData.customer ? (
+          <div className="flex items-center gap-2 p-2.5 border border-gray-200 rounded-xl bg-gray-50">
+            <Building className="w-4 h-4 text-gray-400" />
+            <span className="flex-1 text-sm text-gray-900 truncate">
+              {selectedCustomer?.firmName || selectedCustomer?.name || formData.firmName}
+            </span>
+            <button
+              type="button"
+              onClick={handleClearCustomer}
+              className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+            >
+              <X className="w-4 h-4 text-gray-500" />
+            </button>
           </div>
-
-          {/* Firm Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Firm Name</label>
+        ) : (
+          <div className="relative" ref={dropdownRef}>
             <input
               type="text"
-              name="firmName"
-              value={formData.firmName}
-              onChange={handleChange}
+              value={customerSearch}
+              onChange={(e) => {
+                setCustomerSearch(e.target.value)
+                setShowCustomerDropdown(true)
+              }}
+              onFocus={() => setShowCustomerDropdown(true)}
               className="input-field"
-              placeholder="Enter firm name"
+              placeholder="Type to search clients..."
             />
-          </div>
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
 
-          {/* Designation */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-            <input
-              type="text"
-              name="designation"
-              value={formData.designation}
-              onChange={handleChange}
-              className="input-field"
-              placeholder="Owner / Manager / Proprietor"
-            />
+            {showCustomerDropdown && (
+              <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                {customers.length === 0 ? (
+                  <div className="p-3 text-sm text-gray-500 text-center">
+                    No clients available
+                  </div>
+                ) : filteredCustomers.length === 0 ? (
+                  <div className="p-3 text-sm text-gray-500 text-center">
+                    No clients found matching "{customerSearch}"
+                  </div>
+                ) : (
+                  <>
+                    {customerSearch === '' && (
+                      <div className="px-4 py-2 text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
+                        Select a client or type to search
+                      </div>
+                    )}
+                    {filteredCustomers.slice(0, 20).map((customer) => (
+                      <button
+                        key={customer._id}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          handleCustomerSelect(customer)
+                        }}
+                        className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-b-0"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Building className="w-4 h-4 text-gray-400" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">
+                              {customer.firmName || customer.name}
+                            </p>
+                            {customer.mobile && (
+                              <p className="text-xs text-gray-500">{customer.mobile}</p>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                    {filteredCustomers.length > 20 && (
+                      <div className="px-4 py-2 text-xs text-gray-400 bg-gray-50">
+                        +{filteredCustomers.length - 20} more clients...
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
-
-          {/* Photo */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
-            <div className="flex items-center gap-3">
-              {formData.photo ? (
-                <div className="relative">
-                  <img
-                    src={formData.photo}
-                    alt="Contact"
-                    className="w-16 h-16 rounded-lg object-cover border border-gray-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, photo: '' }))}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
-                  {uploadingPhoto ? (
-                    <Loader className="w-5 h-5 text-gray-400 animate-spin" />
-                  ) : (
-                    <Upload className="w-5 h-5 text-gray-400" />
-                  )}
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    disabled={uploadingPhoto}
-                  />
-                </label>
-              )}
-              <span className="text-xs text-gray-500">Upload photo</span>
-            </div>
-          </div>
-        </div>
+        )}
+        {/* <p className="text-xs text-gray-400 mt-1">Optional: Link this contact to an existing client</p> */}
       </div>
 
-      {/* Location */}
-      <div className="border-b border-gray-100 pb-4">
-        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Location</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Landmark */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Landmark</label>
-            <input
-              type="text"
-              name="landmark"
-              value={formData.landmark}
-              onChange={handleChange}
-              className="input-field"
-              placeholder="Near Metro Station / Landmark"
-            />
-          </div>
-
-          {/* City */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-            <input
-              type="text"
-              name="city"
-              value={formData.city}
-              onChange={handleChange}
-              className="input-field"
-              placeholder="Enter city"
-            />
-          </div>
-        </div>
+      {/* Name */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Name <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          className={`input-field ${errors.name ? 'border-red-500' : ''}`}
+          placeholder="Contact person name"
+        />
+        {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
       </div>
 
-      {/* Contact Numbers */}
-      <div className="border-b border-gray-100 pb-4">
-        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Contact Numbers</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Mobile 1 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mobile 1</label>
-            <input
-              type="tel"
-              name="mobile1"
-              value={formData.mobile1}
-              onChange={handleChange}
-              className={`input-field ${errors.mobile1 ? 'border-red-500' : ''}`}
-              placeholder="10-digit mobile number"
-              maxLength={10}
-            />
-            {errors.mobile1 && <p className="text-xs text-red-500 mt-1">{errors.mobile1}</p>}
-          </div>
-
-          {/* Mobile 2 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mobile 2</label>
-            <input
-              type="tel"
-              name="mobile2"
-              value={formData.mobile2}
-              onChange={handleChange}
-              className={`input-field ${errors.mobile2 ? 'border-red-500' : ''}`}
-              placeholder="10-digit mobile number"
-              maxLength={10}
-            />
-            {errors.mobile2 && <p className="text-xs text-red-500 mt-1">{errors.mobile2}</p>}
-          </div>
-
-          {/* Mobile 3 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mobile 3</label>
-            <input
-              type="tel"
-              name="mobile3"
-              value={formData.mobile3}
-              onChange={handleChange}
-              className={`input-field ${errors.mobile3 ? 'border-red-500' : ''}`}
-              placeholder="10-digit mobile number"
-              maxLength={10}
-            />
-            {errors.mobile3 && <p className="text-xs text-red-500 mt-1">{errors.mobile3}</p>}
-          </div>
-        </div>
+      {/* Designation */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+        <input
+          type="text"
+          name="designation"
+          value={formData.designation}
+          onChange={handleChange}
+          className="input-field"
+          placeholder="e.g., Manager, Owner, Proprietor"
+        />
       </div>
 
-      {/* Documents */}
-      <div className="border-b border-gray-100 pb-4">
-        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Documents</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Aadhar Number */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Number</label>
-            <input
-              type="text"
-              name="aadharNumber"
-              value={formData.aadharNumber}
-              onChange={handleChange}
-              className={`input-field ${errors.aadharNumber ? 'border-red-500' : ''}`}
-              placeholder="12-digit Aadhar number"
-              maxLength={12}
-            />
-            {errors.aadharNumber && <p className="text-xs text-red-500 mt-1">{errors.aadharNumber}</p>}
-          </div>
-
-          {/* PAN Number */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">PAN Number</label>
-            <input
-              type="text"
-              name="panNumber"
-              value={formData.panNumber}
-              onChange={handleChange}
-              className={`input-field uppercase ${errors.panNumber ? 'border-red-500' : ''}`}
-              placeholder="10-character PAN"
-              maxLength={10}
-            />
-            {errors.panNumber && <p className="text-xs text-red-500 mt-1">{errors.panNumber}</p>}
-          </div>
-        </div>
+      {/* Mobile */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Mobile Number
+        </label>
+        <input
+          type="tel"
+          name="mobile1"
+          value={formData.mobile1}
+          onChange={handleChange}
+          className={`input-field ${errors.mobile1 ? 'border-red-500' : ''}`}
+          placeholder="Enter mobile number"
+          maxLength={10}
+        />
+        {errors.mobile1 && <p className="text-xs text-red-500 mt-1">{errors.mobile1}</p>}
       </div>
 
-      {/* Status & Notes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Status */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-          <select
-            name="status"
-            value={formData.status}
+      {/* Email */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+        <input
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          className={`input-field ${errors.email ? 'border-red-500' : ''}`}
+          placeholder="Enter email address"
+        />
+        {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+      </div>
+
+      {/* Checkboxes */}
+      <div className="flex flex-wrap gap-4">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            name="isPrimary"
+            checked={formData.isPrimary}
             onChange={handleChange}
-            className="input-field"
-          >
-            <option value="new">New</option>
-            <option value="in_progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
-          </select>
-        </div>
-
-        {/* Notes */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-          <textarea
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            className="input-field"
-            placeholder="Internal notes"
-            rows={2}
+            className="w-4 h-4 text-[#1F3A5F] border-gray-300 rounded focus:ring-[#1F3A5F]"
           />
-        </div>
+          <span className="text-sm text-gray-700">Set as Primary Contact</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            name="isWhatsApp"
+            checked={formData.isWhatsApp}
+            onChange={handleChange}
+            className="w-4 h-4 text-[#1F3A5F] border-gray-300 rounded focus:ring-[#1F3A5F]"
+          />
+          <span className="text-sm text-gray-700">WhatsApp Available</span>
+        </label>
+      </div>
+
+     
+
+      {/* Notes */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+        <textarea
+          name="notes"
+          value={formData.notes}
+          onChange={handleChange}
+          className="input-field"
+          placeholder="Internal notes"
+          rows={2}
+        />
       </div>
 
       {/* Actions */}
@@ -485,100 +423,62 @@ function ContactViewModal({ contact, onClose }) {
     <div className="p-4 space-y-4">
       {/* Header */}
       <div className="flex items-start gap-4 pb-4 border-b border-gray-100">
-        {contact.photo ? (
-          <img
-            src={getFileUrl(contact.photo)}
-            alt={contact.name}
-            className="w-16 h-16 rounded-lg object-cover border border-gray-200"
-          />
-        ) : (
-          <div className="w-16 h-16 bg-[#1F3A5F] rounded-lg flex items-center justify-center">
-            <span className="text-white font-semibold text-xl">
-              {contact.name?.charAt(0)?.toUpperCase() || 'C'}
-            </span>
-          </div>
-        )}
+        <div className="w-16 h-16 bg-[#1F3A5F] rounded-lg flex items-center justify-center">
+          <span className="text-white font-semibold text-xl">
+            {contact.name?.charAt(0)?.toUpperCase() || 'C'}
+          </span>
+        </div>
         <div className="flex-1">
           <h3 className="font-semibold text-lg text-gray-900">{contact.name}</h3>
-          {contact.firmName && <p className="text-sm text-gray-600">{contact.firmName}</p>}
-          {contact.designation && <p className="text-xs text-gray-400">{contact.designation}</p>}
-          <div className="flex gap-2 mt-2">
+          {contact.designation && <p className="text-sm text-gray-500">{contact.designation}</p>}
+          <div className="flex flex-wrap gap-2 mt-2">
             <StatusBadge status={contact.status} />
+            {contact.isPrimary && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                Primary
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Personal Details */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex items-center gap-2">
-          <User className="w-4 h-4 text-gray-400" />
-          <div>
-            <span className="text-xs text-gray-500">Name</span>
-            <p className="text-sm text-gray-900">{contact.name || '-'}</p>
+      {/* Linked Client */}
+      {(contact.customer || contact.firmName) && (
+        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+          <Building className="w-4 h-4 text-blue-600" />
+          <div className="flex-1">
+            <span className="text-xs text-blue-600">Linked to</span>
+            <p className="text-sm font-medium text-gray-900">
+              {contact.customer?.firmName || contact.customer?.name || contact.firmName}
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Building className="w-4 h-4 text-gray-400" />
-          <div>
-            <span className="text-xs text-gray-500">Firm</span>
-            <p className="text-sm text-gray-900">{contact.firmName || '-'}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-gray-400" />
-          <div>
-            <span className="text-xs text-gray-500">City</span>
-            <p className="text-sm text-gray-900">{contact.city || '-'}</p>
-          </div>
-        </div>
-        <div>
-          <span className="text-xs text-gray-500">Landmark</span>
-          <p className="text-sm text-gray-900">{contact.landmark || '-'}</p>
-        </div>
-      </div>
+      )}
 
-      {/* Contact Numbers */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">Contact Numbers</h4>
-        <div className="space-y-2">
-          {contact.mobile1 && (
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-gray-400" />
+      {/* Contact Details */}
+      <div className="space-y-3">
+        {/* Mobile */}
+        {contact.mobile1 && (
+          <div className="flex items-center gap-3">
+            <Phone className="w-4 h-4 text-gray-400" />
+            <div className="flex-1">
               <span className="text-sm text-gray-900">{contact.mobile1}</span>
-              <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Primary</span>
+              {contact.isWhatsApp && (
+                <span className="ml-2 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">WhatsApp</span>
+              )}
             </div>
-          )}
-          {contact.mobile2 && (
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-900">{contact.mobile2}</span>
-            </div>
-          )}
-          {contact.mobile3 && (
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-900">{contact.mobile3}</span>
-            </div>
-          )}
-          {!contact.mobile1 && !contact.mobile2 && !contact.mobile3 && (
-            <p className="text-sm text-gray-500">No contact numbers</p>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
 
-      {/* Documents */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">Documents</h4>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <span className="text-xs text-gray-500">Aadhar Number</span>
-            <p className="text-sm text-gray-900 font-mono">{contact.aadharNumber || '-'}</p>
+        {/* Email */}
+        {contact.email && (
+          <div className="flex items-center gap-3">
+            <div className="w-4 h-4 flex items-center justify-center text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            </div>
+            <span className="text-sm text-gray-900">{contact.email}</span>
           </div>
-          <div>
-            <span className="text-xs text-gray-500">PAN Number</span>
-            <p className="text-sm text-gray-900 font-mono">{contact.panNumber || '-'}</p>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Notes */}
@@ -605,6 +505,7 @@ function ContactViewModal({ contact, onClose }) {
 
 export default function Contacts() {
   const [contacts, setContacts] = useState([])
+  const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -625,6 +526,18 @@ export default function Contacts() {
     limit: 10,
   })
 
+  // Fetch all customers for dropdown
+  const fetchCustomers = async () => {
+    try {
+      const response = await getAdminCustomers({ limit: 9999 })
+      if (response.success !== false) {
+        setCustomers(response.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch customers:', err)
+    }
+  }
+
   const fetchContacts = async (page = currentPage, limit = pagination.limit) => {
     setLoading(true)
     setError(null)
@@ -638,9 +551,9 @@ export default function Contacts() {
         if (response.pagination) {
           setContacts(response.data || [])
           setPagination({
-            total: response.pagination.total || 0,
+            total: response.pagination.totalItems || response.pagination.total || 0,
             totalPages: response.pagination.totalPages || 1,
-            limit: response.pagination.limit || 10,
+            limit: response.pagination.itemsPerPage || response.pagination.limit || 10,
           })
         } else {
           setContacts(response.data || response || [])
@@ -662,6 +575,7 @@ export default function Contacts() {
 
   useEffect(() => {
     fetchContacts(1)
+    fetchCustomers()
   }, [statusFilter])
 
   const handlePageChange = (page) => {
@@ -676,10 +590,11 @@ export default function Contacts() {
     return (
       c.name?.toLowerCase().includes(query) ||
       c.firmName?.toLowerCase().includes(query) ||
+      c.customer?.firmName?.toLowerCase().includes(query) ||
+      c.customer?.name?.toLowerCase().includes(query) ||
       c.mobile1?.toLowerCase().includes(query) ||
-      c.mobile2?.toLowerCase().includes(query) ||
-      c.mobile3?.toLowerCase().includes(query) ||
-      c.city?.toLowerCase().includes(query)
+      c.email?.toLowerCase().includes(query) ||
+      c.designation?.toLowerCase().includes(query)
     )
   })
 
@@ -830,13 +745,12 @@ export default function Contacts() {
       {/* Contacts Table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Contact</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Firm</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Mobile</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">City</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Created</th>
                 <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
@@ -845,7 +759,7 @@ export default function Contacts() {
             <tbody>
               {filteredContacts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12">
+                  <td colSpan={6} className="text-center py-12">
                     <User className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500">No contacts found</p>
                   </td>
@@ -855,21 +769,18 @@ export default function Contacts() {
                   <tr key={contact._id} className="border-b border-gray-50 hover:bg-gray-50/50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        {contact.photo ? (
-                          <img
-                            src={contact.photo}
-                            alt={contact.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-[#1F3A5F] rounded-full flex items-center justify-center">
-                            <span className="text-white font-medium text-sm">
-                              {contact.name?.charAt(0)?.toUpperCase() || 'C'}
-                            </span>
-                          </div>
-                        )}
+                        <div className="w-10 h-10 bg-[#1F3A5F] rounded-full flex items-center justify-center">
+                          <span className="text-white font-medium text-sm">
+                            {contact.name?.charAt(0)?.toUpperCase() || 'C'}
+                          </span>
+                        </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-gray-900 truncate">{contact.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900 truncate">{contact.name}</p>
+                            {contact.isPrimary && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Primary</span>
+                            )}
+                          </div>
                           {contact.designation && (
                             <p className="text-xs text-gray-500 truncate">{contact.designation}</p>
                           )}
@@ -877,14 +788,22 @@ export default function Contacts() {
                       </div>
                     </td>
                     <td className="px-6 py-4 hidden md:table-cell">
-                      <p className="text-gray-600 truncate max-w-[150px]">{contact.firmName || '-'}</p>
+                      <div className="flex flex-col">
+                        <p className="text-gray-600 truncate max-w-[150px]">
+                          {contact.customer?.firmName || contact.firmName || '-'}
+                        </p>
+                        {contact.customer && (
+                          <span className="text-xs text-blue-500">Linked</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 hidden lg:table-cell">
-                      <p className="text-gray-600">{contact.mobile1 || '-'}</p>
-                      {contact.mobile2 && <p className="text-xs text-gray-400">{contact.mobile2}</p>}
-                    </td>
-                    <td className="px-6 py-4 hidden lg:table-cell">
-                      <p className="text-gray-600">{contact.city || '-'}</p>
+                      <div className="flex flex-col">
+                        <p className="text-gray-600">{contact.mobile1 || '-'}</p>
+                        {contact.isWhatsApp && contact.mobile1 && (
+                          <span className="text-xs text-green-600">WhatsApp</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={contact.status} />
@@ -946,6 +865,7 @@ export default function Contacts() {
           onSubmit={selectedContact ? handleUpdate : handleCreate}
           onCancel={() => { setShowModal(false); setSelectedContact(null) }}
           loading={formLoading}
+          customers={customers}
         />
       </Modal>
 

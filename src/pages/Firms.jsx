@@ -37,8 +37,10 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
     softwareId: customer?.softwareId || '',
     firmName: customer?.firmName || '',
     firmPhoto: customer?.firmPhoto || '',
+    firmPhotoName: customer?.firmPhoto?.split('/').pop() || '',
     name: customer?.name || '',
     customerPhoto: customer?.customerPhoto || '',
+    customerPhotoName: customer?.customerPhoto?.split('/').pop() || '',
     designation: customer?.designation || '',
 
     // Address
@@ -100,6 +102,7 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
 
   // Validation functions
   const validators = {
+    // Mandatory fields
     firmName: {
       required: true,
       validate: (value) => {
@@ -124,6 +127,126 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
         return null
       }
     },
+    address: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Address is required'
+        if (value.length > 300) return 'Address must be less than 300 characters'
+        return null
+      }
+    },
+    city: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'City is required'
+        if (value.length > 50) return 'City name too long'
+        return null
+      }
+    },
+    state: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'State is required'
+        if (value.length > 50) return 'State name too long'
+        return null
+      }
+    },
+    pincode: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Pincode is required'
+        if (!/^\d{6}$/.test(value)) return 'Enter valid 6-digit pincode'
+        return null
+      }
+    },
+    email: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Email is required'
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Enter valid email address'
+        return null
+      }
+    },
+    country: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Country is required'
+        return null
+      }
+    },
+    panNumber: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'PAN number is required'
+        if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value.toUpperCase())) return 'Enter valid PAN (10 characters)'
+        return null
+      }
+    },
+    aadharNumber: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Aadhar number is required'
+        if (!/^\d{12}$/.test(value)) return 'Enter valid 12-digit Aadhar number'
+        return null
+      }
+    },
+    shopActNumber: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Shop Act number is required'
+        return null
+      }
+    },
+    msmeNumber: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'MSME number is required'
+        return null
+      }
+    },
+    priceListCategory: {
+      required: true,
+      validate: (value) => {
+        if (!value) return 'Price list is required'
+        return null
+      }
+    },
+    customerType: {
+      required: true,
+      validate: (value) => {
+        if (!value) return 'Customer type is required'
+        return null
+      }
+    },
+    customerStatus: {
+      required: true,
+      validate: (value) => {
+        if (!value) return 'Customer status is required'
+        return null
+      }
+    },
+    accountManager: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Account manager is required'
+        return null
+      }
+    },
+    productManager: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Product manager is required'
+        return null
+      }
+    },
+    leadSource: {
+      required: true,
+      validate: (value) => {
+        if (!value?.trim()) return 'Lead source is required'
+        return null
+      }
+    },
+    // Optional fields
     mobile2: {
       required: false,
       validate: (value) => {
@@ -138,52 +261,10 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
         return null
       }
     },
-    email: {
-      required: false,
-      validate: (value) => {
-        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Enter valid email address'
-        return null
-      }
-    },
-    pincode: {
-      required: false,
-      validate: (value) => {
-        if (value && !/^\d{6}$/.test(value)) return 'Enter valid 6-digit pincode'
-        return null
-      }
-    },
     gstin: {
       required: false,
       validate: (value) => {
         if (value && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(value.toUpperCase())) return 'Enter valid GSTIN (15 characters)'
-        return null
-      }
-    },
-    panNumber: {
-      required: false,
-      validate: (value) => {
-        if (value && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value.toUpperCase())) return 'Enter valid PAN (10 characters)'
-        return null
-      }
-    },
-    aadharNumber: {
-      required: false,
-      validate: (value) => {
-        if (value && !/^\d{12}$/.test(value)) return 'Enter valid 12-digit Aadhar number'
-        return null
-      }
-    },
-    city: {
-      required: false,
-      validate: (value) => {
-        if (value && value.length > 50) return 'City name too long'
-        return null
-      }
-    },
-    state: {
-      required: false,
-      validate: (value) => {
-        if (value && value.length > 50) return 'State name too long'
         return null
       }
     }
@@ -269,7 +350,8 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
         if (response.success && response.data?.url) {
           setFormData((prev) => ({
             ...prev,
-            [field]: response.data.url
+            [field]: response.data.url,
+            [`${field}Name`]: file.name
           }))
         } else {
           alert(response.message || 'Failed to upload file')
@@ -335,7 +417,9 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
         <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Personal Details</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Software ID</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Software ID <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
             <input
               type="text"
               name="softwareId"
@@ -375,8 +459,10 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
                 />
               </label>
             </div>
-            {formData.firmPhoto && (
-              <p className="text-xs text-green-600 mt-1">Shop photo uploaded</p>
+            {formData.firmPhotoName && (
+              <p className="text-xs text-green-600 mt-1 truncate" title={formData.firmPhotoName}>
+                {formData.firmPhotoName.length > 25 ? formData.firmPhotoName.substring(0, 22) + '...' : formData.firmPhotoName}
+              </p>
             )}
           </div>
 
@@ -409,13 +495,17 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
                 />
               </label>
             </div>
-            {formData.customerPhoto && (
-              <p className="text-xs text-green-600 mt-1">Photo uploaded</p>
+            {formData.customerPhotoName && (
+              <p className="text-xs text-green-600 mt-1 truncate" title={formData.customerPhotoName}>
+                {formData.customerPhotoName.length > 25 ? formData.customerPhotoName.substring(0, 22) + '...' : formData.customerPhotoName}
+              </p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Designation <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
             <input
               type="text"
               name="designation"
@@ -433,14 +523,17 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
         <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Address</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Address <span className="text-red-500">*</span>
+            </label>
             <div className="flex gap-2">
               <input
                 type="text"
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                className="input-field flex-1"
+                onBlur={handleBlur}
+                className={`input-field flex-1 ${errors.address && touched.address ? 'border-red-500' : ''}`}
                 placeholder="Enter full address"
               />
               <label className="flex items-center gap-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors text-sm whitespace-nowrap">
@@ -455,6 +548,9 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
                 />
               </label>
             </div>
+            {errors.address && touched.address && (
+              <p className="text-xs text-red-500 mt-1">{errors.address}</p>
+            )}
             <input
               type="text"
               name="googleLocation"
@@ -478,31 +574,45 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              City <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               name="city"
               value={formData.city}
               onChange={handleChange}
-              className="input-field"
+              onBlur={handleBlur}
+              className={`input-field ${errors.city && touched.city ? 'border-red-500' : ''}`}
               placeholder="Enter city"
             />
+            {errors.city && touched.city && (
+              <p className="text-xs text-red-500 mt-1">{errors.city}</p>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              State <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               name="state"
               value={formData.state}
               onChange={handleChange}
-              className="input-field"
+              onBlur={handleBlur}
+              className={`input-field ${errors.state && touched.state ? 'border-red-500' : ''}`}
               placeholder="Enter state"
             />
+            {errors.state && touched.state && (
+              <p className="text-xs text-red-500 mt-1">{errors.state}</p>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Pin Code</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Pin Code <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               name="pincode"
@@ -593,7 +703,9 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mobile 2</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Mobile 2 <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
             <input
               type="tel"
               name="mobile2"
@@ -637,7 +749,9 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mobile 3</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Mobile 3 <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
             <input
               type="tel"
               name="mobile3"
@@ -686,25 +800,31 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
       <div className="border-b border-gray-100 pb-4">
         <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Documents (Upload)</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {documentTypes.map((doc) => (
-            <div key={doc.key}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{doc.label}</label>
-              <div className="flex items-center gap-2">
-                <label className="flex-1 flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
-                  <Upload className="w-4 h-4 text-gray-400" />
-                  <span className="text-sm text-gray-600 truncate">
-                    {formData.documents?.find(d => d.type === doc.key)?.name || 'Choose file'}
-                  </span>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => handleDocumentChange(e, doc.key)}
-                  />
-                </label>
+          {documentTypes.map((doc) => {
+            const fileName = formData.documents?.find(d => d.type === doc.key)?.name
+            const truncatedName = fileName && fileName.length > 20
+              ? fileName.substring(0, 17) + '...'
+              : fileName
+            return (
+              <div key={doc.key}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{doc.label}</label>
+                <div className="flex items-center gap-2">
+                  <label className="flex-1 flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors overflow-hidden">
+                    <Upload className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <span className="text-sm text-gray-600 truncate whitespace-nowrap overflow-hidden" title={fileName || 'Choose file'}>
+                      {truncatedName || 'Choose file'}
+                    </span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleDocumentChange(e, doc.key)}
+                    />
+                  </label>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
@@ -713,7 +833,9 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
         <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Business Details (Numbers)</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              GSTIN <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
             <input
               type="text"
               name="gstin"
@@ -747,7 +869,9 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">PAN Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              PAN Number <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               name="panNumber"
@@ -780,7 +904,9 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Aadhar Number <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               name="aadharNumber"
@@ -813,26 +939,38 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Shop Act Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Shop Act Number <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               name="shopActNumber"
               value={formData.shopActNumber}
               onChange={handleChange}
-              className="input-field"
+              onBlur={handleBlur}
+              className={`input-field ${errors.shopActNumber && touched.shopActNumber ? 'border-red-500' : ''}`}
               placeholder="Enter Shop Act Number"
             />
+            {errors.shopActNumber && touched.shopActNumber && (
+              <p className="text-xs text-red-500 mt-1">{errors.shopActNumber}</p>
+            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">MSME Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              MSME Number <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               name="msmeNumber"
               value={formData.msmeNumber}
               onChange={handleChange}
-              className="input-field"
+              onBlur={handleBlur}
+              className={`input-field ${errors.msmeNumber && touched.msmeNumber ? 'border-red-500' : ''}`}
               placeholder="Enter MSME Number"
             />
+            {errors.msmeNumber && touched.msmeNumber && (
+              <p className="text-xs text-red-500 mt-1">{errors.msmeNumber}</p>
+            )}
           </div>
         </div>
       </div>
@@ -842,7 +980,9 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
         <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Management</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Business Category</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Business Category <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
             <select
               name="businessCategory"
               value={formData.businessCategory}
@@ -856,7 +996,9 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Brand Category</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Brand Category <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
             <select
               name="brandCategory"
               value={formData.brandCategory}
@@ -870,78 +1012,114 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Price List</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Price List <span className="text-red-500">*</span>
+            </label>
             <select
               name="priceListCategory"
               value={formData.priceListCategory}
               onChange={handleChange}
-              className="input-field"
+              onBlur={handleBlur}
+              className={`input-field ${errors.priceListCategory && touched.priceListCategory ? 'border-red-500' : ''}`}
             >
               <option value="T1">T1</option>
               <option value="T2">T2</option>
               <option value="T3">T3</option>
               <option value="T4">T4</option>
             </select>
+            {errors.priceListCategory && touched.priceListCategory && (
+              <p className="text-xs text-red-500 mt-1">{errors.priceListCategory}</p>
+            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Customer Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Customer Type <span className="text-red-500">*</span>
+            </label>
             <select
               name="customerType"
               value={formData.customerType}
               onChange={handleChange}
-              className="input-field"
+              onBlur={handleBlur}
+              className={`input-field ${errors.customerType && touched.customerType ? 'border-red-500' : ''}`}
             >
               <option value="customer">Customer</option>
               <option value="dealer">Dealer</option>
               <option value="distributor">Distributor</option>
               <option value="retailer">Retailer</option>
             </select>
+            {errors.customerType && touched.customerType && (
+              <p className="text-xs text-red-500 mt-1">{errors.customerType}</p>
+            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Customer Status</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Customer Status <span className="text-red-500">*</span>
+            </label>
             <select
               name="customerStatus"
               value={formData.customerStatus}
               onChange={handleChange}
-              className="input-field"
+              onBlur={handleBlur}
+              className={`input-field ${errors.customerStatus && touched.customerStatus ? 'border-red-500' : ''}`}
             >
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="blocked">Blocked</option>
             </select>
+            {errors.customerStatus && touched.customerStatus && (
+              <p className="text-xs text-red-500 mt-1">{errors.customerStatus}</p>
+            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Account Manager</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Account Manager <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               name="accountManager"
               value={formData.accountManager}
               onChange={handleChange}
-              className="input-field"
+              onBlur={handleBlur}
+              className={`input-field ${errors.accountManager && touched.accountManager ? 'border-red-500' : ''}`}
               placeholder="Manager name"
             />
+            {errors.accountManager && touched.accountManager && (
+              <p className="text-xs text-red-500 mt-1">{errors.accountManager}</p>
+            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Product Manager</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Product Manager <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               name="productManager"
               value={formData.productManager}
               onChange={handleChange}
-              className="input-field"
+              onBlur={handleBlur}
+              className={`input-field ${errors.productManager && touched.productManager ? 'border-red-500' : ''}`}
               placeholder="Manager name"
             />
+            {errors.productManager && touched.productManager && (
+              <p className="text-xs text-red-500 mt-1">{errors.productManager}</p>
+            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Lead Source</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Lead Source <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               name="leadSource"
               value={formData.leadSource}
               onChange={handleChange}
-              className="input-field"
+              onBlur={handleBlur}
+              className={`input-field ${errors.leadSource && touched.leadSource ? 'border-red-500' : ''}`}
               placeholder="Website / Referral / etc."
             />
+            {errors.leadSource && touched.leadSource && (
+              <p className="text-xs text-red-500 mt-1">{errors.leadSource}</p>
+            )}
           </div>
         </div>
       </div>
@@ -949,7 +1127,9 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
       {/* Additional Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Email <span className="text-red-500">*</span>
+          </label>
           <input
             type="email"
             name="email"
@@ -964,15 +1144,21 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Country <span className="text-red-500">*</span>
+          </label>
           <input
             type="text"
             name="country"
             value={formData.country}
             onChange={handleChange}
-            className="input-field"
+            onBlur={handleBlur}
+            className={`input-field ${errors.country && touched.country ? 'border-red-500' : ''}`}
             placeholder="Enter country"
           />
+          {errors.country && touched.country && (
+            <p className="text-xs text-red-500 mt-1">{errors.country}</p>
+          )}
         </div>
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
@@ -1405,9 +1591,9 @@ export default function Firms() {
         if (response.pagination) {
           setCustomers(response.data || [])
           setPagination({
-            total: response.pagination.total || 0,
+            total: response.pagination.totalItems || response.pagination.total || 0,
             totalPages: response.pagination.totalPages || 1,
-            limit: response.pagination.limit || 10,
+            limit: response.pagination.itemsPerPage || response.pagination.limit || 10,
           })
         } else {
           // Fallback for non-paginated API response
@@ -1573,7 +1759,7 @@ export default function Firms() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Firm</th>

@@ -162,7 +162,7 @@ export default function Reports() {
           <h3 className="font-semibold text-gray-900">Revenue Breakdown</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[400px]">
             <thead className="bg-gray-50">
               <tr>
                 <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Date</th>
