@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Search, Plus, Edit2, Trash2, X, Loader, AlertCircle, Layers, ChevronDown } from 'lucide-react'
-import { getSeries, createSeries, updateSeries, deleteSeries, getCategories } from '../services/adminApi'
+import { Search, Plus, Edit2, Trash2, X, Loader, AlertCircle, Layers, ChevronDown, ChevronUp, LayersIcon } from 'lucide-react'
+import { getSeries, createSeries, updateSeries, deleteSeries, getCategories, addSubSeries, updateSubSeries, deleteSubSeries } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 
 // Modal Component
@@ -107,6 +107,203 @@ function SeriesForm({ series, categories, onSubmit, onCancel, loading }) {
         </button>
       </div>
     </form>
+  )
+}
+
+// Sub-Series Form Component
+function SubSeriesForm({ onSubmit, onCancel, loading, nextCode }) {
+  const [formData, setFormData] = useState({ name: '' })
+  const [error, setError] = useState('')
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!formData.name.trim()) {
+      setError('Sub-series name is required')
+      return
+    }
+    onSubmit(formData)
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="p-4 space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Sub-Series Name *</label>
+        <input
+          type="text"
+          name="name"
+          value={formData.name}
+          onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setError('') }}
+          required
+          maxLength={50}
+          className="input-field"
+          placeholder="e.g., Standard, Premium, Basic"
+        />
+      </div>
+      <div className="bg-blue-50 p-3 rounded-lg">
+        <p className="text-sm text-blue-700">
+          <span className="font-medium">Auto-generated Code:</span>{' '}
+          <span className="bg-blue-100 px-2 py-0.5 rounded font-mono">{nextCode || 'S1'}</span>
+        </p>
+        <p className="text-xs text-blue-500 mt-1">Code is assigned automatically based on sequence</p>
+      </div>
+      {error && <p className="text-xs text-red-500">{error}</p>}
+      <div className="flex gap-3 pt-2">
+        <button type="button" onClick={onCancel} className="btn-secondary flex-1" disabled={loading}>Cancel</button>
+        <button type="submit" className="btn-primary flex-1 flex items-center justify-center gap-2" disabled={loading}>
+          {loading && <Loader className="w-4 h-4 animate-spin" />}
+          Add Sub-Series
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// Sub-Series List Component
+function SubSeriesList({ series, onRefresh, onLoadingChange }) {
+  const [expanded, setExpanded] = useState(true)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  // Calculate next code (S1, S2, S3...)
+  const nextCode = `S${(series.subSeries?.length || 0) + 1}`
+
+  const handleAddSubSeries = async (data) => {
+    setLoading(true)
+    onLoadingChange?.(true)
+    try {
+      const response = await addSubSeries(series._id, data)
+      if (response.success !== false) {
+        onRefresh()
+        setShowAddModal(false)
+      } else {
+        alert(response.message || 'Failed to add sub-series')
+      }
+    } catch (err) {
+      alert('Failed to add sub-series')
+    } finally {
+      setLoading(false)
+      onLoadingChange?.(false)
+    }
+  }
+
+  const handleToggleActive = async (subSeries) => {
+    setLoading(true)
+    onLoadingChange?.(true)
+    try {
+      const response = await updateSubSeries(series._id, subSeries._id, { active: !subSeries.active })
+      if (response.success !== false) {
+        onRefresh()
+      } else {
+        alert(response.message || 'Failed to update sub-series')
+      }
+    } catch (err) {
+      alert('Failed to update sub-series')
+    } finally {
+      setLoading(false)
+      onLoadingChange?.(false)
+    }
+  }
+
+  const handleDeleteSubSeries = async (subSeries) => {
+    if (!confirm(`Delete sub-series "${subSeries.code} - ${subSeries.name}"?`)) return
+    setLoading(true)
+    onLoadingChange?.(true)
+    try {
+      const response = await deleteSubSeries(series._id, subSeries._id)
+      if (response.success !== false) {
+        onRefresh()
+      } else {
+        alert(response.message || 'Failed to delete sub-series')
+      }
+    } catch (err) {
+      alert('Failed to delete sub-series')
+    } finally {
+      setLoading(false)
+      onLoadingChange?.(false)
+    }
+  }
+
+  const subSeriesCount = series.subSeries?.length || 0
+
+  return (
+    <div className="mt-2">
+      {/* Expand/Collapse Button */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+      >
+        {expanded ? (
+          <>
+            <ChevronUp className="w-4 h-4" />
+            <span>Hide Sub-Series ({subSeriesCount})</span>
+          </>
+        ) : (
+          <>
+            <ChevronDown className="w-4 h-4" />
+            <span>Show Sub-Series ({subSeriesCount})</span>
+          </>
+        )}
+      </button>
+
+      {/* Sub-Series List */}
+      {expanded && (
+        <div className="mt-2 pl-4 border-l-2 border-gray-200">
+          <div className="flex flex-wrap gap-2 mb-2">
+            {series.subSeries?.map((sub) => (
+              <div
+                key={sub._id}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
+                  sub.active ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-gray-100 text-gray-500 border border-gray-200'
+                }`}
+              >
+                <span className="bg-white px-1.5 py-0.5 rounded font-mono font-bold">{sub.code}</span>
+                <span>{sub.name}</span>
+                <button
+                  onClick={() => handleToggleActive(sub)}
+                  className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                    sub.active ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-400 text-white hover:bg-gray-500'
+                  }`}
+                  title={sub.active ? 'Deactivate' : 'Activate'}
+                >
+                  {sub.active ? 'ON' : 'OFF'}
+                </button>
+                <button
+                  onClick={() => handleDeleteSubSeries(sub)}
+                  className="p-0.5 hover:bg-red-100 rounded text-red-500"
+                  title="Delete"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            {(!series.subSeries || series.subSeries.length === 0) && (
+              <span className="text-xs text-gray-400 italic">No sub-series added yet</span>
+            )}
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium"
+          >
+            <Plus className="w-3 h-3" />
+            Add Sub-Series
+          </button>
+
+          {/* Add Sub-Series Modal */}
+          <Modal
+            isOpen={showAddModal}
+            onClose={() => setShowAddModal(false)}
+            title="Add Sub-Series"
+          >
+            <SubSeriesForm
+              onSubmit={handleAddSubSeries}
+              onCancel={() => setShowAddModal(false)}
+              loading={loading}
+              nextCode={nextCode}
+            />
+          </Modal>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -240,11 +437,8 @@ export default function Series() {
     }
   }
 
-  if (loading && currentPage === 1) {
-    return <div className="flex items-center justify-center h-64"><Loader className="w-8 h-8 animate-spin text-gray-400" /></div>
-  }
-
-  if (error) {
+  // Only show full error state if we have no series at all
+  if (error && seriesList.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
@@ -259,7 +453,7 @@ export default function Series() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Series</h1>
-          <p className="text-gray-500 mt-1">Manage series linked to categories</p>
+          <p className="text-gray-500 mt-1">Manage series and sub-series linked to categories</p>
         </div>
         <button
           onClick={() => { setSelectedSeries(null); setShowModal(true) }}
@@ -313,6 +507,7 @@ export default function Series() {
                   <tr>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Name</th>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Category</th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Sub-Series</th>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Created</th>
                     <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
@@ -326,6 +521,13 @@ export default function Series() {
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-gray-600">{series.category?.name || '-'}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <SubSeriesList
+                          series={series}
+                          onRefresh={() => fetchSeries(currentPage)}
+                          onLoadingChange={setFormLoading}
+                        />
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 text-xs rounded-full ${series.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>

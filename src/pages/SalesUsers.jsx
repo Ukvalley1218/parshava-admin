@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Eye, EyeOff, ChevronDown, Check, X, Loader2, Plus, Search, Edit2, Trash2, Loader, AlertCircle,
   MoreVertical, User, Mail, Phone, CheckCircle, XCircle
 } from 'lucide-react'
@@ -149,13 +150,14 @@ function BrandMultiSelect({ selectedBrands, onChange, disabled }) {
 function Modal({ isOpen, onClose, title, children }) {
   if (!isOpen) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-6" onClick={onClose}>
-      <div
-        className="bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn my-8"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="sticky top-0 bg-white flex items-center justify-between p-4 border-b border-gray-100 rounded-t-2xl z-10">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+      {/* Backdrop - covers entire screen including navbar */}
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+
+      {/* Modal Content */}
+      <div className="relative bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn mx-4 my-8 max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
           <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
           <button
             onClick={onClose}
@@ -164,11 +166,12 @@ function Modal({ isOpen, onClose, title, children }) {
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto">
+        <div className="overflow-y-auto flex-1">
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -588,15 +591,8 @@ export default function SalesUsers() {
     setShowDeleteModal(true)
   }
 
-  if (loading && currentPage === 1) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader className="w-8 h-8 animate-spin text-gray-400" />
-      </div>
-    )
-  }
-
-  if (error) {
+  // Only show full error state if we have no users at all
+  if (error && users.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <AlertCircle className="w-12 h-12 text-red-400 mb-4" />

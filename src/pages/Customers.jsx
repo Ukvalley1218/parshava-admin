@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import {
   Plus, Search, Edit2, Trash2, X, Loader, AlertCircle, Eye,
-  UserCircle, Mail, Phone, MapPin, Building, Globe, FileText, Tag, User, Upload
+  UserCircle, Mail, Phone, MapPin, Building, Globe, FileText, Tag, User, Upload, Camera, Users
 } from 'lucide-react'
-import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, uploadFile } from '../services/adminApi'
+import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, uploadFile, getCustomerContacts, createContact, updateContact, deleteContact, getContactDesignations } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 
 // Modal Component
@@ -27,6 +27,196 @@ function Modal({ isOpen, onClose, title, children, size = 'lg' }) {
         {children}
       </div>
     </div>
+  )
+}
+
+// Default designation options for contacts
+const DEFAULT_DESIGNATIONS = [
+  'Owner',
+  'Proprietor',
+  'Partner',
+  'Director',
+  'Manager',
+  'Purchase Manager',
+  'Sales Manager',
+  'Accountant',
+  'Staff'
+]
+
+// Contact Mini Form for adding/editing contacts within customer form
+function ContactMiniForm({ contact, onSave, onCancel, customerId, designations = [] }) {
+  const [formData, setFormData] = useState({
+    firstName: contact?.firstName || '',
+    middleName: contact?.middleName || '',
+    lastName: contact?.lastName || '',
+    designation: contact?.designation || '',
+    customDesignation: '',
+    mobile1: contact?.mobile1 || '',
+    mobile1WhatsApp: contact?.mobile1WhatsApp || false,
+    mobile2: contact?.mobile2 || '',
+    mobile2WhatsApp: contact?.mobile2WhatsApp || false,
+    mobile3: contact?.mobile3 || '',
+    mobile3WhatsApp: contact?.mobile3WhatsApp || false,
+    email: contact?.email || '',
+    isPrimary: contact?.isPrimary || false
+  })
+  const [showCustomDesignation, setShowCustomDesignation] = useState(false)
+
+  const allDesignations = [...new Set([...DEFAULT_DESIGNATIONS, ...designations])]
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    const fullName = [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(' ')
+    if (!formData.firstName && !fullName) {
+      alert('First name is required')
+      return
+    }
+    onSave({
+      ...formData,
+      name: fullName,
+      customer: customerId
+    })
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Name Fields */}
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">First Name *</label>
+          <input
+            type="text"
+            value={formData.firstName}
+            onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="First"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Middle</label>
+          <input
+            type="text"
+            value={formData.middleName}
+            onChange={(e) => setFormData(prev => ({ ...prev, middleName: e.target.value }))}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Middle"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Last</label>
+          <input
+            type="text"
+            value={formData.lastName}
+            onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Last"
+          />
+        </div>
+      </div>
+
+      {/* Designation */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Designation</label>
+        <select
+          value={showCustomDesignation ? 'Other' : formData.designation}
+          onChange={(e) => {
+            if (e.target.value === 'Other') {
+              setShowCustomDesignation(true)
+              setFormData(prev => ({ ...prev, designation: '' }))
+            } else {
+              setShowCustomDesignation(false)
+              setFormData(prev => ({ ...prev, designation: e.target.value }))
+            }
+          }}
+          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="">Select</option>
+          {allDesignations.map(d => <option key={d} value={d}>{d}</option>)}
+          <option value="Other">Other...</option>
+        </select>
+        {showCustomDesignation && (
+          <input
+            type="text"
+            value={formData.designation}
+            onChange={(e) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
+            className="w-full mt-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Enter designation"
+          />
+        )}
+      </div>
+
+      {/* Mobile Numbers */}
+      <div className="space-y-2">
+        <label className="block text-xs font-medium text-gray-600">Mobile Numbers</label>
+        {[1, 2, 3].map(num => (
+          <div key={num} className="flex items-center gap-2">
+            <div className="flex-1">
+              <div className="flex">
+                <span className="inline-flex items-center px-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-gray-600 text-xs">
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  value={formData[`mobile${num}`]}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    [`mobile${num}`]: e.target.value.replace(/\D/g, '').slice(0, 10)
+                  }))}
+                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-r-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder={`Mobile ${num}`}
+                  maxLength={10}
+                />
+              </div>
+            </div>
+            <label className="flex items-center gap-1 whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={formData[`mobile${num}WhatsApp`]}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  [`mobile${num}WhatsApp`]: e.target.checked
+                }))}
+                className="w-3 h-3 text-green-600 rounded"
+              />
+              <span className="text-xs text-green-600">WA</span>
+            </label>
+          </div>
+        ))}
+      </div>
+
+      {/* Email */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+        <input
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+          placeholder="email@example.com"
+        />
+      </div>
+
+      {/* Primary Contact */}
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={formData.isPrimary}
+          onChange={(e) => setFormData(prev => ({ ...prev, isPrimary: e.target.checked }))}
+          className="w-4 h-4 text-blue-600 rounded"
+        />
+        <span className="text-sm text-gray-700">Set as Primary Contact</span>
+      </label>
+
+      {/* Actions */}
+      <div className="flex gap-2 pt-2">
+        <button type="button" onClick={onCancel} className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
+          Cancel
+        </button>
+        <button type="submit" className="flex-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          {contact ? 'Update' : 'Add'} Contact
+        </button>
+      </div>
+    </form>
   )
 }
 
@@ -83,6 +273,75 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
 
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
+
+  // Contacts state
+  const [contacts, setContacts] = useState([])
+  const [editingContact, setEditingContact] = useState(null)
+  const [showContactForm, setShowContactForm] = useState(false)
+  const [designations, setDesignations] = useState([])
+  const [loadingContacts, setLoadingContacts] = useState(false)
+
+  // Fetch contacts when editing an existing customer
+  useEffect(() => {
+    if (customer?._id) {
+      const fetchContacts = async () => {
+        setLoadingContacts(true)
+        try {
+          const response = await getCustomerContacts(customer._id)
+          if (response.success && response.data) {
+            setContacts(response.data)
+          }
+        } catch (err) {
+          console.error('Failed to fetch contacts:', err)
+        } finally {
+          setLoadingContacts(false)
+        }
+      }
+      fetchContacts()
+    }
+  }, [customer?._id])
+
+  // Fetch designations
+  useEffect(() => {
+    const fetchDesignations = async () => {
+      try {
+        const response = await getContactDesignations()
+        if (response.success && response.data) {
+          setDesignations(response.data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch designations:', err)
+      }
+    }
+    fetchDesignations()
+  }, [])
+
+  // Handle contact add/edit
+  const handleSaveContact = (contactData) => {
+    if (editingContact) {
+      // Update existing contact
+      setContacts(prev => prev.map(c => c._id === editingContact._id ? { ...contactData, _id: editingContact._id } : { ...contactData, _id: editingContact._id || `temp_${Date.now()}` }))
+    } else {
+      // Add new contact
+      setContacts(prev => [...prev, { ...contactData, _id: `temp_${Date.now()}` }])
+    }
+    setShowContactForm(false)
+    setEditingContact(null)
+  }
+
+  const handleEditContact = (contact) => {
+    setEditingContact(contact)
+    setShowContactForm(true)
+  }
+
+  const handleDeleteContact = (contactId) => {
+    setContacts(prev => prev.filter(c => c._id !== contactId))
+  }
+
+  const handleAddContact = () => {
+    setEditingContact(null)
+    setShowContactForm(true)
+  }
 
   // Document types for upload
   const documentTypes = [
@@ -321,7 +580,8 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
       return
     }
 
-    onSubmit(formData)
+    // Submit with contacts
+    onSubmit({ ...formData, contacts })
   }
 
   return (
@@ -422,6 +682,113 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
             />
           </div>
         </div>
+      </div>
+
+      {/* Contact Persons Section */}
+      <div className="border-b border-gray-100 pb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Contact Persons</h4>
+          <button
+            type="button"
+            onClick={handleAddContact}
+            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+          >
+            <Plus className="w-4 h-4" />
+            Add Contact
+          </button>
+        </div>
+
+        {/* Contact Form Modal */}
+        {showContactForm && (
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <h5 className="font-medium text-gray-900">{editingContact ? 'Edit Contact' : 'Add Contact'}</h5>
+              <button
+                type="button"
+                onClick={() => { setShowContactForm(false); setEditingContact(null) }}
+                className="p-1 hover:bg-gray-200 rounded"
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+            <ContactMiniForm
+              contact={editingContact}
+              onSave={handleSaveContact}
+              onCancel={() => { setShowContactForm(false); setEditingContact(null) }}
+              customerId={customer?._id}
+              designations={designations}
+            />
+          </div>
+        )}
+
+        {/* Contacts List */}
+        {loadingContacts ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader className="w-5 h-5 animate-spin text-gray-400" />
+          </div>
+        ) : contacts.length > 0 ? (
+          <div className="space-y-2">
+            {contacts.map((contact, index) => {
+              const fullName = [contact.firstName, contact.middleName, contact.lastName].filter(Boolean).join(' ') || contact.name
+              return (
+                <div
+                  key={contact._id || index}
+                  className={`p-3 rounded-lg border ${contact.isPrimary ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-900">{fullName}</p>
+                        {contact.isPrimary && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500 text-white">
+                            Primary
+                          </span>
+                        )}
+                      </div>
+                      {contact.designation && (
+                        <p className="text-xs text-gray-500">{contact.designation}</p>
+                      )}
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {contact.mobile1 && (
+                          <span className="text-xs text-gray-600 flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            {contact.mobile1}
+                            {contact.mobile1WhatsApp && (
+                              <span className="text-[10px] text-green-600 bg-green-50 px-1 rounded">WA</span>
+                            )}
+                          </span>
+                        )}
+                        {contact.email && (
+                          <span className="text-xs text-gray-500">{contact.email}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleEditContact(contact)}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-gray-500" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteContact(contact._id)}
+                        className="p-1 hover:bg-red-50 rounded"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500 text-center py-4">No contacts added yet</p>
+        )}
       </div>
 
       {/* Address Section */}
@@ -1421,6 +1788,21 @@ export default function Customers() {
     try {
       const response = await createAdminCustomer(data)
       if (response.success) {
+        // Create contacts if any
+        if (data.contacts && data.contacts.length > 0 && response.data?._id) {
+          const customerId = response.data._id
+          for (const contactData of data.contacts) {
+            try {
+              await createContact({
+                ...contactData,
+                customer: customerId,
+                firmName: response.data.firmName || response.data.name
+              })
+            } catch (err) {
+              console.error('Failed to create contact:', err)
+            }
+          }
+        }
         // Refresh the current page
         fetchCustomers(currentPage)
         setShowModal(false)
@@ -1440,6 +1822,31 @@ export default function Customers() {
     try {
       const response = await updateAdminCustomer(selectedCustomer._id, data)
       if (response.success) {
+        // Sync contacts
+        if (data.contacts && data.contacts.length > 0) {
+          const customerId = selectedCustomer._id
+          for (const contactData of data.contacts) {
+            try {
+              if (contactData._id && !contactData._id.startsWith('temp_')) {
+                // Update existing contact
+                await updateContact(contactData._id, {
+                  ...contactData,
+                  customer: customerId,
+                  firmName: response.data.firmName || response.data.name
+                })
+              } else {
+                // Create new contact
+                await createContact({
+                  ...contactData,
+                  customer: customerId,
+                  firmName: response.data.firmName || response.data.name
+                })
+              }
+            } catch (err) {
+              console.error('Failed to sync contact:', err)
+            }
+          }
+        }
         setCustomers((prev) =>
           prev.map((c) => (c._id === selectedCustomer._id ? response.data : c))
         )
@@ -1479,15 +1886,8 @@ export default function Customers() {
     }
   }
 
-  if (loading && currentPage === 1) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader className="w-8 h-8 animate-spin text-gray-400" />
-      </div>
-    )
-  }
-
-  if (error) {
+  // Only show full error state if we have no customers at all
+  if (error && customers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <AlertCircle className="w-12 h-12 text-red-400 mb-4" />

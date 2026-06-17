@@ -1,10 +1,506 @@
-import { useState, useEffect } from 'react'
+
+
+
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Plus, Search, Edit2, Trash2, X, Loader, AlertCircle, Eye,
-  UserCircle, Mail, Phone, MapPin, Building, Globe, FileText, Tag, User, Upload
+  UserCircle, Mail, Phone, MapPin, Building, Globe, FileText, Tag, User, Upload, Users, Camera
 } from 'lucide-react'
-import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, uploadFile, getBusinessCategories, getBrandCategoryList } from '../services/adminApi'
+import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, uploadFile, getBusinessCategories, getBrandCategoryList, getCustomerContacts, createContact, updateContact, deleteContact, getContactDesignations, uploadImage } from '../services/adminApi'
 import Pagination from '../components/Pagination'
+
+// Default designation options for contacts
+const DEFAULT_DESIGNATIONS = [
+  'Owner',
+  'Proprietor',
+  'Partner',
+  'Director',
+  'Manager',
+  'Purchase Manager',
+  'Sales Manager',
+  'Accountant',
+  'Staff'
+]
+
+// Contact Mini Form for adding/editing contacts within firm form
+function ContactMiniForm({ contact, onSave, onCancel, customerId, designations = [] }) {
+  const [formData, setFormData] = useState({
+    firstName: contact?.firstName || '',
+    middleName: contact?.middleName || '',
+    lastName: contact?.lastName || '',
+    designation: contact?.designation || '',
+    customDesignation: '',
+    landmark: contact?.landmark || '',
+    city: contact?.city || '',
+    mobile1: contact?.mobile1 || '',
+    mobile1WhatsApp: contact?.mobile1WhatsApp || false,
+    mobile2: contact?.mobile2 || '',
+    mobile2WhatsApp: contact?.mobile2WhatsApp || false,
+    mobile3: contact?.mobile3 || '',
+    mobile3WhatsApp: contact?.mobile3WhatsApp || false,
+    email: contact?.email || '',
+    photo: contact?.photo || '',
+    aadharCard: contact?.aadharCard || '',
+    panCard: contact?.panCard || '',
+    notes: contact?.notes || '',
+    isPrimary: contact?.isPrimary || false,
+    status: contact?.status || 'active'
+  })
+  const [showCustomDesignation, setShowCustomDesignation] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadingAadhar, setUploadingAadhar] = useState(false)
+  const [uploadingPan, setUploadingPan] = useState(false)
+  const fileInputRef = useRef(null)
+  const aadharInputRef = useRef(null)
+  const panInputRef = useRef(null)
+
+  useEffect(() => {
+    // Check if current designation is a custom one (not in default list)
+    if (formData.designation && !DEFAULT_DESIGNATIONS.includes(formData.designation) && formData.designation !== 'Other') {
+      setShowCustomDesignation(true)
+    }
+  }, [])
+
+  // Reset form when contact prop changes (for editing)
+  useEffect(() => {
+    if (contact) {
+      const isCustomDesignation = contact.designation && !DEFAULT_DESIGNATIONS.includes(contact.designation)
+      setFormData({
+        firstName: contact.firstName || '',
+        middleName: contact.middleName || '',
+        lastName: contact.lastName || '',
+        designation: contact.designation || '',
+        customDesignation: isCustomDesignation ? contact.designation : '',
+        landmark: contact.landmark || '',
+        city: contact.city || '',
+        mobile1: contact.mobile1 || '',
+        mobile1WhatsApp: contact.mobile1WhatsApp || false,
+        mobile2: contact.mobile2 || '',
+        mobile2WhatsApp: contact.mobile2WhatsApp || false,
+        mobile3: contact.mobile3 || '',
+        mobile3WhatsApp: contact.mobile3WhatsApp || false,
+        email: contact.email || '',
+        photo: contact.photo || '',
+        aadharCard: contact.aadharCard || '',
+        panCard: contact.panCard || '',
+        notes: contact.notes || '',
+        isPrimary: contact.isPrimary || false,
+        status: contact.status || 'active'
+      })
+      setShowCustomDesignation(isCustomDesignation)
+    }
+  }, [contact])
+
+  const allDesignations = [...new Set([...DEFAULT_DESIGNATIONS, ...designations])]
+
+  // Photo upload handler
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size should be less than 5MB')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const response = await uploadImage(file, 'contactPhoto')
+      if (response.success && response.data?.url) {
+        setFormData(prev => ({ ...prev, photo: response.data.url }))
+      } else {
+        alert(response.message || 'Failed to upload photo')
+      }
+    } catch (err) {
+      alert('Failed to upload photo')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  // Aadhar upload handler
+  const handleAadharUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      alert('Please select an image or PDF file')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size should be less than 5MB')
+      return
+    }
+
+    setUploadingAadhar(true)
+    try {
+      const response = await uploadImage(file, 'contactAadharCard')
+      if (response.success && response.data?.url) {
+        setFormData(prev => ({ ...prev, aadharCard: response.data.url }))
+      } else {
+        alert(response.message || 'Failed to upload Aadhar card')
+      }
+    } catch (err) {
+      alert('Failed to upload Aadhar card')
+    } finally {
+      setUploadingAadhar(false)
+    }
+  }
+
+  // PAN upload handler
+  const handlePanUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      alert('Please select an image or PDF file')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size should be less than 5MB')
+      return
+    }
+
+    setUploadingPan(true)
+    try {
+      const response = await uploadImage(file, 'contactPanCard')
+      if (response.success && response.data?.url) {
+        setFormData(prev => ({ ...prev, panCard: response.data.url }))
+      } else {
+        alert(response.message || 'Failed to upload PAN card')
+      }
+    } catch (err) {
+      alert('Failed to upload PAN card')
+    } finally {
+      setUploadingPan(false)
+    }
+  }
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    const fullName = [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(' ')
+    if (!formData.firstName && !fullName) {
+      alert('First name is required')
+      return
+    }
+    onSave({
+      ...formData,
+      name: fullName,
+      customer: customerId
+    })
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Photo Upload */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Photo</label>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            {formData.photo ? (
+              <img
+                src={formData.photo}
+                alt="Contact"
+                className="w-14 h-14 rounded-lg object-cover border border-gray-200"
+              />
+            ) : (
+              <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
+                <User className="w-6 h-6 text-gray-400" />
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-blue-600 transition-colors"
+              disabled={uploading}
+            >
+              <Camera className="w-3 h-3" />
+            </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoUpload}
+            className="hidden"
+          />
+          <div className="flex-1">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-xs text-blue-600 hover:text-blue-700"
+              disabled={uploading}
+            >
+              {uploading ? 'Uploading...' : 'Upload Photo'}
+            </button>
+            <p className="text-[10px] text-gray-400">Max 5MB, JPG/PNG</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Name Fields */}
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">First Name *</label>
+          <input
+            type="text"
+            value={formData.firstName}
+            onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="First"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Middle</label>
+          <input
+            type="text"
+            value={formData.middleName}
+            onChange={(e) => setFormData(prev => ({ ...prev, middleName: e.target.value }))}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Middle"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Last</label>
+          <input
+            type="text"
+            value={formData.lastName}
+            onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Last"
+          />
+        </div>
+      </div>
+
+      {/* Designation */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Designation</label>
+        <select
+          value={showCustomDesignation ? 'Other' : formData.designation}
+          onChange={(e) => {
+            const value = e.target.value
+            if (value === 'Other') {
+              setShowCustomDesignation(true)
+              setFormData(prev => ({ ...prev, designation: '', customDesignation: '' }))
+            } else {
+              setShowCustomDesignation(false)
+              setFormData(prev => ({ ...prev, designation: value, customDesignation: '' }))
+            }
+          }}
+          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="">Select</option>
+          {allDesignations.map(d => <option key={d} value={d}>{d}</option>)}
+          <option value="Other">Other...</option>
+        </select>
+        {showCustomDesignation && (
+          <input
+            type="text"
+            value={formData.customDesignation}
+            onChange={(e) => {
+              setFormData(prev => ({
+                ...prev,
+                customDesignation: e.target.value,
+                designation: e.target.value
+              }))
+            }}
+            className="w-full mt-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Enter designation"
+          />
+        )}
+      </div>
+
+      {/* Landmark & City */}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Landmark</label>
+          <input
+            type="text"
+            value={formData.landmark}
+            onChange={(e) => setFormData(prev => ({ ...prev, landmark: e.target.value }))}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Landmark"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">City</label>
+          <input
+            type="text"
+            value={formData.city}
+            onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="City"
+          />
+        </div>
+      </div>
+
+      {/* Mobile Numbers */}
+      <div className="space-y-2">
+        <label className="block text-xs font-medium text-gray-600">Mobile Numbers</label>
+        {[1, 2, 3].map(num => (
+          <div key={num} className="flex items-center gap-2">
+            <div className="flex-1">
+              <div className="flex">
+                <span className="inline-flex items-center px-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-gray-600 text-xs">
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  value={formData[`mobile${num}`]}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    [`mobile${num}`]: e.target.value.replace(/\D/g, '').slice(0, 10)
+                  }))}
+                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-r-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder={`Mobile ${num}`}
+                  maxLength={10}
+                />
+              </div>
+            </div>
+            <label className="flex items-center gap-1 whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={formData[`mobile${num}WhatsApp`]}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  [`mobile${num}WhatsApp`]: e.target.checked
+                }))}
+                className="w-3 h-3 text-green-600 rounded"
+              />
+              <span className="text-xs text-green-600">WA</span>
+            </label>
+          </div>
+        ))}
+      </div>
+
+      {/* Email */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+        <input
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+          placeholder="email@example.com"
+        />
+      </div>
+
+      {/* Aadhar & PAN Card Uploads */}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Aadhar Card</label>
+          <div className="flex items-center gap-2">
+            {formData.aadharCard && (
+              <a
+                href={formData.aadharCard}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-blue-600 hover:underline flex items-center gap-1"
+              >
+                <FileText className="w-3 h-3" />
+                View
+              </a>
+            )}
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                ref={aadharInputRef}
+                accept="image/*,.pdf"
+                onChange={handleAadharUpload}
+                className="hidden"
+              />
+              <span className={`text-[10px] px-2 py-1 rounded border ${uploadingAadhar ? 'text-gray-400 border-gray-300' : 'text-blue-600 border-blue-600 hover:bg-blue-50'}`}>
+                {uploadingAadhar ? 'Uploading...' : formData.aadharCard ? 'Change' : 'Upload'}
+              </span>
+            </label>
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">PAN Card</label>
+          <div className="flex items-center gap-2">
+            {formData.panCard && (
+              <a
+                href={formData.panCard}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-blue-600 hover:underline flex items-center gap-1"
+              >
+                <FileText className="w-3 h-3" />
+                View
+              </a>
+            )}
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                ref={panInputRef}
+                accept="image/*,.pdf"
+                onChange={handlePanUpload}
+                className="hidden"
+              />
+              <span className={`text-[10px] px-2 py-1 rounded border ${uploadingPan ? 'text-gray-400 border-gray-300' : 'text-blue-600 border-blue-600 hover:bg-blue-50'}`}>
+                {uploadingPan ? 'Uploading...' : formData.panCard ? 'Change' : 'Upload'}
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+        <textarea
+          value={formData.notes}
+          onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+          placeholder="Internal notes"
+          rows={2}
+        />
+      </div>
+
+      {/* Status & Primary Contact */}
+      <div className="flex flex-wrap gap-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+          <select
+            value={formData.status}
+            onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer self-end">
+          <input
+            type="checkbox"
+            checked={formData.isPrimary}
+            onChange={(e) => setFormData(prev => ({ ...prev, isPrimary: e.target.checked }))}
+            className="w-4 h-4 text-blue-600 rounded"
+          />
+          <span className="text-sm text-gray-700">Primary Contact</span>
+        </label>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2 pt-2">
+        <button type="button" onClick={onCancel} className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
+          Cancel
+        </button>
+        <button type="submit" className="flex-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          {contact ? 'Update' : 'Add'} Contact
+        </button>
+      </div>
+    </form>
+  )
+}
 
 // Modal Component
 function Modal({ isOpen, onClose, title, children, size = 'lg' }) {
@@ -89,6 +585,111 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
 
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
+
+  // Contacts state
+  const [contacts, setContacts] = useState([])
+  const [designations, setDesignations] = useState([])
+  const [showContactForm, setShowContactForm] = useState(false)
+  const [editingContact, setEditingContact] = useState(null)
+  const [loadingContacts, setLoadingContacts] = useState(false)
+
+  // Load contacts when editing
+  useEffect(() => {
+    if (customer?._id) {
+      loadContacts(customer._id)
+    }
+  }, [customer?._id])
+
+  // Load designations
+  useEffect(() => {
+    loadDesignations()
+  }, [])
+
+  const loadContacts = async (customerId) => {
+    try {
+      setLoadingContacts(true)
+      const response = await getCustomerContacts(customerId)
+      if (response.success && response.data) {
+        setContacts(response.data)
+      }
+    } catch (error) {
+      console.error('Error loading contacts:', error)
+    } finally {
+      setLoadingContacts(false)
+    }
+  }
+
+  const loadDesignations = async () => {
+    try {
+      const response = await getContactDesignations()
+      if (response.success && response.data) {
+        setDesignations(response.data)
+      }
+    } catch (error) {
+      console.error('Error loading designations:', error)
+    }
+  }
+
+  const handleAddContact = () => {
+    setEditingContact(null)
+    setShowContactForm(true)
+  }
+
+  const handleEditContact = (contact) => {
+    setEditingContact(contact)
+    setShowContactForm(true)
+  }
+
+  const handleDeleteContact = async (contactId) => {
+    if (!confirm('Are you sure you want to delete this contact?')) return
+    try {
+      await deleteContact(contactId)
+      setContacts(contacts.filter(c => c._id !== contactId))
+    } catch (error) {
+      console.error('Error deleting contact:', error)
+      alert('Failed to delete contact')
+    }
+  }
+
+  const handleSaveContact = async (contactData) => {
+    try {
+      let response
+      if (editingContact?._id) {
+        response = await updateContact(editingContact._id, contactData)
+      } else {
+        // For new contacts, we need the customer ID
+        if (customer?._id) {
+          response = await createContact({ ...contactData, customer: customer._id })
+        } else {
+          // For new firms, store temporarily
+          const tempId = 'temp_' + Date.now()
+          setContacts(prev => [...prev, { ...contactData, _id: tempId, isNew: true }])
+          setShowContactForm(false)
+          setEditingContact(null)
+          return
+        }
+      }
+
+      if (response.success) {
+        // Refresh contacts
+        if (customer?._id) {
+          await loadContacts(customer._id)
+        }
+        setShowContactForm(false)
+        setEditingContact(null)
+      } else {
+        alert(response.message || 'Failed to save contact')
+      }
+    } catch (error) {
+      console.error('Error saving contact:', error)
+      alert('Failed to save contact')
+    }
+  }
+
+  // Get contacts to submit with firm
+  const getContactsToSubmit = () => {
+    return contacts.filter(c => c.isNew || c._id?.toString().startsWith('temp_'))
+  }
 
   // Document types for upload
   const documentTypes = [
@@ -407,7 +1008,8 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
       return
     }
 
-    onSubmit(formData)
+    // Pass formData and new contacts to parent
+    onSubmit(formData, contacts.filter(c => c.isNew || c._id?.toString().startsWith('temp_')))
   }
 
   return (
@@ -515,6 +1117,141 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
               placeholder="Owner / Manager / Proprietor"
             />
           </div>
+        </div>
+
+        {/* Contact Persons Section */}
+        <div className="mt-4 border border-gray-200 rounded-lg p-3 bg-gray-50">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">Contact Persons</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddContact}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <Plus className="w-3 h-3" />
+              Add Contact
+            </button>
+          </div>
+
+          {/* Existing Contacts List */}
+          {loadingContacts ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader className="w-5 h-5 animate-spin text-gray-400" />
+            </div>
+          ) : contacts.length > 0 ? (
+            <div className="space-y-2">
+              {contacts.map((contact, index) => {
+                const contactName = [contact.firstName, contact.middleName, contact.lastName].filter(Boolean).join(' ') || contact.name
+                return (
+                  <div key={contact._id || index} className="bg-white rounded-lg p-3 border border-gray-200">
+                    <div className="flex items-start gap-2">
+                      {/* Photo */}
+                      <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-[#1F3A5F] flex items-center justify-center">
+                        {contact.photo ? (
+                          <img src={contact.photo} alt={contactName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-white font-medium text-xs">{contactName?.charAt(0)?.toUpperCase() || 'C'}</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-gray-900 text-sm">{contactName}</span>
+                          {contact.isPrimary && (
+                            <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">Primary</span>
+                          )}
+                          {contact.status === 'inactive' && (
+                            <span className="px-1.5 py-0.5 text-xs bg-gray-200 text-gray-600 rounded">Inactive</span>
+                          )}
+                          {contact.designation && (
+                            <span className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">{contact.designation}</span>
+                          )}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500 space-y-0.5">
+                          {contact.mobile1 && (
+                            <div className="flex items-center gap-1">
+                              <Phone className="w-3 h-3" />
+                              <span>+91 {contact.mobile1}</span>
+                              {contact.mobile1WhatsApp && <span className="text-green-600">(WhatsApp)</span>}
+                            </div>
+                          )}
+                          {contact.email && (
+                            <div className="flex items-center gap-1">
+                              <Mail className="w-3 h-3" />
+                              <span>{contact.email}</span>
+                            </div>
+                          )}
+                          {(contact.city || contact.landmark) && (
+                            <div className="text-gray-400">
+                              {[contact.landmark, contact.city].filter(Boolean).join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleEditContact(contact)}
+                          className="p-1 text-gray-400 hover:text-blue-600"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteContact(contact._id)}
+                          className="p-1 text-gray-400 hover:text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-gray-500 text-sm">
+              No contacts added yet. Click "Add Contact" to add one.
+            </div>
+          )}
+
+          {/* Contact Form Modal - Rendered using Portal to escape parent modal */}
+          {showContactForm && createPortal(
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={() => { setShowContactForm(false); setEditingContact(null); }}>
+              <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h4 className="font-medium text-gray-900">
+                    {editingContact ? 'Edit Contact' : 'Add Contact'}
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowContactForm(false)
+                      setEditingContact(null)
+                    }}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+                <div className="p-4">
+                  <ContactMiniForm
+                    contact={editingContact}
+                    onSave={handleSaveContact}
+                    onCancel={() => {
+                      setShowContactForm(false)
+                      setEditingContact(null)
+                    }}
+                    customerId={customer?._id}
+                    designations={designations}
+                  />
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
         </div>
       </div>
 
@@ -1211,6 +1948,92 @@ function DeleteModal({ customer, onConfirm, onCancel, loading }) {
 
 // Firm View Modal - Display all firm details
 function CustomerViewModal({ customer, onClose }) {
+  const [contacts, setContacts] = useState([])
+  const [loadingContacts, setLoadingContacts] = useState(false)
+  const [showContactForm, setShowContactForm] = useState(false)
+  const [editingContact, setEditingContact] = useState(null)
+  const [designations, setDesignations] = useState([])
+
+  // Fetch contacts when customer changes
+  useEffect(() => {
+    if (customer?._id) {
+      fetchContacts(customer._id)
+    }
+  }, [customer?._id])
+
+  // Load designations
+  useEffect(() => {
+    loadDesignations()
+  }, [])
+
+  const loadDesignations = async () => {
+    try {
+      const response = await getContactDesignations()
+      if (response.success && response.data) {
+        setDesignations(response.data)
+      }
+    } catch (error) {
+      console.error('Error loading designations:', error)
+    }
+  }
+
+  const fetchContacts = async (customerId) => {
+    try {
+      setLoadingContacts(true)
+      const response = await getCustomerContacts(customerId)
+      if (response.success && response.data) {
+        setContacts(response.data)
+      }
+    } catch (error) {
+      console.error('Error fetching contacts:', error)
+    } finally {
+      setLoadingContacts(false)
+    }
+  }
+
+  const handleAddContact = () => {
+    setEditingContact(null)
+    setShowContactForm(true)
+  }
+
+  const handleEditContact = (contact) => {
+    setEditingContact(contact)
+    setShowContactForm(true)
+  }
+
+  const handleDeleteContact = async (contactId) => {
+    if (!confirm('Are you sure you want to delete this contact?')) return
+    try {
+      await deleteContact(contactId)
+      setContacts(contacts.filter(c => c._id !== contactId))
+    } catch (error) {
+      console.error('Error deleting contact:', error)
+      alert('Failed to delete contact')
+    }
+  }
+
+  const handleSaveContact = async (contactData) => {
+    try {
+      let response
+      if (editingContact?._id) {
+        response = await updateContact(editingContact._id, contactData)
+      } else {
+        response = await createContact({ ...contactData, customer: customer._id })
+      }
+
+      if (response.success) {
+        await fetchContacts(customer._id)
+        setShowContactForm(false)
+        setEditingContact(null)
+      } else {
+        alert(response.message || 'Failed to save contact')
+      }
+    } catch (error) {
+      console.error('Error saving contact:', error)
+      alert('Failed to save contact')
+    }
+  }
+
   if (!customer) return null
 
   const documentTypes = [
@@ -1387,60 +2210,141 @@ function CustomerViewModal({ customer, onClose }) {
       </DetailSection>
 
       {/* Contact Persons */}
-      {customer.contactPersons && customer.contactPersons.length > 0 && (
-        <DetailSection title="Contact Persons">
+      <DetailSection title="Contact Persons">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Contact Persons</span>
+          <button
+            type="button"
+            onClick={handleAddContact}
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="w-3 h-3" />
+            Add
+          </button>
+        </div>
+        {loadingContacts ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader className="w-5 h-5 animate-spin text-gray-400" />
+          </div>
+        ) : contacts.length > 0 ? (
           <div className="space-y-3">
-            {customer.contactPersons.map((contact, index) => (
-              <div key={contact._id || index} className={`p-3 rounded-lg ${contact.isPrimary ? 'bg-blue-50 border border-blue-200' : 'bg-white border border-gray-200'}`}>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900">{contact.name}</p>
-                      {contact.isPrimary && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500 text-white">
-                          Primary
-                        </span>
+            {contacts.map((contact, index) => {
+              const contactName = [contact.firstName, contact.middleName, contact.lastName].filter(Boolean).join(' ') || contact.name
+              return (
+                <div key={contact._id || index} className={`p-3 rounded-lg ${contact.isPrimary ? 'bg-blue-50 border border-blue-200' : 'bg-white border border-gray-200'}`}>
+                  <div className="flex items-start gap-3">
+                    {/* Photo */}
+                    <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden bg-[#1F3A5F] flex items-center justify-center">
+                      {contact.photo ? (
+                        <img src={contact.photo} alt={contactName} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-white font-semibold text-sm">{contactName?.charAt(0)?.toUpperCase() || 'C'}</span>
                       )}
                     </div>
-                    {contact.designation && (
-                      <p className="text-xs text-gray-500">{contact.designation}</p>
-                    )}
-                    {contact.mobile && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <Phone className="w-3 h-3 text-gray-400" />
-                        <a href={`tel:${contact.mobile}`} className="text-sm text-gray-600 hover:text-blue-600">
-                          {contact.mobile}
-                        </a>
-                        {contact.isWhatsApp && (
-                          <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-gray-900">{contactName}</p>
+                        {contact.isPrimary && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500 text-white">
+                            Primary
+                          </span>
+                        )}
+                        {contact.status === 'inactive' && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">
+                            Inactive
+                          </span>
                         )}
                       </div>
-                    )}
-                    {contact.email && (
-                      <p className="text-xs text-gray-500 mt-1">{contact.email}</p>
-                    )}
-                  </div>
-                  {contact.mobile && (
-                    <div className="flex gap-1">
-                      <a
-                        href={`https://wa.me/${contact.mobile.replace(/[\s+-]/g, '').replace(/^0+/, '91')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 rounded-lg bg-green-500 hover:bg-green-600 transition-colors"
-                        title="WhatsApp"
-                      >
-                        <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.298-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.558 9.558 0 01-4.877-1.352l-.349-.21-3.615.947.964-3.52-.226-.357a9.57 9.57 0 01-1.467-5.109c0-5.281 4.303-9.572 9.594-9.572 2.577 0 5.001 1.006 6.821 2.836a9.556 9.556 0 012.806 6.821c-.002 5.281-4.306 9.572-9.594 9.572M21.884 6.5c-2.485-2.485-5.787-3.854-9.304-3.854-7.262 0-13.163 5.901-13.166 13.162 0 2.321.605 4.583 1.755 6.573L.268 24l3.502-.92a13.157 13.157 0 006.291 1.602h.005c7.26 0 13.162-5.901 13.165-13.163 0-3.515-1.37-6.831-3.855-9.318"/>
-                        </svg>
-                      </a>
+                      {contact.designation && (
+                        <p className="text-xs text-gray-500">{contact.designation}</p>
+                      )}
+                      {(contact.city || contact.landmark) && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {[contact.landmark, contact.city].filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                      <div className="mt-1 space-y-0.5">
+                        {contact.mobile1 && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-3 h-3 text-gray-400" />
+                            <a href={`tel:+91${contact.mobile1}`} className="text-sm text-gray-600 hover:text-blue-600">
+                              +91 {contact.mobile1}
+                            </a>
+                            {contact.mobile1WhatsApp && (
+                              <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                            )}
+                          </div>
+                        )}
+                        {contact.mobile2 && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-3 h-3 text-gray-400" />
+                            <a href={`tel:+91${contact.mobile2}`} className="text-sm text-gray-600 hover:text-blue-600">
+                              +91 {contact.mobile2}
+                            </a>
+                            {contact.mobile2WhatsApp && (
+                              <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                            )}
+                          </div>
+                        )}
+                        {contact.mobile3 && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-3 h-3 text-gray-400" />
+                            <a href={`tel:+91${contact.mobile3}`} className="text-sm text-gray-600 hover:text-blue-600">
+                              +91 {contact.mobile3}
+                            </a>
+                            {contact.mobile3WhatsApp && (
+                              <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                            )}
+                          </div>
+                        )}
+                        {contact.email && (
+                          <p className="text-xs text-gray-500">{contact.email}</p>
+                        )}
+                      </div>
+                      {contact.notes && (
+                        <p className="text-xs text-gray-400 mt-1 italic">"{contact.notes}"</p>
+                      )}
                     </div>
-                  )}
+                    <div className="flex flex-col gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleEditContact(contact)}
+                        className="p-1 text-gray-400 hover:text-blue-600"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteContact(contact._id)}
+                        className="p-1 text-gray-400 hover:text-red-600"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      {contact.mobile1 && (
+                        <a
+                          href={`https://wa.me/91${contact.mobile1}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 text-green-500 hover:text-green-600"
+                          title="WhatsApp"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.298-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.558 9.558 0 01-4.877-1.352l-.349-.21-3.615.947.964-3.52-.226-.357a9.57 9.57 0 01-1.467-5.109c0-5.281 4.303-9.572 9.594-9.572 2.577 0 5.001 1.006 6.821 2.836a9.556 9.556 0 012.806 6.821c-.002 5.281-4.306 9.572-9.594 9.572M21.884 6.5c-2.485-2.485-5.787-3.854-9.304-3.854-7.262 0-13.163 5.901-13.166 13.162 0 2.321.605 4.583 1.755 6.573L.268 24l3.502-.92a13.157 13.157 0 006.291 1.602h.005c7.26 0 13.162-5.901 13.165-13.163 0-3.515-1.37-6.831-3.855-9.318"/>
+                          </svg>
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
-        </DetailSection>
-      )}
+        ) : (
+          <p className="text-sm text-gray-500 text-center py-2">No contact persons added</p>
+        )}
+      </DetailSection>
 
       {/* Address */}
       <DetailSection title="Address">
@@ -1556,6 +2460,42 @@ function CustomerViewModal({ customer, onClose }) {
       <div className="pt-3">
         <button onClick={onClose} className="btn-secondary w-full">Close</button>
       </div>
+
+      {/* Contact Form Modal */}
+      {showContactForm && createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={() => { setShowContactForm(false); setEditingContact(null); }}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b">
+              <h4 className="font-medium text-gray-900">
+                {editingContact ? 'Edit Contact' : 'Add Contact'}
+              </h4>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowContactForm(false)
+                  setEditingContact(null)
+                }}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-4">
+              <ContactMiniForm
+                contact={editingContact}
+                onSave={handleSaveContact}
+                onCancel={() => {
+                  setShowContactForm(false)
+                  setEditingContact(null)
+                }}
+                customerId={customer?._id}
+                designations={designations}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
@@ -1654,11 +2594,26 @@ export default function Firms() {
     )
   })
 
-  const handleCreate = async (data) => {
+  const handleCreate = async (data, newContacts = []) => {
     setFormLoading(true)
     try {
       const response = await createAdminCustomer(data)
       if (response.success) {
+        const customerId = response.data?._id
+        // Create contacts for the new customer
+        if (customerId && newContacts.length > 0) {
+          for (const contact of newContacts) {
+            try {
+              await createContact({
+                ...contact,
+                customer: customerId,
+                name: [contact.firstName, contact.middleName, contact.lastName].filter(Boolean).join(' ')
+              })
+            } catch (err) {
+              console.error('Failed to create contact:', err)
+            }
+          }
+        }
         // Refresh the current page
         fetchCustomers(currentPage)
         setShowModal(false)
@@ -1673,11 +2628,25 @@ export default function Firms() {
     }
   }
 
-  const handleUpdate = async (data) => {
+  const handleUpdate = async (data, newContacts = []) => {
     setFormLoading(true)
     try {
       const response = await updateAdminCustomer(selectedCustomer._id, data)
       if (response.success) {
+        // Create new contacts for the existing customer
+        if (newContacts.length > 0) {
+          for (const contact of newContacts) {
+            try {
+              await createContact({
+                ...contact,
+                customer: selectedCustomer._id,
+                name: [contact.firstName, contact.middleName, contact.lastName].filter(Boolean).join(' ')
+              })
+            } catch (err) {
+              console.error('Failed to create contact:', err)
+            }
+          }
+        }
         setCustomers((prev) =>
           prev.map((c) => (c._id === selectedCustomer._id ? response.data : c))
         )
@@ -1717,20 +2686,13 @@ export default function Firms() {
     }
   }
 
-  if (loading && currentPage === 1) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader className="w-8 h-8 animate-spin text-gray-400" />
-      </div>
-    )
-  }
-
-  if (error) {
+  // Only show full error state if we have no firms at all
+  if (error && firms.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
         <p className="text-gray-600 mb-4">{error}</p>
-        <button onClick={() => fetchCustomers(1)} className="btn-primary">Retry</button>
+        <button onClick={() => fetchFirms(1)} className="btn-primary">Retry</button>
       </div>
     )
   }

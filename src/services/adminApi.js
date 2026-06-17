@@ -95,6 +95,25 @@ export const uploadCustomerFiles = async (files) => {
   return response.json()
 }
 
+// Generic image upload function
+export const uploadImage = async (file, field = 'image') => {
+  const formData = new FormData()
+  formData.append(field, file)
+
+  const token = localStorage.getItem('admin_token')
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://parshava-backend.onrender.com/api'
+
+  const response = await fetch(`${baseUrl}/upload/single/${field}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: formData
+  })
+
+  return response.json()
+}
+
 // ============================================
 // CUSTOMERS API
 // ============================================
@@ -357,6 +376,19 @@ export const deleteSeries = async (id) => {
   return del(`/series/${id}`)
 }
 
+// Sub-Series API
+export const addSubSeries = async (seriesId, data) => {
+  return post(`/series/${seriesId}/subseries`, data)
+}
+
+export const updateSubSeries = async (seriesId, subSeriesId, data) => {
+  return put(`/series/${seriesId}/subseries/${subSeriesId}`, data)
+}
+
+export const deleteSubSeries = async (seriesId, subSeriesId) => {
+  return del(`/series/${seriesId}/subseries/${subSeriesId}`)
+}
+
 // ============================================
 // CONTACTS API
 // ============================================
@@ -378,6 +410,14 @@ export const updateContact = async (id, data) => {
 
 export const deleteContact = async (id) => {
   return del(`/admin/contacts/${id}`)
+}
+
+export const getContactDesignations = async () => {
+  return get('/admin/contacts/designations')
+}
+
+export const getCustomerContacts = async (customerId) => {
+  return get(`/admin/customers/${customerId}/contacts`)
 }
 
 // ============================================
@@ -508,12 +548,16 @@ export default {
   createSeries,
   updateSeries,
   deleteSeries,
+  addSubSeries,
+  updateSubSeries,
+  deleteSubSeries,
   // Contacts
   getContacts,
   getContactById,
   createContact,
   updateContact,
   deleteContact,
+  getContactDesignations,
   // Business Categories
   getBusinessCategories,
   getBusinessCategoryById,

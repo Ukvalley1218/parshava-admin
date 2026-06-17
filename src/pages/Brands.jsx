@@ -211,11 +211,8 @@ export default function Brands() {
     }
   }
 
-  if (loading && currentPage === 1) {
-    return <div className="flex items-center justify-center h-64"><Loader className="w-8 h-8 animate-spin text-gray-400" /></div>
-  }
-
-  if (error) {
+  // Only show full error state if we have no brands at all
+  if (error && brands.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <AlertCircle className="w-12 h-12 text-red-400 mb-4" />

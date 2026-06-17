@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
-import { Search, Plus, Edit2, Trash2, X, Loader, AlertCircle, Package, RefreshCw, Eye, Save, XCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { Search, Plus, Edit2, Trash2, X, Loader, AlertCircle, Package, RefreshCw, Eye, Save, XCircle, ChevronLeft, ChevronRight, Columns, Check } from 'lucide-react'
 import {
   getAdminProducts,
   createAdminProduct,
@@ -10,7 +11,12 @@ import {
   uploadFile,
   getCategories,
   getSubcategories,
-  getSeries
+  getSeries,
+  getSeriesById,
+  createBrand,
+  createCategory,
+  createSubcategory,
+  createSeries
 } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 import { getImageUrl } from '../utils/imageUtils'
@@ -43,6 +49,80 @@ function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   )
 }
 
+// Column Visibility Popup Component
+function ColumnVisibilityPopup({ visibleColumns, onToggle, onClose }) {
+  const allColumns = [
+    { key: 'stock', label: 'Stock', group: 'Basic' },
+    { key: 'mrp', label: 'MRP', group: 'Prices' },
+    { key: 'mop', label: 'MOP', group: 'Prices' },
+    { key: 'purchase', label: 'Purchase', group: 'Prices' },
+    { key: 'market', label: 'Market', group: 'Prices' },
+    { key: 'base', label: 'Base Type', group: 'Prices' },
+    { key: 'd1', label: 'D1', group: 'Discounts' },
+    { key: 'd2', label: 'D2', group: 'Discounts' },
+    { key: 'd3', label: 'D3', group: 'Discounts' },
+    { key: 'd4', label: 'D4', group: 'Discounts' },
+    { key: 'd5', label: 'D5', group: 'Discounts' },
+    { key: 'nlc', label: 'NLC', group: 'Results' },
+    { key: 'profit', label: 'Profit', group: 'Results' },
+    { key: 't1', label: 'T1', group: 'Tier Prices' },
+    { key: 't2', label: 'T2', group: 'Tier Prices' },
+    { key: 't3', label: 'T3', group: 'Tier Prices' },
+    { key: 't4', label: 'T4', group: 'Tier Prices' },
+  ]
+
+  const groups = [...new Set(allColumns.map(c => c.group))]
+
+  return (
+    <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50 w-64 max-h-[70vh] overflow-y-auto">
+      <div className="p-3 border-b border-gray-100 flex items-center justify-between">
+        <span className="font-medium text-sm text-gray-800">Show/Hide Columns</span>
+        <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+          <X className="w-4 h-4 text-gray-400" />
+        </button>
+      </div>
+      <div className="p-2">
+        {groups.map(group => (
+          <div key={group} className="mb-2">
+            <div className="text-[10px] font-semibold text-gray-400 uppercase px-2 mb-1">{group}</div>
+            {allColumns.filter(c => c.group === group).map(column => (
+              <label
+                key={column.key}
+                className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded cursor-pointer"
+              >
+                <div className={`w-4 h-4 rounded border flex items-center justify-center ${visibleColumns.includes(column.key) ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
+                  {visibleColumns.includes(column.key) && <Check className="w-3 h-3 text-white" />}
+                </div>
+                <input
+                  type="checkbox"
+                  checked={visibleColumns.includes(column.key)}
+                  onChange={() => onToggle(column.key)}
+                  className="hidden"
+                />
+                <span className="text-xs text-gray-700">{column.label}</span>
+              </label>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="p-2 border-t border-gray-100 flex gap-2">
+        <button
+          onClick={() => onToggle('all')}
+          className="flex-1 text-xs py-1.5 px-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
+        >
+          Show All
+        </button>
+        <button
+          onClick={() => onToggle('none')}
+          className="flex-1 text-xs py-1.5 px-2 bg-gray-50 text-gray-600 rounded hover:bg-gray-100"
+        >
+          Hide All
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Product View Modal
 function ProductViewModal({ product, onClose }) {
   if (!product) return null
@@ -52,6 +132,22 @@ function ProductViewModal({ product, onClose }) {
     if (!value) return '-'
     return type === 'percent' ? `${value}%` : `₹${Number(value).toLocaleString('en-IN')}`
   }
+
+  // Calculate GST amount for base price
+  const gstRate = parseFloat(product.gstRate) || 0
+  const getBasePriceWithGst = () => {
+    let basePriceWithoutGst = 0
+    if (product.basePriceType === 'mop') {
+      basePriceWithoutGst = parseFloat(product.mop) || 0
+    } else if (product.basePriceType === 'purchase') {
+      basePriceWithoutGst = parseFloat(product.purchasePrice) || 0
+    } else {
+      basePriceWithoutGst = parseFloat(product.marketPrice) || 0
+    }
+    return basePriceWithoutGst * (1 + gstRate / 100)
+  }
+
+  const basePriceWithGst = getBasePriceWithGst()
 
   return (
     <div className="p-3 sm:p-6">
@@ -68,7 +164,7 @@ function ProductViewModal({ product, onClose }) {
             <div><span className="text-gray-500">Series:</span><p className="font-medium">{product.series || '-'}</p></div>
             <div><span className="text-gray-500">Unit:</span><p className="font-medium">{product.unit || '-'}</p></div>
             <div><span className="text-gray-500">HSN Code:</span><p className="font-medium">{product.hsn || '-'}</p></div>
-            <div><span className="text-gray-500">GST Rate:</span><p className="font-medium">{product.gstRate || 0}%</p></div>
+            <div><span className="text-gray-500">GST Rate:</span><p className="font-medium text-blue-600">{product.gstRate || 0}%</p></div>
             <div><span className="text-gray-500">Density:</span><p className="font-medium">{product.density || 'Regular'}</p></div>
             <div><span className="text-gray-500">Stock:</span><p className="font-medium">{product.stock || 0}</p></div>
             <div><span className="text-gray-500">Box Size:</span><p className="font-medium">{product.boxSize || '-'}</p></div>
@@ -88,7 +184,7 @@ function ProductViewModal({ product, onClose }) {
 
           {/* Base Price */}
           <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
-            <h5 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Base Price</h5>
+            <h5 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Base Price (excl. GST)</h5>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 text-xs sm:text-sm">
               <div><span className="text-gray-500">Type:</span><p className="font-medium">{product.basePriceType === 'mop' ? 'MOP' : product.basePriceType === 'purchase' ? 'Purchase' : 'Market'}</p></div>
               <div><span className="text-gray-500">MRP:</span><p className="font-medium">{formatPrice(product.mrp)}</p></div>
@@ -96,11 +192,16 @@ function ProductViewModal({ product, onClose }) {
               <div><span className="text-gray-500">Purchase:</span><p className="font-medium">{formatPrice(product.purchasePrice)}</p></div>
               <div><span className="text-gray-500">Market:</span><p className="font-medium">{formatPrice(product.marketPrice)}</p></div>
             </div>
+            {gstRate > 0 && (
+              <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-green-600">
+                <span className="font-medium">Base with GST:</span> {formatPrice(basePriceWithGst.toFixed(2))} ({formatPrice(product.basePriceType === 'mop' ? product.mop : product.basePriceType === 'purchase' ? product.purchasePrice : product.marketPrice)} + {gstRate}% GST)
+              </div>
+            )}
           </div>
 
           {/* Discounts */}
           <div className="bg-gray-50 p-2 sm:p-3 rounded-lg overflow-x-auto">
-            <h5 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Discounts</h5>
+            <h5 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Discounts (Applied on GST-inclusive price)</h5>
             <div className="flex gap-2 sm:gap-3 text-xs sm:text-sm min-w-max">
               <div className="min-w-[50px]"><span className="text-gray-500 text-[10px] sm:text-xs">D1:</span><p className="font-medium">{formatDiscount(product.dis1, product.dis1Type)}</p></div>
               <div className="min-w-[50px]"><span className="text-gray-500 text-[10px] sm:text-xs">D2:</span><p className="font-medium">{formatDiscount(product.dis2, product.dis2Type)}</p></div>
@@ -114,8 +215,9 @@ function ProductViewModal({ product, onClose }) {
           <div className="bg-blue-50 p-2 sm:p-3 rounded-lg">
             <div className="grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
               <div>
-                <span className="text-gray-500">NLC:</span>
+                <span className="text-gray-500">NLC (After GST & Discounts):</span>
                 <p className="font-bold text-blue-700 text-sm sm:text-lg">{formatPrice(product.nlc)}</p>
+                {gstRate > 0 && <span className="text-[10px] text-blue-500">includes {gstRate}% GST</span>}
               </div>
               <div>
                 <span className="text-gray-500">Profit:</span>
@@ -169,13 +271,122 @@ function ProductViewModal({ product, onClose }) {
   )
 }
 
+// Quick Add Modal for Brands, Categories, Subcategories, Series
+function QuickAddModal({ isOpen, onClose, title, fields, onSubmit, loading }) {
+  const [formData, setFormData] = useState({})
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (isOpen) {
+      // Initialize form data with field default values
+      const initialData = {}
+      fields.forEach(field => {
+        initialData[field.name] = field.defaultValue || ''
+      })
+      setFormData(initialData)
+      setError('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]) // Only re-initialize when modal opens, not when fields change
+
+  const handleChange = (name, value) => {
+    setFormData(prev => ({ ...prev, [name]: value }))
+    setError('')
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    e.stopPropagation() // Prevent event from propagating to parent modal
+    // Validate required fields
+    for (const field of fields) {
+      if (field.required && !formData[field.name]?.trim()) {
+        setError(`${field.label} is required`)
+        return
+      }
+    }
+    try {
+      await onSubmit(formData)
+      onClose()
+    } catch (err) {
+      console.error('QuickAddModal error:', err)
+      setError(err.message || 'Failed to create')
+    }
+  }
+
+  if (!isOpen) return null
+
+  // Use portal to render outside parent modal's DOM hierarchy
+  return createPortal(
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" onClick={onClose}>
+      <div className="bg-white rounded-xl w-full max-w-md shadow-xl animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <h3 className="font-semibold text-gray-900">{title}</h3>
+          <button type="button" onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full">
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {fields.map(field => (
+            <div key={field.name}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {field.label} {field.required && <span className="text-red-500">*</span>}
+              </label>
+              {field.type === 'select' ? (
+                <select
+                  value={formData[field.name] || ''}
+                  onChange={(e) => handleChange(field.name, e.target.value)}
+                  className="input-field"
+                  required={field.required}
+                >
+                  <option value="">Select {field.label}</option>
+                  {field.options?.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={field.type || 'text'}
+                  value={formData[field.name] || ''}
+                  onChange={(e) => handleChange(field.name, e.target.value)}
+                  placeholder={field.placeholder}
+                  className="input-field"
+                  required={field.required}
+                />
+              )}
+            </div>
+          ))}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1" disabled={loading}>Cancel</button>
+            <button type="submit" className="btn-primary flex-1 flex items-center justify-center gap-2" disabled={loading}>
+              {loading && <Loader className="w-4 h-4 animate-spin" />}
+              Create
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // Product Form Component
-function ProductForm({ product, onSubmit, onCancel, loading, brands, categories: propCategories, subcategories: propSubcategories, series: propSeries }) {
+function ProductForm({ product, onSubmit, onCancel, loading, brands, categories: propCategories, subcategories: propSubcategories, series: propSeries, onRefreshBrands, onRefreshCategories }) {
   const [categories, setCategories] = useState(propCategories || [])
+  const [allCategories, setAllCategories] = useState(propCategories || []) // Cache all categories
   const [subcategories, setSubcategories] = useState(propSubcategories || [])
   const [series, setSeries] = useState(propSeries || [])
+  const [selectedSeriesSubSeries, setSelectedSeriesSubSeries] = useState([]) // Sub-series of selected series
   const [initialized, setInitialized] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [loadingCategories, setLoadingCategories] = useState(false)
+
+  // Quick Add Modal States
+  const [showQuickAddBrand, setShowQuickAddBrand] = useState(false)
+  const [showQuickAddCategory, setShowQuickAddCategory] = useState(false)
+  const [showQuickAddSubcategory, setShowQuickAddSubcategory] = useState(false)
+  const [showQuickAddSeries, setShowQuickAddSeries] = useState(false)
+  const [quickAddLoading, setQuickAddLoading] = useState(false)
 
   const getInitialState = (productData = null) => {
     const p = productData || product
@@ -192,6 +403,9 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       subcategoryId: p?.subcategoryId || '',
       series: p?.series || '',
       seriesId: p?.seriesId || '',
+      subSeries: p?.subSeries || '',
+      subSeriesId: p?.subSeriesId || '',
+      subSeriesCode: p?.subSeriesCode || '',
       unit: p?.unit || '',
       hsn: p?.hsn || '',
       gstRate: p?.gstRate || 18,
@@ -288,29 +502,27 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     return Object.keys(newErrors).length === 0
   }
 
-  // Initialize from product data
-  useEffect(() => {
-    if (product) {
-      // Set initial form data from product
-      setFormData(getInitialState(product))
-
-      // Load subcategories and series based on category
-      if (product.categoryId) {
-        loadSubcategories(product.categoryId)
-        loadSeries(product.categoryId)
-      } else if (product.category) {
-        // If categoryId is not set but category name is, find the ID
-        const foundCategory = propCategories?.find(c => c.name === product.category)
-        if (foundCategory?._id) {
-          loadSubcategories(foundCategory._id)
-          loadSeries(foundCategory._id)
-        }
-      }
-      setInitialized(true)
-    } else if (!initialized) {
-      setInitialized(true)
+  // Load categories for a specific brand
+  const loadCategoriesForBrand = async (brandName) => {
+    if (!brandName) {
+      setCategories(allCategories)
+      return
     }
-  }, [product?._id]) // Only re-run when product ID changes
+    setLoadingCategories(true)
+    try {
+      const response = await getCategories({ brand: brandName, limit: 100, active: true })
+      if (response.success !== false) {
+        setCategories(response.data || [])
+      } else {
+        setCategories([])
+      }
+    } catch (err) {
+      console.error('Failed to fetch categories for brand:', err)
+      setCategories([])
+    } finally {
+      setLoadingCategories(false)
+    }
+  }
 
   // Load subcategories when category changes
   const loadSubcategories = async (categoryId) => {
@@ -343,6 +555,175 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       console.error('Failed to fetch series:', err)
     }
   }
+
+  // Quick Add Handlers
+  const handleQuickAddBrand = async (data) => {
+    setQuickAddLoading(true)
+    try {
+      const response = await createBrand({ name: data.name, active: true })
+      console.log('createBrand response:', response)
+      if (response && (response.success !== false) && (response.data || response._id)) {
+        const newBrand = response.data || response
+        // Refresh brands list from parent
+        if (onRefreshBrands) {
+          await onRefreshBrands()
+        }
+        // Select the newly created brand
+        setFormData(prev => ({
+          ...prev,
+          brandId: newBrand._id,
+          brand: newBrand.name
+        }))
+      } else {
+        throw new Error(response?.message || response?.error || 'Failed to create brand')
+      }
+    } catch (err) {
+      console.error('handleQuickAddBrand error:', err)
+      throw err
+    } finally {
+      setQuickAddLoading(false)
+    }
+  }
+
+  const handleQuickAddCategory = async (data) => {
+    setQuickAddLoading(true)
+    try {
+      const response = await createCategory({ name: data.name, active: true, brands: formData.brandId ? [formData.brandId] : [] })
+      console.log('createCategory response:', response)
+      if (response && (response.success !== false) && (response.data || response._id)) {
+        const newCategory = response.data || response
+        // Refresh categories list
+        const categoriesRes = await getCategories({ limit: 1000, active: true })
+        if (categoriesRes.success !== false) {
+          setCategories(categoriesRes.data || [])
+          setAllCategories(categoriesRes.data || [])
+        }
+        // Select the newly created category
+        setFormData(prev => ({
+          ...prev,
+          categoryId: newCategory._id,
+          category: newCategory.name,
+          subcategoryId: '',
+          subcategory: '',
+          seriesId: '',
+          series: ''
+        }))
+        setSubcategories([])
+        setSeries([])
+      } else {
+        throw new Error(response?.message || response?.error || 'Failed to create category')
+      }
+    } catch (err) {
+      console.error('handleQuickAddCategory error:', err)
+      throw err
+    } finally {
+      setQuickAddLoading(false)
+    }
+  }
+
+  const handleQuickAddSubcategory = async (data) => {
+    if (!formData.categoryId) {
+      throw new Error('Please select a category first')
+    }
+    setQuickAddLoading(true)
+    try {
+      const response = await createSubcategory({ name: data.name, category: formData.categoryId, active: true })
+      console.log('createSubcategory response:', response)
+      if (response && (response.success !== false) && (response.data || response._id)) {
+        const newSubcategory = response.data || response
+        // Refresh subcategories list
+        await loadSubcategories(formData.categoryId)
+        // Select the newly created subcategory
+        setFormData(prev => ({
+          ...prev,
+          subcategoryId: newSubcategory._id,
+          subcategory: newSubcategory.name
+        }))
+      } else {
+        throw new Error(response?.message || response?.error || 'Failed to create subcategory')
+      }
+    } catch (err) {
+      console.error('handleQuickAddSubcategory error:', err)
+      throw err
+    } finally {
+      setQuickAddLoading(false)
+    }
+  }
+
+  const handleQuickAddSeries = async (data) => {
+    if (!formData.categoryId) {
+      throw new Error('Please select a category first')
+    }
+    setQuickAddLoading(true)
+    try {
+      const response = await createSeries({ name: data.name, category: formData.categoryId, active: true })
+      console.log('createSeries response:', response)
+      if (response && (response.success !== false) && (response.data || response._id)) {
+        const newSeries = response.data || response
+        // Refresh series list
+        await loadSeries(formData.categoryId)
+        // Select the newly created series
+        setFormData(prev => ({
+          ...prev,
+          seriesId: newSeries._id,
+          series: newSeries.name
+        }))
+      } else {
+        throw new Error(response?.message || response?.error || 'Failed to create series')
+      }
+    } catch (err) {
+      console.error('handleQuickAddSeries error:', err)
+      throw err
+    } finally {
+      setQuickAddLoading(false)
+    }
+  }
+
+  // Initialize from product data
+  useEffect(() => {
+    if (product) {
+      // Set initial form data from product
+      setFormData(getInitialState(product))
+
+      // Load categories for the brand if brand is set
+      if (product.brand) {
+        loadCategoriesForBrand(product.brand)
+      }
+
+      // Load subcategories and series based on category
+      if (product.categoryId) {
+        loadSubcategories(product.categoryId)
+        loadSeries(product.categoryId)
+      } else if (product.category) {
+        // If categoryId is not set but category name is, find the ID
+        const foundCategory = propCategories?.find(c => c.name === product.category)
+        if (foundCategory?._id) {
+          loadSubcategories(foundCategory._id)
+          loadSeries(foundCategory._id)
+        }
+      }
+      setInitialized(true)
+    } else if (!initialized) {
+      setInitialized(true)
+    }
+  }, [product?._id]) // Only re-run when product ID changes
+
+  // Set sub-series when series is loaded and product has a seriesId
+  useEffect(() => {
+    if (product?.seriesId && series.length > 0) {
+      const selectedSeries = series.find(s => s._id === product.seriesId)
+      if (selectedSeries?.subSeries) {
+        setSelectedSeriesSubSeries(selectedSeries.subSeries)
+      }
+    }
+  }, [series, product?.seriesId])
+
+  // Cache all categories when propCategories changes
+  useEffect(() => {
+    if (propCategories && propCategories.length > 0 && allCategories.length === 0) {
+      setAllCategories(propCategories)
+    }
+  }, [propCategories])
 
   // Handle category change
   useEffect(() => {
@@ -385,11 +766,30 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
   const handleBrandChange = (e) => {
     const brandId = e.target.value
     const selectedBrand = brands.find(b => b._id === brandId)
+    const brandName = selectedBrand?.name || ''
+
     setFormData(prev => ({
       ...prev,
       brandId,
-      brand: selectedBrand?.name || ''
+      brand: brandName,
+      // Reset category, subcategory, series when brand changes
+      categoryId: '',
+      category: '',
+      subcategoryId: '',
+      subcategory: '',
+      seriesId: '',
+      series: ''
     }))
+
+    // Load categories for selected brand
+    if (brandName) {
+      loadCategoriesForBrand(brandName)
+    } else {
+      setCategories(allCategories)
+    }
+    // Reset subcategories and series
+    setSubcategories([])
+    setSeries([])
   }
 
   const handleCategoryChange = (e) => {
@@ -402,8 +802,13 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       subcategoryId: '',
       subcategory: '',
       seriesId: '',
-      series: ''
+      series: '',
+      subSeriesId: '',
+      subSeries: '',
+      subSeriesCode: ''
     }))
+    // Reset sub-series
+    setSelectedSeriesSubSeries([])
   }
 
   const handleSubcategoryChange = (e) => {
@@ -422,7 +827,23 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     setFormData(prev => ({
       ...prev,
       seriesId,
-      series: selectedSeries?.name || ''
+      series: selectedSeries?.name || '',
+      subSeries: '',
+      subSeriesId: '',
+      subSeriesCode: ''
+    }))
+    // Set sub-series options from the selected series
+    setSelectedSeriesSubSeries(selectedSeries?.subSeries || [])
+  }
+
+  const handleSubSeriesChange = (e) => {
+    const subSeriesId = e.target.value
+    const selectedSubSeries = selectedSeriesSubSeries.find(s => s._id === subSeriesId)
+    setFormData(prev => ({
+      ...prev,
+      subSeriesId,
+      subSeries: selectedSubSeries?.name || '',
+      subSeriesCode: selectedSubSeries?.code || ''
     }))
   }
 
@@ -460,20 +881,26 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     }
   }
 
-  // Calculate prices based on pricing calculator inputs
+  // Calculate prices based on pricing calculator inputs (with GST)
   const calculatePrices = () => {
-    let basePrice = 0
+    const gstRate = parseFloat(formData.gstRate) || 0
+
+    // Get base price without GST
+    let basePriceWithoutGst = 0
     if (formData.basePriceType === 'mop') {
-      basePrice = parseFloat(formData.mop) || 0
+      basePriceWithoutGst = parseFloat(formData.mop) || 0
     } else if (formData.basePriceType === 'purchase') {
-      basePrice = parseFloat(formData.purchasePrice) || 0
+      basePriceWithoutGst = parseFloat(formData.purchasePrice) || 0
     } else if (formData.basePriceType === 'market') {
-      basePrice = parseFloat(formData.marketPrice) || 0
+      basePriceWithoutGst = parseFloat(formData.marketPrice) || 0
     }
 
-    let price = basePrice
+    // Add GST to get the actual base price
+    const basePriceWithGst = basePriceWithoutGst * (1 + gstRate / 100)
 
-    // Apply discounts 1-5
+    let price = basePriceWithGst
+
+    // Apply discounts 1-5 (discounts are applied on GST-inclusive price)
     const discounts = [
       { value: parseFloat(formData.dis1) || 0, type: formData.dis1Type },
       { value: parseFloat(formData.dis2) || 0, type: formData.dis2Type },
@@ -490,7 +917,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       }
     })
 
-    // NLC (Net Landing Cost)
+    // NLC (Net Landing Cost) - after GST and discounts
     const nlc = Math.round(price * 100) / 100
 
     // Add profit
@@ -519,6 +946,10 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     }
 
     return {
+      basePriceWithoutGst,
+      basePriceWithGst,
+      gstAmount: basePriceWithoutGst * gstRate / 100,
+      gstRate,
       nlc,
       op1: getOpPrice('op1', 'op1Type'),
       op2: getOpPrice('op2', 'op2Type'),
@@ -635,76 +1066,207 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
 
   return (
     <form onSubmit={handleSubmit} className="p-3 sm:p-4 space-y-4 sm:space-y-6">
-      {/* Brand, Category, Subcategory, Series - All Independent */}
+      {/* Brand, Category, Subcategory, Series - Cascading */}
       <div className="border-b pb-3 sm:pb-4">
         <h4 className="font-medium text-gray-800 mb-2 sm:mb-3 text-sm sm:text-base">Classification</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          {/* Brand */}
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Brand
             </label>
-            <select
-              name="brandId"
-              value={formData.brandId}
-              onChange={handleBrandChange}
-              className="input-field text-sm"
-            >
-              <option value="">Select Brand</option>
-              {brands.map(brand => (
-                <option key={brand._id} value={brand._id}>{brand.name}</option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <select
+                name="brandId"
+                value={formData.brandId}
+                onChange={handleBrandChange}
+                className="input-field text-sm flex-1"
+              >
+                <option value="">Select Brand</option>
+                {brands.map(brand => (
+                  <option key={brand._id} value={brand._id}>{brand.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowQuickAddBrand(true)}
+                className="px-2 py-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition-colors text-sm"
+                title="Add new brand"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
           </div>
+
+          {/* Category */}
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Category
             </label>
-            <select
-              name="categoryId"
-              value={formData.categoryId}
-              onChange={handleCategoryChange}
-              className="input-field text-sm"
-            >
-              <option value="">Select Category</option>
-              {categories.map(cat => (
-                <option key={cat._id} value={cat._id}>{cat.name}</option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <select
+                name="categoryId"
+                value={formData.categoryId}
+                onChange={handleCategoryChange}
+                disabled={loadingCategories}
+                className="input-field text-sm flex-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">{loadingCategories ? 'Loading...' : 'Select Category'}</option>
+                {categories.map(cat => (
+                  <option key={cat._id} value={cat._id}>{cat.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowQuickAddCategory(true)}
+                className="px-2 py-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition-colors text-sm"
+                title="Add new category"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            {loadingCategories && <p className="text-xs text-gray-400 mt-1">Loading categories for selected brand...</p>}
+            {!loadingCategories && formData.brandId && categories.length === 0 && (
+              <p className="text-xs text-amber-600 mt-1">No categories linked to this brand</p>
+            )}
           </div>
+
+          {/* Subcategory */}
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Subcategory</label>
-            <select
-              name="subcategoryId"
-              value={formData.subcategoryId}
-              onChange={handleSubcategoryChange}
-              disabled={!formData.categoryId}
-              className="input-field text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-            >
-              <option value="">Select Subcategory</option>
-              {subcategories.map(sub => (
-                <option key={sub._id} value={sub._id}>{sub.name}</option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <select
+                name="subcategoryId"
+                value={formData.subcategoryId}
+                onChange={handleSubcategoryChange}
+                disabled={!formData.categoryId}
+                className="input-field text-sm flex-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">Select Subcategory</option>
+                {subcategories.map(sub => (
+                  <option key={sub._id} value={sub._id}>{sub.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowQuickAddSubcategory(true)}
+                disabled={!formData.categoryId}
+                className="px-2 py-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Add new subcategory"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
             {!formData.categoryId && <p className="text-xs text-gray-400 mt-1">Select a category first</p>}
           </div>
+
+          {/* Series */}
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Series</label>
-            <select
-              name="seriesId"
-              value={formData.seriesId}
-              onChange={handleSeriesChange}
-              disabled={!formData.categoryId}
-              className="input-field text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-            >
-              <option value="">Select Series</option>
-              {series.map(s => (
-                <option key={s._id} value={s._id}>{s.name}</option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <select
+                name="seriesId"
+                value={formData.seriesId}
+                onChange={handleSeriesChange}
+                disabled={!formData.categoryId}
+                className="input-field text-sm flex-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">Select Series</option>
+                {series.map(s => (
+                  <option key={s._id} value={s._id}>{s.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowQuickAddSeries(true)}
+                disabled={!formData.categoryId}
+                className="px-2 py-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Add new series"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
             {!formData.categoryId && <p className="text-xs text-gray-400 mt-1">Select a category first</p>}
           </div>
+
+          {/* Sub-Series */}
+          {formData.seriesId && selectedSeriesSubSeries.length > 0 && (
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Sub-Series</label>
+              <select
+                name="subSeriesId"
+                value={formData.subSeriesId}
+                onChange={handleSubSeriesChange}
+                className="input-field text-sm"
+              >
+                <option value="">Select Sub-Series</option>
+                {selectedSeriesSubSeries
+                  .filter(ss => ss.active !== false)
+                  .map(ss => (
+                    <option key={ss._id} value={ss._id}>
+                      {ss.code} - {ss.name}
+                    </option>
+                  ))}
+              </select>
+              {formData.subSeriesCode && (
+                <p className="text-xs text-blue-600 mt-1 font-medium">Code: {formData.subSeriesCode}</p>
+              )}
+            </div>
+          )}
+
+          {/* Show sub-series codes as badges when series has sub-series but none selected */}
+          {formData.seriesId && selectedSeriesSubSeries.length === 0 && (
+            <div className="text-xs text-gray-400 italic">
+              No sub-series available for this series
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Quick Add Modals */}
+      <QuickAddModal
+        isOpen={showQuickAddBrand}
+        onClose={() => setShowQuickAddBrand(false)}
+        title="Add New Brand"
+        fields={[
+          { name: 'name', label: 'Brand Name', required: true, placeholder: 'Enter brand name' }
+        ]}
+        onSubmit={handleQuickAddBrand}
+        loading={quickAddLoading}
+      />
+
+      <QuickAddModal
+        isOpen={showQuickAddCategory}
+        onClose={() => setShowQuickAddCategory(false)}
+        title="Add New Category"
+        fields={[
+          { name: 'name', label: 'Category Name', required: true, placeholder: 'Enter category name' }
+        ]}
+        onSubmit={handleQuickAddCategory}
+        loading={quickAddLoading}
+      />
+
+      <QuickAddModal
+        isOpen={showQuickAddSubcategory}
+        onClose={() => setShowQuickAddSubcategory(false)}
+        title="Add New Subcategory"
+        fields={[
+          { name: 'name', label: 'Subcategory Name', required: true, placeholder: 'Enter subcategory name' }
+        ]}
+        onSubmit={handleQuickAddSubcategory}
+        loading={quickAddLoading}
+      />
+
+      <QuickAddModal
+        isOpen={showQuickAddSeries}
+        onClose={() => setShowQuickAddSeries(false)}
+        title="Add New Series"
+        fields={[
+          { name: 'name', label: 'Series Name', required: true, placeholder: 'Enter series name' }
+        ]}
+        onSubmit={handleQuickAddSeries}
+        loading={quickAddLoading}
+      />
 
       {/* Basic Info */}
       <div className="border-b pb-3 sm:pb-4">
@@ -858,7 +1420,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
         <div className="bg-gray-50 rounded-xl p-3 sm:p-4 mb-3 sm:mb-4">
           <h5 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3 flex items-center gap-2">
             <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">1</span>
-            Base Price
+            Base Price (excl. GST)
           </h5>
           <div className="overflow-x-auto -mx-3 sm:mx-0">
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 min-w-[400px] px-3 sm:px-0">
@@ -885,39 +1447,80 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   placeholder="₹0"
                   className="input-field text-sm"
                 />
+                {formData.mrp > 0 && formData.gstRate > 0 && (
+                  <p className="text-[10px] text-green-600 mt-0.5">
+                    ₹{formData.mrp} + {formData.gstRate}% = ₹{(formData.mrp * (1 + formData.gstRate / 100)).toFixed(2)}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-xs text-gray-600 mb-1">MOP</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  MOP {formData.basePriceType === 'mop' && <span className="text-blue-600">(Base)</span>}
+                </label>
                 <input
                   type="number"
                   name="mop"
                   value={formData.mop}
                   onChange={handleChange}
                   placeholder="₹0"
-                  className="input-field text-sm"
+                  className={`input-field text-sm ${formData.basePriceType === 'mop' ? 'border-blue-500 ring-1 ring-blue-500/20' : ''}`}
                 />
+                {formData.mop > 0 && formData.gstRate > 0 && (
+                  <p className="text-[10px] text-green-600 mt-0.5">
+                    ₹{formData.mop} + {formData.gstRate}% = ₹{(formData.mop * (1 + formData.gstRate / 100)).toFixed(2)}
+                  </p>
+                )}
+                {formData.basePriceType === 'mop' && formData.mop > 0 && (
+                  <p className="text-[10px] text-blue-600 font-medium mt-0.5">
+                    Base: ₹{calculatePrices().basePriceWithGst.toFixed(2)} (with GST)
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Purchase Price</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  Purchase {formData.basePriceType === 'purchase' && <span className="text-blue-600">(Base)</span>}
+                </label>
                 <input
                   type="number"
                   name="purchasePrice"
                   value={formData.purchasePrice}
                   onChange={handleChange}
                   placeholder="₹0"
-                  className="input-field text-sm"
+                  className={`input-field text-sm ${formData.basePriceType === 'purchase' ? 'border-blue-500 ring-1 ring-blue-500/20' : ''}`}
                 />
+                {formData.purchasePrice > 0 && formData.gstRate > 0 && (
+                  <p className="text-[10px] text-green-600 mt-0.5">
+                    ₹{formData.purchasePrice} + {formData.gstRate}% = ₹{(formData.purchasePrice * (1 + formData.gstRate / 100)).toFixed(2)}
+                  </p>
+                )}
+                {formData.basePriceType === 'purchase' && formData.purchasePrice > 0 && (
+                  <p className="text-[10px] text-blue-600 font-medium mt-0.5">
+                    Base: ₹{calculatePrices().basePriceWithGst.toFixed(2)} (with GST)
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Market Price</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  Market {formData.basePriceType === 'market' && <span className="text-blue-600">(Base)</span>}
+                </label>
                 <input
                   type="number"
                   name="marketPrice"
                   value={formData.marketPrice}
                   onChange={handleChange}
                   placeholder="₹0"
-                  className="input-field text-sm"
+                  className={`input-field text-sm ${formData.basePriceType === 'market' ? 'border-blue-500 ring-1 ring-blue-500/20' : ''}`}
                 />
+                {formData.marketPrice > 0 && formData.gstRate > 0 && (
+                  <p className="text-[10px] text-green-600 mt-0.5">
+                    ₹{formData.marketPrice} + {formData.gstRate}% = ₹{(formData.marketPrice * (1 + formData.gstRate / 100)).toFixed(2)}
+                  </p>
+                )}
+                {formData.basePriceType === 'market' && formData.marketPrice > 0 && (
+                  <p className="text-[10px] text-blue-600 font-medium mt-0.5">
+                    Base: ₹{calculatePrices().basePriceWithGst.toFixed(2)} (with GST)
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -973,10 +1576,15 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
           </h5>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 items-end">
             <div className="bg-white rounded-lg p-3 text-center">
-              <label className="block text-xs text-gray-500 mb-1">NLC (After Discounts)</label>
+              <label className="block text-xs text-gray-500 mb-1">NLC (After GST & Discounts)</label>
               <div className="text-xl sm:text-2xl font-bold text-blue-700">
                 ₹{calculatePrices().nlc.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
               </div>
+              {calculatePrices().gstRate > 0 && (
+                <p className="text-[10px] text-gray-500 mt-1">
+                  incl. ₹{calculatePrices().gstAmount.toFixed(2)} GST ({calculatePrices().gstRate}%)
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-xs sm:text-sm text-gray-600 mb-1">Add Profit</label>
@@ -1062,7 +1670,217 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
   )
 }
 
-// Editable Cell Component - for single values
+// Inline Input Component - Always shows input, auto-saves on blur/Tab
+function InlineInput({ product, field, value, onSave, onKeyDown, type = 'number', width = 'w-16', savingFields }) {
+  const [localValue, setLocalValue] = useState(value?.toString() || '')
+  const inputRef = useRef(null)
+  const isSaving = savingFields?.[`${product._id}-${field}`]
+
+  // Sync local value when prop changes
+  useEffect(() => {
+    setLocalValue(value?.toString() || '')
+  }, [value])
+
+  const handleChange = (e) => {
+    setLocalValue(e.target.value)
+  }
+
+  const handleBlur = () => {
+    // Only save if value changed
+    const newValue = type === 'number' ? parseFloat(localValue) || 0 : localValue
+    const oldValue = type === 'number' ? parseFloat(value) || 0 : value
+    if (newValue !== oldValue) {
+      onSave(product, field, newValue)
+    }
+  }
+
+  const handleKeyDown = (e, product) => {
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      // Save on Enter or Tab
+      const newValue = type === 'number' ? parseFloat(localValue) || 0 : localValue
+      const oldValue = type === 'number' ? parseFloat(value) || 0 : value
+      if (newValue !== oldValue) {
+        onSave(product, field, newValue)
+      }
+    }
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      type={type}
+      value={localValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={(e) => handleKeyDown(e, product)}
+      className={`${width} px-2 py-1 text-xs text-right border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${isSaving ? 'bg-yellow-50' : ''}`}
+      disabled={isSaving}
+    />
+  )
+}
+
+// Inline Select Component - Always shows select
+function InlineSelect({ product, field, value, options, onSave, savingFields }) {
+  const [localValue, setLocalValue] = useState(value || '')
+  const isSaving = savingFields?.[`${product._id}-${field}`]
+
+  useEffect(() => {
+    setLocalValue(value || '')
+  }, [value])
+
+  const handleChange = (e) => {
+    const newValue = e.target.value
+    setLocalValue(newValue)
+    if (newValue !== value) {
+      onSave(product, field, newValue)
+    }
+  }
+
+  return (
+    <select
+      value={localValue}
+      onChange={handleChange}
+      className="px-2 py-1 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+      disabled={isSaving}
+    >
+      {options.map(opt => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+    </select>
+  )
+}
+
+// Inline Discount Component - Value + Type (e.g., 10% or ₹100)
+function InlineDiscount({ product, disIndex, field, value, type: typeVal, onSave, onSaveType, savingFields }) {
+  // Determine field name - use disIndex for discount fields, otherwise use field prop
+  const valueField = disIndex ? `dis${disIndex}` : field
+  const typeField = disIndex ? `dis${disIndex}Type` : `${field}Type`
+  const isSaving = savingFields?.[`${product._id}-${valueField}`]
+
+  const [localValue, setLocalValue] = useState(value?.toString() || '0')
+
+  useEffect(() => {
+    setLocalValue(value?.toString() || '0')
+  }, [value])
+
+  const handleChange = (e) => {
+    setLocalValue(e.target.value)
+  }
+
+  const handleBlur = () => {
+    const newValue = parseFloat(localValue) || 0
+    const oldValue = parseFloat(value) || 0
+    if (newValue !== oldValue) {
+      onSave(product, valueField, newValue)
+    }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      const newValue = parseFloat(localValue) || 0
+      const oldValue = parseFloat(value) || 0
+      if (newValue !== oldValue) {
+        onSave(product, valueField, newValue)
+      }
+    }
+  }
+
+  const handleTypeChange = (e) => {
+    const newType = e.target.value
+    if (newType !== typeVal) {
+      onSaveType(product, typeField, newType)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        type="number"
+        value={localValue}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className="w-10 px-1 py-1 text-[10px] text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+        disabled={isSaving}
+      />
+      <select
+        value={typeVal || 'percent'}
+        onChange={handleTypeChange}
+        className="w-8 px-0 py-1 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+        disabled={isSaving}
+      >
+        <option value="percent">%</option>
+        <option value="flat">₹</option>
+      </select>
+    </div>
+  )
+}
+
+// Inline Profit/OP Component - Value + Type for profit and tier prices
+function InlinePriceInput({ product, field, value, type: typeVal, onSave, onSaveType, savingFields, isPrice = false }) {
+  const [localValue, setLocalValue] = useState(value?.toString() || '0')
+  const isSaving = savingFields?.[`${product._id}-${field}`]
+
+  useEffect(() => {
+    setLocalValue(value?.toString() || '0')
+  }, [value])
+
+  const handleChange = (e) => {
+    setLocalValue(e.target.value)
+  }
+
+  const handleBlur = () => {
+    const newValue = parseFloat(localValue) || 0
+    const oldValue = parseFloat(value) || 0
+    if (newValue !== oldValue) {
+      onSave(product, field, newValue)
+    }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      const newValue = parseFloat(localValue) || 0
+      const oldValue = parseFloat(value) || 0
+      if (newValue !== oldValue) {
+        onSave(product, field, newValue)
+      }
+    }
+  }
+
+  const handleTypeChange = (e) => {
+    const newType = e.target.value
+    if (newType !== typeVal) {
+      onSaveType(product, `${field}Type`, newType)
+    }
+  }
+
+  const displayValue = isPrice ? (value ? `₹${Number(value).toLocaleString('en-IN')}` : '-') : value
+
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        type="number"
+        value={localValue}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className="w-12 px-1 py-1 text-[10px] text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+        disabled={isSaving}
+      />
+      <select
+        value={typeVal || 'percent'}
+        onChange={handleTypeChange}
+        className="w-8 px-0 py-1 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+        disabled={isSaving}
+      >
+        <option value="percent">%</option>
+        <option value="flat">₹</option>
+      </select>
+    </div>
+  )
+}
+
+// Editable Cell Component - for single values (kept for backward compatibility)
 function EditableCell({ productId, field, value, displayValue, editingField, editingValue, savingField, onStartEdit, onChangeValue, onBlur, onKeyDown, type = 'text', width = 'w-20' }) {
   const isEditing = editingField?.productId === productId && editingField?.field === field
   const isSaving = savingField && isEditing
@@ -1214,6 +2032,9 @@ export default function Products() {
   const [subcategoryFilterId, setSubcategoryFilterId] = useState('')
   const [seriesFilter, setSeriesFilter] = useState('')
   const [seriesFilterId, setSeriesFilterId] = useState('')
+  const [subSeriesFilter, setSubSeriesFilter] = useState('')
+  const [subSeriesFilterId, setSubSeriesFilterId] = useState('')
+  const [filterSubSeries, setFilterSubSeries] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -1232,6 +2053,50 @@ export default function Products() {
   const [editingField, setEditingField] = useState(null) // { productId, field }
   const [editingValue, setEditingValue] = useState('')
   const [savingField, setSavingField] = useState(false)
+  const [savingFields, setSavingFields] = useState({}) // Track saving state per field: { 'productId-field': true }
+
+  // Column visibility state - all columns visible by default
+  const [showColumnPopup, setShowColumnPopup] = useState(false)
+  const [visibleColumns, setVisibleColumns] = useState([
+    'stock', 'mrp', 'mop', 'purchase', 'market', 'base',
+    'd1', 'd2', 'd3', 'd4', 'd5', 'nlc', 'profit',
+    't1', 't2', 't3', 't4'
+  ])
+  const columnPopupRef = useRef(null)
+
+  // Close column popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (columnPopupRef.current && !columnPopupRef.current.contains(event.target)) {
+        setShowColumnPopup(false)
+      }
+    }
+    if (showColumnPopup) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showColumnPopup])
+
+  // Toggle column visibility
+  const toggleColumnVisibility = (key) => {
+    if (key === 'all') {
+      // Show all columns
+      setVisibleColumns(['stock', 'mrp', 'mop', 'purchase', 'market', 'base', 'd1', 'd2', 'd3', 'd4', 'd5', 'nlc', 'profit', 't1', 't2', 't3', 't4'])
+    } else if (key === 'none') {
+      // Hide all columns (keep at least one visible)
+      setVisibleColumns([])
+    } else {
+      setVisibleColumns(prev => {
+        if (prev.includes(key)) {
+          return prev.filter(c => c !== key)
+        } else {
+          return [...prev, key]
+        }
+      })
+    }
+  }
 
   // Filter subcategories and series when category filter changes
   const [filterSubcategories, setFilterSubcategories] = useState([])
@@ -1298,9 +2163,20 @@ export default function Products() {
         fetchCategories()
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brandFilter])
 
-  const fetchProducts = async (page = currentPage, limit = pagination.limit) => {
+  // Use ref to track if component is mounted
+  const isMountedRef = useRef(true)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  const fetchProducts = useCallback(async (page = 1, limit = 10) => {
     setLoading(true)
     setError(null)
     try {
@@ -1309,6 +2185,7 @@ export default function Products() {
       if (categoryFilter) params.category = categoryFilter
       if (subcategoryFilter) params.subcategory = subcategoryFilter
       if (seriesFilter) params.series = seriesFilter
+      if (subSeriesFilter) params.subSeries = subSeriesFilter
       if (debouncedSearch) params.search = debouncedSearch
 
       const response = await getAdminProducts(params)
@@ -1329,26 +2206,33 @@ export default function Products() {
           })
         }
       } else {
-        setError(response.message || 'Failed to fetch products')
+        if (isMountedRef.current) {
+          setError(response.message || 'Failed to fetch products')
+        }
       }
     } catch (err) {
-      setError('Failed to fetch products')
+      if (isMountedRef.current) {
+        setError('Failed to fetch products')
+      }
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) {
+        setLoading(false)
+      }
     }
-  }
+  }, [brandFilter, categoryFilter, subcategoryFilter, seriesFilter, debouncedSearch])
 
   useEffect(() => {
     fetchBrands()
     fetchCategories()
     fetchProducts(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Fetch products when search or filters change
   useEffect(() => {
     setCurrentPage(1)
     fetchProducts(1)
-  }, [debouncedSearch, brandFilter, categoryFilter, subcategoryFilter, seriesFilter])
+  }, [fetchProducts])
 
   // Load subcategories and series when category filter changes
   useEffect(() => {
@@ -1375,6 +2259,9 @@ export default function Products() {
       setSubcategoryFilterId('')
       setSeriesFilter('')
       setSeriesFilterId('')
+      setSubSeriesFilter('')
+      setSubSeriesFilterId('')
+      setFilterSubSeries([])
     } else {
       setFilterSubcategories([])
       setFilterSeries([])
@@ -1382,12 +2269,34 @@ export default function Products() {
       setSubcategoryFilterId('')
       setSeriesFilter('')
       setSeriesFilterId('')
+      setSubSeriesFilter('')
+      setSubSeriesFilterId('')
+      setFilterSubSeries([])
     }
   }, [categoryFilterId])
 
+  // Load sub-series when series filter changes
+  useEffect(() => {
+    if (seriesFilterId) {
+      // Find the selected series in filterSeries to get its sub-series
+      const selectedSeries = filterSeries.find(s => s._id === seriesFilterId)
+      if (selectedSeries && selectedSeries.subSeries && selectedSeries.subSeries.length > 0) {
+        setFilterSubSeries(selectedSeries.subSeries.filter(ss => ss.active !== false))
+      } else {
+        setFilterSubSeries([])
+      }
+      setSubSeriesFilter('')
+      setSubSeriesFilterId('')
+    } else {
+      setFilterSubSeries([])
+      setSubSeriesFilter('')
+      setSubSeriesFilterId('')
+    }
+  }, [seriesFilterId, filterSeries])
+
   const handlePageChange = (page) => {
     setCurrentPage(page)
-    fetchProducts(page)
+    fetchProducts(page, pagination.limit)
   }
 
   const handleSync = async () => {
@@ -1478,6 +2387,107 @@ export default function Products() {
     setEditingValue('')
   }
 
+  // Save field directly from inline input (auto-save on blur)
+  const saveFieldDirectly = async (product, field, newValue) => {
+    const fieldKey = `${product._id}-${field}`
+    if (savingFields[fieldKey]) return
+
+    setSavingFields(prev => ({ ...prev, [fieldKey]: true }))
+
+    try {
+      let updateData = {}
+
+      // Determine field type and set value
+      if (field === 'stock') {
+        updateData[field] = parseInt(newValue) || 0
+      } else if (field === 'basePriceType') {
+        updateData[field] = newValue
+      } else if (['mrp', 'mop', 'purchasePrice', 'marketPrice', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'op1', 'op2', 'op3', 'op4'].includes(field)) {
+        updateData[field] = parseFloat(newValue) || 0
+      } else {
+        updateData[field] = newValue
+      }
+
+      // Recalculate NLC and tier prices if pricing fields changed
+      const pricingFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'basePriceType', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'op1', 'op2', 'op3', 'op4']
+      if (pricingFields.includes(field)) {
+        const updatedProduct = { ...product, ...updateData }
+        const gstRate = parseFloat(updatedProduct.gstRate) || 0
+
+        // Calculate base price without GST
+        let basePriceWithoutGst = 0
+        if (updatedProduct.basePriceType === 'mop') {
+          basePriceWithoutGst = parseFloat(updatedProduct.mop) || 0
+        } else if (updatedProduct.basePriceType === 'purchase') {
+          basePriceWithoutGst = parseFloat(updatedProduct.purchasePrice) || 0
+        } else if (updatedProduct.basePriceType === 'market') {
+          basePriceWithoutGst = parseFloat(updatedProduct.marketPrice) || 0
+        }
+
+        // Add GST to get base price
+        let nlc = basePriceWithoutGst * (1 + gstRate / 100)
+
+        // Apply discounts
+        for (let i = 1; i <= 5; i++) {
+          const discountVal = parseFloat(updatedProduct[`dis${i}`]) || 0
+          const discountType = updatedProduct[`dis${i}Type`]
+          if (discountType === 'percent') {
+            nlc = nlc - (nlc * discountVal / 100)
+          } else {
+            nlc = nlc - discountVal
+          }
+        }
+        nlc = Math.round(nlc * 100) / 100
+
+        // Calculate price with profit
+        let priceWithProfit = nlc
+        const profitVal = parseFloat(updatedProduct.profit) || 0
+        if (updatedProduct.profitType === 'percent') {
+          priceWithProfit = nlc + (nlc * profitVal / 100)
+        } else {
+          priceWithProfit = nlc + profitVal
+        }
+
+        // Calculate OP prices
+        const calculateOpPrice = (opField, opTypeField) => {
+          const inputValue = parseFloat(updatedProduct[opField]) || 0
+          if (updatedProduct[opTypeField] === 'flat') {
+            return inputValue
+          } else {
+            return Math.round((priceWithProfit * (1 + inputValue / 100)) * 100) / 100
+          }
+        }
+
+        updateData.nlc = nlc
+        updateData.t1 = calculateOpPrice('op1', 'op1Type')
+        updateData.t2 = calculateOpPrice('op2', 'op2Type')
+        updateData.t3 = calculateOpPrice('op3', 'op3Type')
+        updateData.t4 = calculateOpPrice('op4', 'op4Type')
+        updateData.opPrice = calculateOpPrice('op1', 'op1Type')
+        updateData.op1 = calculateOpPrice('op1', 'op1Type')
+        updateData.op2 = calculateOpPrice('op2', 'op2Type')
+        updateData.op3 = calculateOpPrice('op3', 'op3Type')
+        updateData.op4 = calculateOpPrice('op4', 'op4Type')
+      }
+
+      const response = await updateAdminProduct(product._id, updateData)
+      if (response.success !== false) {
+        setProducts(prev => prev.map(p => p._id === product._id ? { ...p, ...updateData } : p))
+      } else {
+        alert(response.message || 'Failed to update')
+      }
+    } catch (err) {
+      console.error('Failed to save:', err)
+      alert('Failed to save changes')
+    } finally {
+      setSavingFields(prev => {
+        const newState = { ...prev }
+        delete newState[fieldKey]
+        return newState
+      })
+    }
+  }
+
   // Direct save for type dropdowns (percent/flat)
   const saveTypeDirectly = async (productId, typeField, newType) => {
     if (savingField) return
@@ -1494,18 +2504,22 @@ export default function Products() {
       if (pricingTypeFields.includes(typeField)) {
         // Get current product values with the new type
         const updatedProduct = { ...product, [typeField]: newType }
+        const gstRate = parseFloat(updatedProduct.gstRate) || 0
 
-        // Calculate NLC
-        let basePrice = 0
+        // Calculate base price without GST
+        let basePriceWithoutGst = 0
         if (updatedProduct.basePriceType === 'mop') {
-          basePrice = parseFloat(updatedProduct.mop) || 0
+          basePriceWithoutGst = parseFloat(updatedProduct.mop) || 0
         } else if (updatedProduct.basePriceType === 'purchase') {
-          basePrice = parseFloat(updatedProduct.purchasePrice) || 0
+          basePriceWithoutGst = parseFloat(updatedProduct.purchasePrice) || 0
         } else if (updatedProduct.basePriceType === 'market') {
-          basePrice = parseFloat(updatedProduct.marketPrice) || 0
+          basePriceWithoutGst = parseFloat(updatedProduct.marketPrice) || 0
         }
 
-        let nlc = basePrice
+        // Add GST to get base price with GST
+        let nlc = basePriceWithoutGst * (1 + gstRate / 100)
+
+        // Apply discounts
         for (let i = 1; i <= 5; i++) {
           const discountVal = parseFloat(updatedProduct[`dis${i}`]) || 0
           const discountType = updatedProduct[`dis${i}Type`]
@@ -1581,6 +2595,7 @@ export default function Products() {
         updateData[field] = editingValue
       } else if (field.startsWith('dis') && field.endsWith('Type')) {
         updateData[field] = editingValue
+        
       } else if (field.startsWith('op') && field.endsWith('Type')) {
         updateData[field] = editingValue
       } else if (field === 'profitType') {
@@ -1594,18 +2609,22 @@ export default function Products() {
       if (pricingFields.includes(field)) {
         // Get current product values with the new value
         const updatedProduct = { ...product, ...updateData }
+        const gstRate = parseFloat(updatedProduct.gstRate) || 0
 
-        // Calculate NLC
-        let basePrice = 0
+        // Calculate base price without GST
+        let basePriceWithoutGst = 0
         if (updatedProduct.basePriceType === 'mop') {
-          basePrice = parseFloat(updatedProduct.mop) || 0
+          basePriceWithoutGst = parseFloat(updatedProduct.mop) || 0
         } else if (updatedProduct.basePriceType === 'purchase') {
-          basePrice = parseFloat(updatedProduct.purchasePrice) || 0
+          basePriceWithoutGst = parseFloat(updatedProduct.purchasePrice) || 0
         } else if (updatedProduct.basePriceType === 'market') {
-          basePrice = parseFloat(updatedProduct.marketPrice) || 0
+          basePriceWithoutGst = parseFloat(updatedProduct.marketPrice) || 0
         }
 
-        let nlc = basePrice
+        // Add GST to get base price
+        let nlc = basePriceWithoutGst * (1 + gstRate / 100)
+
+        // Apply discounts
         for (let i = 1; i <= 5; i++) {
           const discountVal = parseFloat(updatedProduct[`dis${i}`]) || 0
           const discountType = updatedProduct[`dis${i}Type`]
@@ -1658,6 +2677,7 @@ export default function Products() {
       } else {
         alert(response.message || 'Failed to update')
       }
+      
     } catch (err) {
       console.error('Failed to save:', err)
       alert('Failed to save changes')
@@ -1668,22 +2688,60 @@ export default function Products() {
     }
   }
 
+  // Define the order of editable fields for Tab navigation
+  const EDITABLE_FIELDS_ORDER = [
+    'stock',
+    'mrp',
+    'mop',
+    'purchasePrice',
+    'marketPrice',
+    'basePriceType',
+    'dis1', 'dis2', 'dis3', 'dis4', 'dis5',
+    'profit',
+    'op1', 'op2', 'op3', 'op4'
+  ]
+
   const handleKeyDown = (e, product) => {
     if (e.key === 'Enter') {
       e.preventDefault()
       saveFieldOnBlur(product)
     } else if (e.key === 'Escape') {
       cancelEditingField()
+    } else if (e.key === 'Tab') {
+      e.preventDefault()
+      // Save current field first
+      saveFieldOnBlur(product)
+
+      // Find current field index
+      const currentField = editingField?.field
+      const currentIndex = EDITABLE_FIELDS_ORDER.indexOf(currentField)
+
+      if (currentIndex !== -1) {
+        // Determine next field index
+        let nextIndex
+        if (e.shiftKey) {
+          // Shift+Tab: go to previous field
+          nextIndex = currentIndex > 0 ? currentIndex - 1 : EDITABLE_FIELDS_ORDER.length - 1
+        } else {
+          // Tab: go to next field
+          nextIndex = currentIndex < EDITABLE_FIELDS_ORDER.length - 1 ? currentIndex + 1 : 0
+        }
+
+        const nextField = EDITABLE_FIELDS_ORDER[nextIndex]
+
+        // Get the value for the next field
+        const nextValue = product[nextField] ?? (nextField.startsWith('dis') || nextField.startsWith('op') || nextField === 'profit' ? 0 : '')
+
+        // Start editing the next field
+        startEditingField(product._id, nextField, nextValue)
+      }
     }
   }
 
   const formatPrice = (price) => price ? `₹${Number(price).toLocaleString('en-IN')}` : '-'
 
-  if (loading && currentPage === 1) {
-    return <div className="flex items-center justify-center h-64"><Loader className="w-8 h-8 animate-spin text-gray-400" /></div>
-  }
-
-  if (error) {
+  // Only show full error state if we have no products at all
+  if (error && products.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
@@ -1791,7 +2849,27 @@ export default function Products() {
             <option value="">Series</option>
             {filterSeries.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
           </select>
-          {(brandFilter || categoryFilter || subcategoryFilter || seriesFilter || searchQuery) && (
+          {filterSubSeries.length > 0 && (
+            <select
+              value={subSeriesFilterId}
+              onChange={(e) => {
+                const selectedSubSeries = filterSubSeries.find(s => s._id === e.target.value)
+                setSubSeriesFilterId(e.target.value)
+                setSubSeriesFilter(selectedSubSeries?.name || '')
+                setCurrentPage(1)
+              }}
+              disabled={!seriesFilterId}
+              className="px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50"
+            >
+              <option value="">Sub-Series</option>
+              {filterSubSeries.map(ss => (
+                <option key={ss._id} value={ss._id}>
+                  {ss.code} - {ss.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {(brandFilter || categoryFilter || subcategoryFilter || seriesFilter || subSeriesFilter || searchQuery) && (
             <button
               onClick={() => {
                 setBrandFilter('')
@@ -1801,6 +2879,9 @@ export default function Products() {
                 setSubcategoryFilterId('')
                 setSeriesFilter('')
                 setSeriesFilterId('')
+                setSubSeriesFilter('')
+                setSubSeriesFilterId('')
+                setFilterSubSeries([])
                 setSearchQuery('')
                 setCategories(allCategories)
                 setCurrentPage(1)
@@ -1819,8 +2900,23 @@ export default function Products() {
         <div className="px-3 sm:px-4 py-2 sm:py-3 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-1 sm:gap-2">
             <span className="text-xs sm:text-sm font-medium text-gray-700">Pricing Table</span>
-            <span className="hidden sm:inline text-xs text-gray-500">(Click on prices/discounts to edit - auto-saves on blur)</span>
-            <span className="sm:hidden text-xs text-gray-500">(← Swipe to see all columns →)</span>
+            <span className="hidden sm:inline text-xs text-gray-500">(Edit values directly - auto-saves)</span>
+          </div>
+          <div className="relative" ref={columnPopupRef}>
+            <button
+              onClick={() => setShowColumnPopup(!showColumnPopup)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+            >
+              <Columns className="w-4 h-4" />
+              <span className="hidden sm:inline">Columns</span>
+            </button>
+            {showColumnPopup && (
+              <ColumnVisibilityPopup
+                visibleColumns={visibleColumns}
+                onToggle={toggleColumnVisibility}
+                onClose={() => setShowColumnPopup(false)}
+              />
+            )}
           </div>
         </div>
 
@@ -1829,30 +2925,37 @@ export default function Products() {
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '150px' }}>Product</th>
-                <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Stock</th>
-                <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>MRP</th>
-                <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>MOP</th>
-                <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Purchase</th>
-                <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Market</th>
-                <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Base</th>
-                <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D1</th>
-                <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D2</th>
-                <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D3</th>
-                <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D4</th>
-                <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D5</th>
-                <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-100" style={{ minWidth: '70px' }}>NLC</th>
-                <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '60px' }}>Profit</th>
-                <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '70px' }}>T1</th>
-                <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '70px' }}>T2</th>
-                <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '70px' }}>T3</th>
-                <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '70px' }}>T4</th>
+                {visibleColumns.includes('stock') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Stock</th>}
+                {visibleColumns.includes('mrp') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>MRP</th>}
+                {visibleColumns.includes('mop') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>MOP</th>}
+                {visibleColumns.includes('purchase') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Purchase</th>}
+                {visibleColumns.includes('market') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Market</th>}
+                {visibleColumns.includes('base') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Base</th>}
+                {visibleColumns.includes('d1') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D1</th>}
+                {visibleColumns.includes('d2') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D2</th>}
+                {visibleColumns.includes('d3') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D3</th>}
+                {visibleColumns.includes('d4') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D4</th>}
+                {visibleColumns.includes('d5') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D5</th>}
+                {visibleColumns.includes('nlc') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-100" style={{ minWidth: '70px' }}>NLC</th>}
+                {visibleColumns.includes('profit') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '60px' }}>Profit</th>}
+                {visibleColumns.includes('t1') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '70px' }}>T1</th>}
+                {visibleColumns.includes('t2') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '70px' }}>T2</th>}
+                {visibleColumns.includes('t3') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '70px' }}>T3</th>}
+                {visibleColumns.includes('t4') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '70px' }}>T4</th>}
                 <th className="text-center px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {products.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan={18} className="text-center py-12">
+                  <td colSpan={visibleColumns.length + 2} className="text-center py-12">
+                    <Loader className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
+                    <p className="text-gray-500">Loading products...</p>
+                  </td>
+                </tr>
+              ) : products.length === 0 ? (
+                <tr>
+                  <td colSpan={visibleColumns.length + 2} className="text-center py-12">
                     <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500">No products found</p>
                   </td>
@@ -1865,197 +2968,160 @@ export default function Products() {
                     <tr key={product._id} className="border-b border-gray-50 hover:bg-gray-50/50">
                       {/* Product Name */}
                       <td className="px-3 py-2 bg-white" style={{ minWidth: '150px' }}>
-                        <p className="font-medium text-gray-900 text-xs truncate max-w-[130px]" title={product.name}>{product.name}</p>
+                        <p className="font-medium text-gray-900 text-xs truncate max-w-[130px]">{product.brand}</p>
                         {product.partNumber && <p className="text-[10px] text-gray-500 truncate">{product.partNumber}</p>}
-                        <p className="text-[10px] text-gray-400">{product.brand || '-'}</p>
+                        <p className="text-[10px] text-gray-400" title={product.name}>{product.name}</p>
                       </td>
 
-                      {/* Stock - Clickable */}
-                      <td className="px-2 py-2 text-center">
-                        <EditableCell
-                          productId={product._id}
-                          field="stock"
-                          value={product.stock || 0}
-                          displayValue={
-                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
-                              product.stock > 10 ? 'bg-green-100 text-green-700' :
-                              product.stock > 0 ? 'bg-amber-100 text-amber-700' :
-                              'bg-red-100 text-red-700'
-                            }`}>
-                              {product.stock || 0}
-                            </span>
-                          }
-                          editingField={editingField}
-                          editingValue={editingValue}
-                          savingField={savingField}
-                          onStartEdit={startEditingField}
-                          onChangeValue={setEditingValue}
-                          onBlur={() => saveFieldOnBlur(product)}
-                          onKeyDown={(e) => handleKeyDown(e, product)}
-                          type="number"
-                          width="w-12"
-                        />
-                      </td>
+                      {/* Stock - Always visible input */}
+                      {visibleColumns.includes('stock') && (
+                        <td className="px-2 py-2 text-center">
+                          <InlineInput
+                            product={product}
+                            field="stock"
+                            value={product.stock || 0}
+                            onSave={saveFieldDirectly}
+                            type="number"
+                            width="w-10"
+                            savingFields={savingFields}
+                          />
+                        </td>
+                      )}
 
-                      {/* MRP - Clickable */}
-                      <td className="px-2 py-2 text-right">
-                        <EditableCell
-                          productId={product._id}
-                          field="mrp"
-                          value={product.mrp}
-                          displayValue={<span className="text-xs text-gray-900 cursor-pointer hover:bg-yellow-50 px-1 rounded">{formatPrice(product.mrp)}</span>}
-                          editingField={editingField}
-                          editingValue={editingValue}
-                          savingField={savingField}
-                          onStartEdit={startEditingField}
-                          onChangeValue={setEditingValue}
-                          onBlur={() => saveFieldOnBlur(product)}
-                          onKeyDown={(e) => handleKeyDown(e, product)}
-                          type="number"
-                          width="w-16"
-                        />
-                      </td>
+                      {/* MRP */}
+                      {visibleColumns.includes('mrp') && (
+                        <td className="px-2 py-2 text-right">
+                          <InlineInput
+                            product={product}
+                            field="mrp"
+                            value={product.mrp}
+                            onSave={saveFieldDirectly}
+                            type="number"
+                            width="w-14"
+                            savingFields={savingFields}
+                          />
+                        </td>
+                      )}
 
-                      {/* MOP - Clickable */}
-                      <td className="px-2 py-2 text-right">
-                        <EditableCell
-                          productId={product._id}
-                          field="mop"
-                          value={product.mop}
-                          displayValue={<span className="text-xs text-gray-900 cursor-pointer hover:bg-yellow-50 px-1 rounded">{formatPrice(product.mop)}</span>}
-                          editingField={editingField}
-                          editingValue={editingValue}
-                          savingField={savingField}
-                          onStartEdit={startEditingField}
-                          onChangeValue={setEditingValue}
-                          onBlur={() => saveFieldOnBlur(product)}
-                          onKeyDown={(e) => handleKeyDown(e, product)}
-                          type="number"
-                          width="w-16"
-                        />
-                      </td>
+                      {/* MOP */}
+                      {visibleColumns.includes('mop') && (
+                        <td className="px-2 py-2 text-right">
+                          <InlineInput
+                            product={product}
+                            field="mop"
+                            value={product.mop}
+                            onSave={saveFieldDirectly}
+                            type="number"
+                            width="w-14"
+                            savingFields={savingFields}
+                          />
+                        </td>
+                      )}
 
-                      {/* Purchase - Clickable */}
-                      <td className="px-2 py-2 text-right">
-                        <EditableCell
-                          productId={product._id}
-                          field="purchasePrice"
-                          value={product.purchasePrice}
-                          displayValue={<span className="text-xs text-gray-900 cursor-pointer hover:bg-yellow-50 px-1 rounded">{formatPrice(product.purchasePrice)}</span>}
-                          editingField={editingField}
-                          editingValue={editingValue}
-                          savingField={savingField}
-                          onStartEdit={startEditingField}
-                          onChangeValue={setEditingValue}
-                          onBlur={() => saveFieldOnBlur(product)}
-                          onKeyDown={(e) => handleKeyDown(e, product)}
-                          type="number"
-                          width="w-16"
-                        />
-                      </td>
+                      {/* Purchase */}
+                      {visibleColumns.includes('purchase') && (
+                        <td className="px-2 py-2 text-right">
+                          <InlineInput
+                            product={product}
+                            field="purchasePrice"
+                            value={product.purchasePrice}
+                            onSave={saveFieldDirectly}
+                            type="number"
+                            width="w-14"
+                            savingFields={savingFields}
+                          />
+                        </td>
+                      )}
 
-                      {/* Market - Clickable */}
-                      <td className="px-2 py-2 text-right">
-                        <EditableCell
-                          productId={product._id}
-                          field="marketPrice"
-                          value={product.marketPrice}
-                          displayValue={<span className="text-xs text-gray-900 cursor-pointer hover:bg-yellow-50 px-1 rounded">{formatPrice(product.marketPrice)}</span>}
-                          editingField={editingField}
-                          editingValue={editingValue}
-                          savingField={savingField}
-                          onStartEdit={startEditingField}
-                          onChangeValue={setEditingValue}
-                          onBlur={() => saveFieldOnBlur(product)}
-                          onKeyDown={(e) => handleKeyDown(e, product)}
-                          type="number"
-                          width="w-16"
-                        />
-                      </td>
+                      {/* Market */}
+                      {visibleColumns.includes('market') && (
+                        <td className="px-2 py-2 text-right">
+                          <InlineInput
+                            product={product}
+                            field="marketPrice"
+                            value={product.marketPrice}
+                            onSave={saveFieldDirectly}
+                            type="number"
+                            width="w-14"
+                            savingFields={savingFields}
+                          />
+                        </td>
+                      )}
 
-                      {/* Base Type - Clickable Dropdown */}
-                      <td className="px-2 py-2 text-center">
-                        <EditableSelect
-                          productId={product._id}
-                          field="basePriceType"
-                          value={product.basePriceType || 'mop'}
-                          options={[
-                            { value: 'mop', label: 'MOP' },
-                            { value: 'purchase', label: 'Purch' },
-                            { value: 'market', label: 'Mkt' }
-                          ]}
-                          displayValue={<span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-100 cursor-pointer hover:bg-gray-200">{product.basePriceType === 'mop' ? 'MOP' : product.basePriceType === 'purchase' ? 'Purch' : 'Mkt'}</span>}
-                          editingField={editingField}
-                          editingValue={editingValue}
-                          savingField={savingField}
-                          onStartEdit={startEditingField}
-                          onChangeValue={setEditingValue}
-                          onBlur={() => saveFieldOnBlur(product)}
-                        />
-                      </td>
+                      {/* Base Type */}
+                      {visibleColumns.includes('base') && (
+                        <td className="px-2 py-2 text-center">
+                          <InlineSelect
+                            product={product}
+                            field="basePriceType"
+                            value={product.basePriceType || 'mop'}
+                            options={[
+                              { value: 'mop', label: 'MOP' },
+                              { value: 'purchase', label: 'Purch' },
+                              { value: 'market', label: 'Mkt' }
+                            ]}
+                            onSave={saveFieldDirectly}
+                            savingFields={savingFields}
+                          />
+                        </td>
+                      )}
 
                       {/* Discounts D1-D5 */}
                       {[1, 2, 3, 4, 5].map(i => (
-                        <td key={`dis${i}`} className="px-1 py-2 text-center bg-blue-50">
-                          <EditableDiscount
-                            productId={product._id}
-                            disIndex={i}
-                            value={product[`dis${i}`] || 0}
-                            type={product[`dis${i}Type`] || 'percent'}
-                            editingField={editingField}
-                            editingValue={editingValue}
-                            savingField={savingField}
-                            onStartEdit={startEditingField}
-                            onChangeValue={setEditingValue}
-                            onBlur={() => saveFieldOnBlur(product)}
-                            onKeyDown={(e) => handleKeyDown(e, product)}
-                            onSaveType={saveTypeDirectly}
-                          />
-                        </td>
+                        visibleColumns.includes(`d${i}`) && (
+                          <td key={`dis${i}`} className="px-1 py-2 text-center bg-blue-50">
+                            <InlineDiscount
+                              product={product}
+                              disIndex={i}
+                              value={product[`dis${i}`] || 0}
+                              type={product[`dis${i}Type`] || 'percent'}
+                              onSave={saveFieldDirectly}
+                              onSaveType={saveTypeDirectly}
+                              savingFields={savingFields}
+                            />
+                          </td>
+                        )
                       ))}
 
                       {/* NLC - Display Only */}
-                      <td className="px-2 py-2 text-right bg-blue-100">
-                        <span className="text-xs font-semibold text-blue-700">{formatPrice(product.nlc)}</span>
-                      </td>
+                      {visibleColumns.includes('nlc') && (
+                        <td className="px-2 py-2 text-right bg-blue-100">
+                          <span className="text-xs font-semibold text-blue-700">{formatPrice(product.nlc)}</span>
+                        </td>
+                      )}
 
                       {/* Profit */}
-                      <td className="px-1 py-2 text-center">
-                        <EditableDiscount
-                          productId={product._id}
-                          field="profit"
-                          value={product.profit || 0}
-                          type={product.profitType || 'percent'}
-                          editingField={editingField}
-                          editingValue={editingValue}
-                          savingField={savingField}
-                          onStartEdit={startEditingField}
-                          onChangeValue={setEditingValue}
-                          onBlur={() => saveFieldOnBlur(product)}
-                          onKeyDown={(e) => handleKeyDown(e, product)}
-                          onSaveType={saveTypeDirectly}
-                        />
-                      </td>
+                      {visibleColumns.includes('profit') && (
+                        <td className="px-1 py-2 text-center">
+                          <InlineDiscount
+                            product={product}
+                            disIndex={null}
+                            field="profit"
+                            value={product.profit || 0}
+                            type={product.profitType || 'percent'}
+                            onSave={saveFieldDirectly}
+                            onSaveType={saveTypeDirectly}
+                            savingFields={savingFields}
+                          />
+                        </td>
+                      )}
 
                       {/* T1-T4 */}
                       {[1, 2, 3, 4].map(i => (
-                        <td key={`op${i}`} className="px-2 py-2 text-right bg-green-50">
-                          <EditableDiscount
-                            productId={product._id}
-                            field={`op${i}`}
-                            value={product[`op${i}`] || product[`t${i}`] || 0}
-                            type={product[`op${i}Type`] || 'percent'}
-                            editingField={editingField}
-                            editingValue={editingValue}
-                            savingField={savingField}
-                            onStartEdit={startEditingField}
-                            onChangeValue={setEditingValue}
-                            onBlur={() => saveFieldOnBlur(product)}
-                            onKeyDown={(e) => handleKeyDown(e, product)}
-                            isPrice
-                            onSaveType={saveTypeDirectly}
-                          />
-                        </td>
+                        visibleColumns.includes(`t${i}`) && (
+                          <td key={`op${i}`} className="px-2 py-2 text-right bg-green-50">
+                            <InlineDiscount
+                              product={product}
+                              disIndex={null}
+                              field={`op${i}`}
+                              value={product[`op${i}`] || product[`t${i}`] || 0}
+                              type={product[`op${i}Type`] || 'percent'}
+                              onSave={saveFieldDirectly}
+                              onSaveType={saveTypeDirectly}
+                              savingFields={savingFields}
+                            />
+                          </td>
+                        )
                       ))}
 
                       {/* Actions */}
@@ -2115,6 +3181,7 @@ export default function Products() {
           loading={formLoading}
           brands={brands}
           categories={categories}
+          onRefreshBrands={fetchBrands}
         />
       </Modal>
 
