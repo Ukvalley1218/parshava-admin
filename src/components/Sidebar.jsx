@@ -26,14 +26,19 @@ const navItems = [
   // { path: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
-export default function Sidebar({ isOpen, onClose, isMobile }) {
-  const [collapsed, setCollapsed] = useState(false)
+export default function Sidebar({ isOpen, onClose, isMobile, collapsed = false, onCollapsedChange }) {
   const { logout, admin } = useAdminAuth()
   const navigate = useNavigate()
 
   const handleLogout = () => {
     logout()
     navigate('/admin/login')
+  }
+
+  const toggleCollapsed = () => {
+    if (onCollapsedChange) {
+      onCollapsedChange(!collapsed)
+    }
   }
 
   // Mobile sidebar (drawer)
@@ -171,7 +176,7 @@ export default function Sidebar({ isOpen, onClose, isMobile }) {
 
       {/* Collapse Button */}
       <button
-        onClick={() => setCollapsed(!collapsed)}
+        onClick={toggleCollapsed}
         className="absolute -right-3 top-20 w-6 h-6 bg-white rounded-full shadow-lg flex items-center justify-center border border-gray-200 hover:bg-gray-50 transition-colors"
       >
         {collapsed ? (

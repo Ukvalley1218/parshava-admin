@@ -6,6 +6,7 @@ import Navbar from '../components/Navbar'
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   // Detect screen size
   useEffect(() => {
@@ -36,10 +37,12 @@ export default function AdminLayout() {
         isOpen={true}
         onClose={() => {}}
         isMobile={false}
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
       />
 
       {/* Main Content */}
-      <div className="lg:ml-64 transition-all duration-300">
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
         <Navbar
           onMenuClick={() => setSidebarOpen(true)}
           isMobile={isMobile}

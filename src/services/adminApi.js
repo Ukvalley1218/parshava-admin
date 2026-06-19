@@ -1,4 +1,4 @@
-import { get, post, put, patch, del } from './apiClient'
+import { get, post, put, patch, del } from './apiClient.js'
 
 // ============================================
 // AUTH API

@@ -52,6 +52,7 @@ function Modal({ isOpen, onClose, title, children, size = 'md' }) {
 // Column Visibility Popup Component
 function ColumnVisibilityPopup({ visibleColumns, onToggle, onClose }) {
   const allColumns = [
+    { key: 'status', label: 'Status', group: 'Basic' },
     { key: 'stock', label: 'Stock', group: 'Basic' },
     { key: 'mrp', label: 'MRP', group: 'Prices' },
     { key: 'mop', label: 'MOP', group: 'Prices' },
@@ -881,6 +882,13 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     }
   }
 
+  // Block minus key for number inputs
+  const handleNumberKeyDown = (e) => {
+    if (e.key === '-') {
+      e.preventDefault()
+    }
+  }
+
   // Calculate prices based on pricing calculator inputs (with GST)
   const calculatePrices = () => {
     const gstRate = parseFloat(formData.gstRate) || 0
@@ -1367,7 +1375,9 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
               value={formData.stock}
               onChange={handleChange}
               onBlur={handleBlur}
+              onKeyDown={handleNumberKeyDown}
               placeholder="Stock quantity"
+              min="0"
               className={`input-field text-sm ${errors.stock && touched.stock ? 'border-red-500 focus:ring-red-500' : ''}`}
             />
             {errors.stock && touched.stock && <p className="text-xs text-red-500 mt-1">{errors.stock}</p>}
@@ -1444,7 +1454,9 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   name="mrp"
                   value={formData.mrp}
                   onChange={handleChange}
+                  onKeyDown={handleNumberKeyDown}
                   placeholder="₹0"
+                  min="0"
                   className="input-field text-sm"
                 />
                 {formData.mrp > 0 && formData.gstRate > 0 && (
@@ -1462,7 +1474,9 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   name="mop"
                   value={formData.mop}
                   onChange={handleChange}
+                  onKeyDown={handleNumberKeyDown}
                   placeholder="₹0"
+                  min="0"
                   className={`input-field text-sm ${formData.basePriceType === 'mop' ? 'border-blue-500 ring-1 ring-blue-500/20' : ''}`}
                 />
                 {formData.mop > 0 && formData.gstRate > 0 && (
@@ -1485,7 +1499,9 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   name="purchasePrice"
                   value={formData.purchasePrice}
                   onChange={handleChange}
+                  onKeyDown={handleNumberKeyDown}
                   placeholder="₹0"
+                  min="0"
                   className={`input-field text-sm ${formData.basePriceType === 'purchase' ? 'border-blue-500 ring-1 ring-blue-500/20' : ''}`}
                 />
                 {formData.purchasePrice > 0 && formData.gstRate > 0 && (
@@ -1508,7 +1524,9 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   name="marketPrice"
                   value={formData.marketPrice}
                   onChange={handleChange}
+                  onKeyDown={handleNumberKeyDown}
                   placeholder="₹0"
+                  min="0"
                   className={`input-field text-sm ${formData.basePriceType === 'market' ? 'border-blue-500 ring-1 ring-blue-500/20' : ''}`}
                 />
                 {formData.marketPrice > 0 && formData.gstRate > 0 && (
@@ -1549,17 +1567,19 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                       name={discount.field}
                       value={formData[discount.field]}
                       onChange={handleChange}
+                      onKeyDown={handleNumberKeyDown}
                       placeholder="0"
+                      min="0"
                       className="w-full px-1 sm:px-2 py-2 text-center text-sm focus:outline-none"
                     />
                     <select
                       name={`${discount.field}Type`}
                       value={formData[`${discount.field}Type`]}
                       onChange={handleChange}
-                      className="w-8 sm:w-10 text-xs bg-gray-50 border-l focus:outline-none"
+                      className="w-12 h-9 text-xs text-center bg-gray-50 border-l focus:outline-none"
                     >
                       <option value="percent">%</option>
-                      <option value="flat">₹</option>
+                      <option value="flat">Rs</option>
                     </select>
                   </div>
                 </div>
@@ -1594,17 +1614,19 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   name="profit"
                   value={formData.profit}
                   onChange={handleChange}
+                  onKeyDown={handleNumberKeyDown}
                   placeholder="0"
+                  min="0"
                   className="w-full px-2 sm:px-3 py-2 text-sm focus:outline-none"
                 />
                 <select
                   name="profitType"
                   value={formData.profitType}
                   onChange={handleChange}
-                  className="w-10 sm:w-12 text-xs bg-gray-50 border-l focus:outline-none"
+                  className="w-12 h-9 text-xs text-center bg-gray-50 border-l focus:outline-none"
                 >
                   <option value="percent">%</option>
-                  <option value="flat">₹</option>
+                  <option value="flat">Rs</option>
                 </select>
               </div>
             </div>
@@ -1633,17 +1655,19 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                       name={op.field}
                       value={formData[op.field]}
                       onChange={handleChange}
+                      onKeyDown={handleNumberKeyDown}
                       placeholder="0"
+                      min="0"
                       className="w-full px-1 sm:px-2 py-1.5 sm:py-2 text-center text-sm font-medium focus:outline-none"
                     />
                     <select
                       name={`${op.field}Type`}
                       value={formData[`${op.field}Type`]}
                       onChange={handleChange}
-                      className="w-8 sm:w-10 text-xs bg-gray-50 border-l focus:outline-none"
+                      className="w-12 h-8 text-xs text-center bg-gray-50 border-l focus:outline-none"
                     >
                       <option value="percent">%</option>
-                      <option value="flat">₹</option>
+                      <option value="flat">Rs</option>
                     </select>
                   </div>
                   <div className="text-xs text-green-600 font-medium">
@@ -1671,7 +1695,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
 }
 
 // Inline Input Component - Always shows input, auto-saves on blur/Tab
-function InlineInput({ product, field, value, onSave, onKeyDown, type = 'number', width = 'w-16', savingFields }) {
+function InlineInput({ product, field, value, onSave, onKeyDown, type = 'number', width = 'w-20', savingFields, min = 0 }) {
   const [localValue, setLocalValue] = useState(value?.toString() || '')
   const inputRef = useRef(null)
   const isSaving = savingFields?.[`${product._id}-${field}`]
@@ -1687,18 +1711,32 @@ function InlineInput({ product, field, value, onSave, onKeyDown, type = 'number'
 
   const handleBlur = () => {
     // Only save if value changed
-    const newValue = type === 'number' ? parseFloat(localValue) || 0 : localValue
+    let newValue = type === 'number' ? parseFloat(localValue) || 0 : localValue
     const oldValue = type === 'number' ? parseFloat(value) || 0 : value
+    // Prevent negative values for number fields
+    if (type === 'number' && min !== undefined && newValue < min) {
+      newValue = min
+      setLocalValue(min.toString())
+    }
     if (newValue !== oldValue) {
       onSave(product, field, newValue)
     }
   }
 
   const handleKeyDown = (e, product) => {
+    // Block minus key for number inputs
+    if (e.key === '-' && type === 'number') {
+      e.preventDefault()
+      return
+    }
     if (e.key === 'Enter' || e.key === 'Tab') {
       // Save on Enter or Tab
-      const newValue = type === 'number' ? parseFloat(localValue) || 0 : localValue
+      let newValue = type === 'number' ? parseFloat(localValue) || 0 : localValue
       const oldValue = type === 'number' ? parseFloat(value) || 0 : value
+      // Prevent negative values for number fields
+      if (type === 'number' && min !== undefined && newValue < min) {
+        newValue = min
+      }
       if (newValue !== oldValue) {
         onSave(product, field, newValue)
       }
@@ -1715,6 +1753,7 @@ function InlineInput({ product, field, value, onSave, onKeyDown, type = 'number'
       onKeyDown={(e) => handleKeyDown(e, product)}
       className={`${width} px-2 py-1 text-xs text-right border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${isSaving ? 'bg-yellow-50' : ''}`}
       disabled={isSaving}
+      min={type === 'number' ? min : undefined}
     />
   )
 }
@@ -1750,12 +1789,73 @@ function InlineSelect({ product, field, value, options, onSave, savingFields }) 
   )
 }
 
+// Inline Price Value Component - for displaying/editing price values only (no type dropdown)
+function InlinePriceValue({ product, field, value, onSave, savingFields }) {
+  const [localValue, setLocalValue] = useState(value?.toString() || '0')
+  const isSaving = savingFields?.[`${product._id}-${field}`]
+
+  useEffect(() => {
+    setLocalValue(value?.toString() || '0')
+  }, [value])
+
+  const handleChange = (e) => {
+    setLocalValue(e.target.value)
+  }
+
+  const handleBlur = () => {
+    let newValue = parseFloat(localValue) || 0
+    // Prevent negative values
+    if (newValue < 0) {
+      newValue = 0
+      setLocalValue('0')
+    }
+    const oldValue = parseFloat(value) || 0
+    if (newValue !== oldValue) {
+      onSave(product, field, newValue)
+    }
+  }
+
+  const handleKeyDown = (e) => {
+    // Block minus key
+    if (e.key === '-') {
+      e.preventDefault()
+      return
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      let newValue = parseFloat(localValue) || 0
+      // Prevent negative values
+      if (newValue < 0) {
+        newValue = 0
+      }
+      const oldValue = parseFloat(value) || 0
+      if (newValue !== oldValue) {
+        onSave(product, field, newValue)
+      }
+    }
+  }
+
+  return (
+    <input
+      type="number"
+      value={localValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className="w-16 px-2 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+      disabled={isSaving}
+      min="0"
+    />
+  )
+}
+
 // Inline Discount Component - Value + Type (e.g., 10% or ₹100)
 function InlineDiscount({ product, disIndex, field, value, type: typeVal, onSave, onSaveType, savingFields }) {
   // Determine field name - use disIndex for discount fields, otherwise use field prop
   const valueField = disIndex ? `dis${disIndex}` : field
   const typeField = disIndex ? `dis${disIndex}Type` : `${field}Type`
-  const isSaving = savingFields?.[`${product._id}-${valueField}`]
+  const isSavingValue = savingFields?.[`${product._id}-${valueField}`]
+  const isSavingType = savingFields?.[`${product._id}-${typeField}`]
+  const isSaving = isSavingValue || isSavingType
 
   const [localValue, setLocalValue] = useState(value?.toString() || '0')
 
@@ -1768,7 +1868,12 @@ function InlineDiscount({ product, disIndex, field, value, type: typeVal, onSave
   }
 
   const handleBlur = () => {
-    const newValue = parseFloat(localValue) || 0
+    let newValue = parseFloat(localValue) || 0
+    // Prevent negative values
+    if (newValue < 0) {
+      newValue = 0
+      setLocalValue('0')
+    }
     const oldValue = parseFloat(value) || 0
     if (newValue !== oldValue) {
       onSave(product, valueField, newValue)
@@ -1776,8 +1881,17 @@ function InlineDiscount({ product, disIndex, field, value, type: typeVal, onSave
   }
 
   const handleKeyDown = (e) => {
+    // Block minus key
+    if (e.key === '-') {
+      e.preventDefault()
+      return
+    }
     if (e.key === 'Enter' || e.key === 'Tab') {
-      const newValue = parseFloat(localValue) || 0
+      let newValue = parseFloat(localValue) || 0
+      // Prevent negative values
+      if (newValue < 0) {
+        newValue = 0
+      }
       const oldValue = parseFloat(value) || 0
       if (newValue !== oldValue) {
         onSave(product, valueField, newValue)
@@ -1785,10 +1899,15 @@ function InlineDiscount({ product, disIndex, field, value, type: typeVal, onSave
     }
   }
 
-  const handleTypeChange = (e) => {
-    const newType = e.target.value
-    if (newType !== typeVal) {
-      onSaveType(product, typeField, newType)
+  // Get the current type for display
+  const currentType = typeVal || 'percent'
+  const typeLabel = currentType === 'percent' ? '%' : 'Rs'
+  const otherType = currentType === 'percent' ? 'flat' : 'percent'
+  const otherLabel = currentType === 'percent' ? 'Rs' : '%'
+
+  const handleToggleType = () => {
+    if (!isSaving && onSaveType) {
+      onSaveType(product._id, typeField, otherType)
     }
   }
 
@@ -1800,18 +1919,23 @@ function InlineDiscount({ product, disIndex, field, value, type: typeVal, onSave
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="w-10 px-1 py-1 text-[10px] text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-14 px-2 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
         disabled={isSaving}
+        min="0"
       />
-      <select
-        value={typeVal || 'percent'}
-        onChange={handleTypeChange}
-        className="w-8 px-0 py-1 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+      <button
+        type="button"
+        onClick={handleToggleType}
+        className={`w-10 h-6 text-xs font-medium border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+          currentType === 'percent'
+            ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+            : 'bg-green-50 text-green-700 border-green-300 hover:bg-green-100'
+        } ${isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         disabled={isSaving}
+        title={`Click to change to ${otherLabel}`}
       >
-        <option value="percent">%</option>
-        <option value="flat">₹</option>
-      </select>
+        {typeLabel}
+      </button>
     </div>
   )
 }
@@ -1830,7 +1954,12 @@ function InlinePriceInput({ product, field, value, type: typeVal, onSave, onSave
   }
 
   const handleBlur = () => {
-    const newValue = parseFloat(localValue) || 0
+    let newValue = parseFloat(localValue) || 0
+    // Prevent negative values
+    if (newValue < 0) {
+      newValue = 0
+      setLocalValue('0')
+    }
     const oldValue = parseFloat(value) || 0
     if (newValue !== oldValue) {
       onSave(product, field, newValue)
@@ -1838,8 +1967,17 @@ function InlinePriceInput({ product, field, value, type: typeVal, onSave, onSave
   }
 
   const handleKeyDown = (e) => {
+    // Block minus key
+    if (e.key === '-') {
+      e.preventDefault()
+      return
+    }
     if (e.key === 'Enter' || e.key === 'Tab') {
-      const newValue = parseFloat(localValue) || 0
+      let newValue = parseFloat(localValue) || 0
+      // Prevent negative values
+      if (newValue < 0) {
+        newValue = 0
+      }
       const oldValue = parseFloat(value) || 0
       if (newValue !== oldValue) {
         onSave(product, field, newValue)
@@ -1864,17 +2002,18 @@ function InlinePriceInput({ product, field, value, type: typeVal, onSave, onSave
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="w-12 px-1 py-1 text-[10px] text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-14 px-2 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
         disabled={isSaving}
+        min="0"
       />
       <select
         value={typeVal || 'percent'}
         onChange={handleTypeChange}
-        className="w-8 px-0 py-1 text-[10px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+        className="w-14 h-6 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer"
         disabled={isSaving}
       >
         <option value="percent">%</option>
-        <option value="flat">₹</option>
+        <option value="flat">Rs</option>
       </select>
     </div>
   )
@@ -1956,7 +2095,7 @@ function EditableDiscount({ productId, field, disIndex, value, type: typeVal, ed
           onBlur={onBlur}
           onKeyDown={onKeyDown}
           autoFocus
-          className="w-12 px-1 py-1 text-xs text-center border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-14 px-2 py-1 text-xs text-center border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
           disabled={savingField}
           placeholder="0"
         />
@@ -1970,11 +2109,11 @@ function EditableDiscount({ productId, field, disIndex, value, type: typeVal, ed
             }
           }}
           onMouseDown={(e) => e.stopPropagation()}
-          className="w-10 px-1 py-1 text-xs border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer"
+          className="w-14 h-6 text-xs text-center border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer"
           disabled={savingField}
         >
           <option value="percent">%</option>
-          <option value="flat">₹</option>
+          <option value="flat">Rs</option>
         </select>
       </div>
     )
@@ -2003,11 +2142,11 @@ function EditableDiscount({ productId, field, disIndex, value, type: typeVal, ed
         }}
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
-        className="w-8 px-0 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer"
+        className="w-14 h-6 text-xs text-center border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer"
         disabled={savingField}
       >
         <option value="percent">%</option>
-        <option value="flat">₹</option>
+        <option value="flat">Rs</option>
       </select>
     </div>
   )
@@ -2058,7 +2197,7 @@ export default function Products() {
   // Column visibility state - all columns visible by default
   const [showColumnPopup, setShowColumnPopup] = useState(false)
   const [visibleColumns, setVisibleColumns] = useState([
-    'stock', 'mrp', 'mop', 'purchase', 'market', 'base',
+    'status', 'stock', 'mrp', 'mop', 'purchase', 'market', 'base',
     'd1', 'd2', 'd3', 'd4', 'd5', 'nlc', 'profit',
     't1', 't2', 't3', 't4'
   ])
@@ -2083,7 +2222,7 @@ export default function Products() {
   const toggleColumnVisibility = (key) => {
     if (key === 'all') {
       // Show all columns
-      setVisibleColumns(['stock', 'mrp', 'mop', 'purchase', 'market', 'base', 'd1', 'd2', 'd3', 'd4', 'd5', 'nlc', 'profit', 't1', 't2', 't3', 't4'])
+      setVisibleColumns(['status', 'stock', 'mrp', 'mop', 'purchase', 'market', 'base', 'd1', 'd2', 'd3', 'd4', 'd5', 'nlc', 'profit', 't1', 't2', 't3', 't4'])
     } else if (key === 'none') {
       // Hide all columns (keep at least one visible)
       setVisibleColumns([])
@@ -2376,6 +2515,21 @@ export default function Products() {
     }
   }
 
+  // Toggle product active status (Continue/Discontinue)
+  const toggleProductStatus = async (productId, currentStatus) => {
+    const newStatus = !currentStatus
+    try {
+      const response = await updateAdminProduct(productId, { active: newStatus })
+      if (response.success !== false) {
+        setProducts(prev => prev.map(p => p._id === productId ? { ...p, active: newStatus } : p))
+      } else {
+        alert(response.message || 'Failed to update status')
+      }
+    } catch (err) {
+      alert('Failed to update status')
+    }
+  }
+
   // Inline editing functions - Auto-save on blur
   const startEditingField = (productId, field, currentValue) => {
     setEditingField({ productId, field })
@@ -2490,12 +2644,18 @@ export default function Products() {
 
   // Direct save for type dropdowns (percent/flat)
   const saveTypeDirectly = async (productId, typeField, newType) => {
-    if (savingField) return
-    setSavingField(true)
+    const fieldKey = `${productId}-${typeField}`
+    if (savingFields[fieldKey]) {
+      return
+    }
+
+    setSavingFields(prev => ({ ...prev, [fieldKey]: true }))
 
     try {
       const product = products.find(p => p._id === productId)
-      if (!product) return
+      if (!product) {
+        return
+      }
 
       const updateData = { [typeField]: newType }
 
@@ -2529,7 +2689,8 @@ export default function Products() {
             nlc = nlc - discountVal
           }
         }
-        nlc = Math.round(nlc * 100) / 100
+        // Clamp NLC to minimum 0 (discounts can't exceed base price)
+        nlc = Math.max(0, Math.round(nlc * 100) / 100)
 
         // Calculate price with profit
         let priceWithProfit = nlc
@@ -2539,15 +2700,19 @@ export default function Products() {
         } else {
           priceWithProfit = nlc + profitVal
         }
+        // Clamp to minimum 0
+        priceWithProfit = Math.max(0, priceWithProfit)
 
-        // Calculate OP prices
+        // Calculate OP prices (clamped to minimum 0)
         const calculateOpPrice = (opField, opTypeField) => {
           const inputValue = parseFloat(updatedProduct[opField]) || 0
+          let result
           if (updatedProduct[opTypeField] === 'flat') {
-            return inputValue
+            result = inputValue
           } else {
-            return Math.round((priceWithProfit * (1 + inputValue / 100)) * 100) / 100
+            result = Math.round((priceWithProfit * (1 + inputValue / 100)) * 100) / 100
           }
+          return Math.max(0, result)
         }
 
         updateData.nlc = nlc
@@ -2572,7 +2737,11 @@ export default function Products() {
       console.error('Failed to save type:', err)
       alert('Failed to save changes')
     } finally {
-      setSavingField(false)
+      setSavingFields(prev => {
+        const newState = { ...prev }
+        delete newState[fieldKey]
+        return newState
+      })
     }
   }
 
@@ -2925,23 +3094,24 @@ export default function Products() {
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '150px' }}>Product</th>
+                {visibleColumns.includes('status') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Status</th>}
                 {visibleColumns.includes('stock') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Stock</th>}
-                {visibleColumns.includes('mrp') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>MRP</th>}
-                {visibleColumns.includes('mop') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>MOP</th>}
-                {visibleColumns.includes('purchase') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Purchase</th>}
-                {visibleColumns.includes('market') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Market</th>}
+                {visibleColumns.includes('mrp') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MRP</th>}
+                {visibleColumns.includes('mop') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MOP</th>}
+                {visibleColumns.includes('purchase') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Purchase</th>}
+                {visibleColumns.includes('market') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Market</th>}
                 {visibleColumns.includes('base') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Base</th>}
-                {visibleColumns.includes('d1') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D1</th>}
-                {visibleColumns.includes('d2') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D2</th>}
-                {visibleColumns.includes('d3') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D3</th>}
-                {visibleColumns.includes('d4') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D4</th>}
-                {visibleColumns.includes('d5') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '60px' }}>D5</th>}
-                {visibleColumns.includes('nlc') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-100" style={{ minWidth: '70px' }}>NLC</th>}
-                {visibleColumns.includes('profit') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '60px' }}>Profit</th>}
-                {visibleColumns.includes('t1') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '70px' }}>T1</th>}
-                {visibleColumns.includes('t2') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '70px' }}>T2</th>}
-                {visibleColumns.includes('t3') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '70px' }}>T3</th>}
-                {visibleColumns.includes('t4') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '70px' }}>T4</th>}
+                {visibleColumns.includes('d1') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D1</th>}
+                {visibleColumns.includes('d2') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D2</th>}
+                {visibleColumns.includes('d3') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D3</th>}
+                {visibleColumns.includes('d4') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D4</th>}
+                {visibleColumns.includes('d5') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D5</th>}
+                {visibleColumns.includes('nlc') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-100" style={{ minWidth: '85px' }}>NLC</th>}
+                {visibleColumns.includes('profit') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '75px' }}>Profit</th>}
+                {visibleColumns.includes('t1') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T1</th>}
+                {visibleColumns.includes('t2') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T2</th>}
+                {visibleColumns.includes('t3') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T3</th>}
+                {visibleColumns.includes('t4') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T4</th>}
                 <th className="text-center px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Actions</th>
               </tr>
             </thead>
@@ -2973,6 +3143,33 @@ export default function Products() {
                         <p className="text-[10px] text-gray-400" title={product.name}>{product.name}</p>
                       </td>
 
+                      {/* Status - Continue/Discontinue toggle */}
+                      {visibleColumns.includes('status') && (
+                        <td className="px-2 py-2 text-center">
+                          <button
+                            onClick={() => toggleProductStatus(product._id, product.active)}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-colors ${
+                              product.active !== false
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : 'bg-red-100 text-red-700 hover:bg-red-200'
+                            }`}
+                            title={product.active !== false ? 'Click to discontinue' : 'Click to continue'}
+                          >
+                            {product.active !== false ? (
+                              <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                Active
+                              </>
+                            ) : (
+                              <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                Inactive
+                              </>
+                            )}
+                          </button>
+                        </td>
+                      )}
+
                       {/* Stock - Always visible input */}
                       {visibleColumns.includes('stock') && (
                         <td className="px-2 py-2 text-center">
@@ -2982,7 +3179,7 @@ export default function Products() {
                             value={product.stock || 0}
                             onSave={saveFieldDirectly}
                             type="number"
-                            width="w-10"
+                            width="w-14"
                             savingFields={savingFields}
                           />
                         </td>
@@ -2997,7 +3194,7 @@ export default function Products() {
                             value={product.mrp}
                             onSave={saveFieldDirectly}
                             type="number"
-                            width="w-14"
+                            width="w-20"
                             savingFields={savingFields}
                           />
                         </td>
@@ -3012,7 +3209,7 @@ export default function Products() {
                             value={product.mop}
                             onSave={saveFieldDirectly}
                             type="number"
-                            width="w-14"
+                            width="w-20"
                             savingFields={savingFields}
                           />
                         </td>
@@ -3027,7 +3224,7 @@ export default function Products() {
                             value={product.purchasePrice}
                             onSave={saveFieldDirectly}
                             type="number"
-                            width="w-14"
+                            width="w-20"
                             savingFields={savingFields}
                           />
                         </td>
@@ -3042,7 +3239,7 @@ export default function Products() {
                             value={product.marketPrice}
                             onSave={saveFieldDirectly}
                             type="number"
-                            width="w-14"
+                            width="w-20"
                             savingFields={savingFields}
                           />
                         </td>
