@@ -33,14 +33,7 @@ const navigate = useNavigate()
   navigate('/admin/login')
 }
 
-  // // Mock notifications
-  // const notifications = [
-  //   { id: 1, title: 'New Inquiry', message: 'A new inquiry has been submitted', time: '5 min ago', unread: true },
-  //   { id: 2, title: 'Order Placed', message: 'Order #1234 has been placed', time: '1 hour ago', unread: true },
-  //   { id: 3, title: 'New User', message: 'New sales user registered', time: '2 hours ago', unread: false },
-  // ]
-
-  // const unreadCount = notifications.filter(n => n.unread).length
+  
 
   return (
     <header className="bg-white border-b border-gray-100 px-4 md:px-6 py-3 sticky top-0 z-30">
@@ -60,14 +53,7 @@ const navigate = useNavigate()
           {/* Search */}
           <div className="flex-1 max-w-md hidden sm:block">
             <div className="relative">
-              {/* <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-              /> */}
+              
               <h3 className='font-bold text-2xl'>Paarshva Infotech</h3>
             </div>
           </div>
@@ -82,15 +68,7 @@ const navigate = useNavigate()
 
           {/* Notifications */}
           <div className="relative" ref={notifRef}>
-            {/* <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors"
-            >
-              <Bell className="w-5 h-5 text-gray-600" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-              )}
-            </button> */}
+           
 
             {/* Notifications Dropdown */}
             {showNotifications && (
