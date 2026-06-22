@@ -1044,16 +1044,16 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       nlc: calculated.nlc,
       profit: parseFloat(formData.profit) || 0,
       profitType: formData.profitType,
-      // OP Prices (T1-T4) - store actual tier prices
-      op1: tier1,
+      // OP fields store the user's input (percentage or flat amount), NOT the calculated price
+      op1: parseFloat(formData.op1) || 0,
       op1Type: formData.op1Type,
-      op2: tier2,
+      op2: parseFloat(formData.op2) || 0,
       op2Type: formData.op2Type,
-      op3: tier3,
+      op3: parseFloat(formData.op3) || 0,
       op3Type: formData.op3Type,
-      op4: tier4,
+      op4: parseFloat(formData.op4) || 0,
       op4Type: formData.op4Type,
-      // T1-T4 prices = OP prices for customer price lists
+      // T1-T4 prices = calculated final prices for customer price lists
       t1: tier1,
       t2: tier2,
       t3: tier3,
@@ -1570,6 +1570,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                       onKeyDown={handleNumberKeyDown}
                       placeholder="0"
                       min="0"
+                      step="any"
                       className="w-full px-1 sm:px-2 py-2 text-center text-sm focus:outline-none"
                     />
                     <select
@@ -1617,6 +1618,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   onKeyDown={handleNumberKeyDown}
                   placeholder="0"
                   min="0"
+                  step="any"
                   className="w-full px-2 sm:px-3 py-2 text-sm focus:outline-none"
                 />
                 <select
@@ -1658,6 +1660,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                       onKeyDown={handleNumberKeyDown}
                       placeholder="0"
                       min="0"
+                      step="any"
                       className="w-full px-1 sm:px-2 py-1.5 sm:py-2 text-center text-sm font-medium focus:outline-none"
                     />
                     <select
@@ -1754,6 +1757,7 @@ function InlineInput({ product, field, value, onSave, onKeyDown, type = 'number'
       className={`${width} px-2 py-1 text-xs text-right border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${isSaving ? 'bg-yellow-50' : ''}`}
       disabled={isSaving}
       min={type === 'number' ? min : undefined}
+      step={type === 'number' ? 'any' : undefined}
     />
   )
 }
@@ -1844,6 +1848,7 @@ function InlinePriceValue({ product, field, value, onSave, savingFields }) {
       className="w-16 px-2 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
       disabled={isSaving}
       min="0"
+      step="any"
     />
   )
 }
@@ -1922,6 +1927,7 @@ function InlineDiscount({ product, disIndex, field, value, type: typeVal, onSave
         className="w-14 px-2 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
         disabled={isSaving}
         min="0"
+        step="any"
       />
       <button
         type="button"
@@ -2005,6 +2011,7 @@ function InlinePriceInput({ product, field, value, type: typeVal, onSave, onSave
         className="w-14 px-2 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
         disabled={isSaving}
         min="0"
+        step="any"
       />
       <select
         value={typeVal || 'percent'}
@@ -2618,10 +2625,8 @@ export default function Products() {
         updateData.t3 = calculateOpPrice('op3', 'op3Type')
         updateData.t4 = calculateOpPrice('op4', 'op4Type')
         updateData.opPrice = calculateOpPrice('op1', 'op1Type')
-        updateData.op1 = calculateOpPrice('op1', 'op1Type')
-        updateData.op2 = calculateOpPrice('op2', 'op2Type')
-        updateData.op3 = calculateOpPrice('op3', 'op3Type')
-        updateData.op4 = calculateOpPrice('op4', 'op4Type')
+        // Note: op1-op4 store the user's input (percentage or flat amount), NOT the calculated price
+        // t1-t4 store the calculated final prices
       }
 
       const response = await updateAdminProduct(product._id, updateData)
@@ -2721,10 +2726,8 @@ export default function Products() {
         updateData.t3 = calculateOpPrice('op3', 'op3Type')
         updateData.t4 = calculateOpPrice('op4', 'op4Type')
         updateData.opPrice = calculateOpPrice('op1', 'op1Type')
-        updateData.op1 = calculateOpPrice('op1', 'op1Type')
-        updateData.op2 = calculateOpPrice('op2', 'op2Type')
-        updateData.op3 = calculateOpPrice('op3', 'op3Type')
-        updateData.op4 = calculateOpPrice('op4', 'op4Type')
+        // Note: op1-op4 store the user's input (percentage or flat amount), NOT the calculated price
+        // t1-t4 store the calculated final prices
       }
 
       const response = await updateAdminProduct(productId, updateData)
@@ -2830,14 +2833,8 @@ export default function Products() {
         updateData.t3 = calculateOpPrice('op3', 'op3Type')
         updateData.t4 = calculateOpPrice('op4', 'op4Type')
         updateData.opPrice = calculateOpPrice('op1', 'op1Type')
-
-        // Also save OP values
-        if (!field.startsWith('op')) {
-          updateData.op1 = calculateOpPrice('op1', 'op1Type')
-          updateData.op2 = calculateOpPrice('op2', 'op2Type')
-          updateData.op3 = calculateOpPrice('op3', 'op3Type')
-          updateData.op4 = calculateOpPrice('op4', 'op4Type')
-        }
+        // Note: op1-op4 store the user's input (percentage or flat amount), NOT the calculated price
+        // t1-t4 store the calculated final prices
       }
 
       const response = await updateAdminProduct(productId, updateData)
@@ -3093,7 +3090,7 @@ export default function Products() {
           <table className="w-full border-collapse" style={{ minWidth: '1800px' }}>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '150px' }}>Product</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '180px' }}>Product</th>
                 {visibleColumns.includes('status') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Status</th>}
                 {visibleColumns.includes('stock') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Stock</th>}
                 {visibleColumns.includes('mrp') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MRP</th>}
@@ -3138,9 +3135,9 @@ export default function Products() {
                     <tr key={product._id} className="border-b border-gray-50 hover:bg-gray-50/50">
                       {/* Product Name */}
                       <td className="px-3 py-2 bg-white" style={{ minWidth: '150px' }}>
-                        <p className="font-medium text-gray-900 text-xs truncate max-w-[130px]">{product.brand}</p>
-                        {product.partNumber && <p className="text-[10px] text-gray-500 truncate">{product.partNumber}</p>}
-                        <p className="text-[10px] text-gray-400" title={product.name}>{product.name}</p>
+                        <p className="font-medium text-gray-900 text-s truncate max-w-[130px]">{product.brand}</p>
+                        {product.partNumber && <p className="text-[15px] text-gray-500 truncate">{product.partNumber}</p>}
+                        <p className="text-[13px] text-gray-400" title={product.name}>{product.name}</p>
                       </td>
 
                       {/* Status - Continue/Discontinue toggle */}
