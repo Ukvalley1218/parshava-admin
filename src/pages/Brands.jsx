@@ -266,10 +266,10 @@ export default function Brands() {
               <table className="w-full min-w-[500px]">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Name</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Status</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Created</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Name</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Status</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Created</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">

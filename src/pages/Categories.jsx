@@ -348,6 +348,7 @@ export default function Categories() {
       {categories.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
           <FolderTree className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          
           <p className="text-gray-500 mb-2">No categories found</p>
           <p className="text-sm text-gray-400">Create your first category to get started</p>
         </div>

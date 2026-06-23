@@ -92,10 +92,10 @@ function OrderDetailModal({ order, onClose, onStatusChange, loading }) {
           <table className="w-full min-w-[400px]">
             <thead className="bg-gray-50">
               <tr>
-                <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Product</th>
+                <th className="text-center px-4 py-2 text-xs font-medium text-gray-500">Product</th>
                 <th className="text-center px-4 py-2 text-xs font-medium text-gray-500">Qty</th>
-                <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Price</th>
-                <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Total</th>
+                <th className="text-center px-4 py-2 text-xs font-medium text-gray-500">Price</th>
+                <th className="text-center px-4 py-2 text-xs font-medium text-gray-500">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -326,13 +326,13 @@ export default function Orders() {
           <table className="w-full min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Order ID</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Customer</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Items</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Amount</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Date</th>
-                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Order ID</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Customer</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Items</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Amount</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Date</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody>

@@ -1254,12 +1254,12 @@ export default function Contacts() {
           <table className="w-full min-w-[700px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Contact</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Firm</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Mobile</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Created</th>
-                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Contact</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Firm</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Mobile</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Created</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody>

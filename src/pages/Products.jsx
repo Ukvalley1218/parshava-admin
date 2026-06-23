@@ -31,9 +31,9 @@ function Modal({ isOpen, onClose, title, children, size = 'md' }) {
     xl: 'max-w-5xl',
     full: 'max-w-[95vw]'
   }
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto z-50" onClick={onClose}>
-      <div className={`bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-xl animate-fadeIn my-2 sm:my-4`}
+  return createPortal(
+    <div className="fixed inset-0 bg-black/50 flex items-start justify-center overflow-y-auto z-[9999]" onClick={onClose}>
+      <div className={`bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-xl animate-fadeIn mt-2 sm:mt-4 mb-4 mx-2 sm:mx-4`}
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
           <h3 className="font-semibold text-base sm:text-lg text-gray-900 truncate pr-2">{title}</h3>
@@ -45,7 +45,8 @@ function Modal({ isOpen, onClose, title, children, size = 'md' }) {
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -3090,25 +3091,25 @@ export default function Products() {
           <table className="w-full border-collapse" style={{ minWidth: '1800px' }}>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '180px' }}>Product</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '150px' }}>Product</th>
                 {visibleColumns.includes('status') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Status</th>}
                 {visibleColumns.includes('stock') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Stock</th>}
-                {visibleColumns.includes('mrp') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MRP</th>}
-                {visibleColumns.includes('mop') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MOP</th>}
-                {visibleColumns.includes('purchase') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Purchase</th>}
-                {visibleColumns.includes('market') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Market</th>}
+                {visibleColumns.includes('mrp') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MRP</th>}
+                {visibleColumns.includes('mop') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MOP</th>}
+                {visibleColumns.includes('purchase') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Purchase</th>}
+                {visibleColumns.includes('market') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Market</th>}
                 {visibleColumns.includes('base') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Base</th>}
                 {visibleColumns.includes('d1') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D1</th>}
                 {visibleColumns.includes('d2') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D2</th>}
                 {visibleColumns.includes('d3') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D3</th>}
                 {visibleColumns.includes('d4') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D4</th>}
                 {visibleColumns.includes('d5') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D5</th>}
-                {visibleColumns.includes('nlc') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-100" style={{ minWidth: '85px' }}>NLC</th>}
+                {visibleColumns.includes('nlc') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-100" style={{ minWidth: '85px' }}>NLC</th>}
                 {visibleColumns.includes('profit') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '75px' }}>Profit</th>}
-                {visibleColumns.includes('t1') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T1</th>}
-                {visibleColumns.includes('t2') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T2</th>}
-                {visibleColumns.includes('t3') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T3</th>}
-                {visibleColumns.includes('t4') && <th className="text-right px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T4</th>}
+                {visibleColumns.includes('t1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T1</th>}
+                {visibleColumns.includes('t2') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T2</th>}
+                {visibleColumns.includes('t3') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T3</th>}
+                {visibleColumns.includes('t4') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T4</th>}
                 <th className="text-center px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Actions</th>
               </tr>
             </thead>
