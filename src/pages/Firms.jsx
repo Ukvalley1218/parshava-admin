@@ -574,8 +574,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
     // Management
     priceListCategory: customer?.priceListCategory || 'T1',
     accountManager: customer?.accountManager || '',
-    productManager: customer?.productManager || '',
-    leadSource: customer?.leadSource || '',
 
     // Status
     customerType: customer?.customerType || 'customer',
@@ -833,20 +831,7 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
         return null
       }
     },
-    productManager: {
-      required: true,
-      validate: (value) => {
-        if (!value?.trim()) return 'Product manager is required'
-        return null
-      }
-    },
-    leadSource: {
-      required: true,
-      validate: (value) => {
-        if (!value?.trim()) return 'Lead source is required'
-        return null
-      }
-    },
+
     // Optional fields
     mobile2: {
       required: false,
@@ -1824,40 +1809,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
               <p className="text-xs text-red-500 mt-1">{errors.accountManager}</p>
             )}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Product Manager <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="productManager"
-              value={formData.productManager}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`input-field ${errors.productManager && touched.productManager ? 'border-red-500' : ''}`}
-              placeholder="Manager name"
-            />
-            {errors.productManager && touched.productManager && (
-              <p className="text-xs text-red-500 mt-1">{errors.productManager}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Lead Source <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="leadSource"
-              value={formData.leadSource}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`input-field ${errors.leadSource && touched.leadSource ? 'border-red-500' : ''}`}
-              placeholder="Website / Referral / etc."
-            />
-            {errors.leadSource && touched.leadSource && (
-              <p className="text-xs text-red-500 mt-1">{errors.leadSource}</p>
-            )}
-          </div>
         </div>
       </div>
 
@@ -2415,8 +2366,6 @@ function CustomerViewModal({ customer, onClose }) {
       <DetailSection title="Management">
         <div className="grid grid-cols-2 gap-4">
           <DetailRow label="Account Manager" value={customer.accountManager} icon={User} />
-          <DetailRow label="Product Manager" value={customer.productManager} icon={User} />
-          <DetailRow label="Lead Source" value={customer.leadSource} />
           <DetailRow label="Notes" value={customer.notes} />
         </div>
       </DetailSection>

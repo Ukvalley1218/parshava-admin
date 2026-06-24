@@ -19,7 +19,9 @@ function StatCard({ title, value, icon: Icon, change, changeType, color }) {
       <div className="flex items-start justify-between">
         <div>
           <p className="text-gray-500 text-sm">{title}</p>
-          <h3 className="text-3xl font-bold text-gray-900 mt-1">{value}</h3>
+          <h3 className="text-3xl font-bold text-gray-900 mt-1 truncate max-w-[150px]">
+  {value}
+</h3>
          
         </div>
         <div className={`p-3 rounded-xl ${colorClasses[color]}`}>
@@ -186,7 +188,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
          <StatCard
   title="Total Revenue"
-  value={`₹${(stats.totalRevenue || 0).toLocaleString('en-IN')}`}
+  value={`₹${Math.floor(stats.totalRevenue || 0).toLocaleString('en-IN')}`}
   icon={DollarSign}
   change={2}
   changeType="up"

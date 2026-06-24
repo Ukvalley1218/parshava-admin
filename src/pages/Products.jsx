@@ -378,7 +378,6 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
   const [allCategories, setAllCategories] = useState(propCategories || []) // Cache all categories
   const [subcategories, setSubcategories] = useState(propSubcategories || [])
   const [series, setSeries] = useState(propSeries || [])
-  const [selectedSeriesSubSeries, setSelectedSeriesSubSeries] = useState([]) // Sub-series of selected series
   const [initialized, setInitialized] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [loadingCategories, setLoadingCategories] = useState(false)
@@ -405,9 +404,6 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       subcategoryId: p?.subcategoryId || '',
       series: p?.series || '',
       seriesId: p?.seriesId || '',
-      subSeries: p?.subSeries || '',
-      subSeriesId: p?.subSeriesId || '',
-      subSeriesCode: p?.subSeriesCode || '',
       unit: p?.unit || '',
       hsn: p?.hsn || '',
       gstRate: p?.gstRate || 18,
@@ -710,16 +706,6 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     }
   }, [product?._id]) // Only re-run when product ID changes
 
-  // Set sub-series when series is loaded and product has a seriesId
-  useEffect(() => {
-    if (product?.seriesId && series.length > 0) {
-      const selectedSeries = series.find(s => s._id === product.seriesId)
-      if (selectedSeries?.subSeries) {
-        setSelectedSeriesSubSeries(selectedSeries.subSeries)
-      }
-    }
-  }, [series, product?.seriesId])
-
   // Cache all categories when propCategories changes
   useEffect(() => {
     if (propCategories && propCategories.length > 0 && allCategories.length === 0) {
@@ -804,13 +790,8 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       subcategoryId: '',
       subcategory: '',
       seriesId: '',
-      series: '',
-      subSeriesId: '',
-      subSeries: '',
-      subSeriesCode: ''
+      series: ''
     }))
-    // Reset sub-series
-    setSelectedSeriesSubSeries([])
   }
 
   const handleSubcategoryChange = (e) => {
@@ -829,23 +810,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     setFormData(prev => ({
       ...prev,
       seriesId,
-      series: selectedSeries?.name || '',
-      subSeries: '',
-      subSeriesId: '',
-      subSeriesCode: ''
-    }))
-    // Set sub-series options from the selected series
-    setSelectedSeriesSubSeries(selectedSeries?.subSeries || [])
-  }
-
-  const handleSubSeriesChange = (e) => {
-    const subSeriesId = e.target.value
-    const selectedSubSeries = selectedSeriesSubSeries.find(s => s._id === subSeriesId)
-    setFormData(prev => ({
-      ...prev,
-      subSeriesId,
-      subSeries: selectedSubSeries?.name || '',
-      subSeriesCode: selectedSubSeries?.code || ''
+      series: selectedSeries?.name || ''
     }))
   }
 
@@ -1197,38 +1162,6 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
             </div>
             {!formData.categoryId && <p className="text-xs text-gray-400 mt-1">Select a category first</p>}
           </div>
-
-          {/* Sub-Series */}
-          {formData.seriesId && selectedSeriesSubSeries.length > 0 && (
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Sub-Series</label>
-              <select
-                name="subSeriesId"
-                value={formData.subSeriesId}
-                onChange={handleSubSeriesChange}
-                className="input-field text-sm"
-              >
-                <option value="">Select Sub-Series</option>
-                {selectedSeriesSubSeries
-                  .filter(ss => ss.active !== false)
-                  .map(ss => (
-                    <option key={ss._id} value={ss._id}>
-                      {ss.code} - {ss.name}
-                    </option>
-                  ))}
-              </select>
-              {formData.subSeriesCode && (
-                <p className="text-xs text-blue-600 mt-1 font-medium">Code: {formData.subSeriesCode}</p>
-              )}
-            </div>
-          )}
-
-          {/* Show sub-series codes as badges when series has sub-series but none selected */}
-          {formData.seriesId && selectedSeriesSubSeries.length === 0 && (
-            <div className="text-xs text-gray-400 italic">
-              No sub-series available for this series
-            </div>
-          )}
         </div>
       </div>
 
@@ -1365,7 +1298,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
             <select name="density" value={formData.density} onChange={handleChange} className="input-field text-sm">
               <option value="Regular">Regular</option>
               <option value="B2B">B2B</option>
-              <option value="Back to Back">Back to Back</option>
+              
             </select>
           </div>
           <div>
@@ -2179,9 +2112,6 @@ export default function Products() {
   const [subcategoryFilterId, setSubcategoryFilterId] = useState('')
   const [seriesFilter, setSeriesFilter] = useState('')
   const [seriesFilterId, setSeriesFilterId] = useState('')
-  const [subSeriesFilter, setSubSeriesFilter] = useState('')
-  const [subSeriesFilterId, setSubSeriesFilterId] = useState('')
-  const [filterSubSeries, setFilterSubSeries] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -2332,7 +2262,6 @@ export default function Products() {
       if (categoryFilter) params.category = categoryFilter
       if (subcategoryFilter) params.subcategory = subcategoryFilter
       if (seriesFilter) params.series = seriesFilter
-      if (subSeriesFilter) params.subSeries = subSeriesFilter
       if (debouncedSearch) params.search = debouncedSearch
 
       const response = await getAdminProducts(params)
@@ -2406,9 +2335,6 @@ export default function Products() {
       setSubcategoryFilterId('')
       setSeriesFilter('')
       setSeriesFilterId('')
-      setSubSeriesFilter('')
-      setSubSeriesFilterId('')
-      setFilterSubSeries([])
     } else {
       setFilterSubcategories([])
       setFilterSeries([])
@@ -2416,30 +2342,8 @@ export default function Products() {
       setSubcategoryFilterId('')
       setSeriesFilter('')
       setSeriesFilterId('')
-      setSubSeriesFilter('')
-      setSubSeriesFilterId('')
-      setFilterSubSeries([])
     }
   }, [categoryFilterId])
-
-  // Load sub-series when series filter changes
-  useEffect(() => {
-    if (seriesFilterId) {
-      // Find the selected series in filterSeries to get its sub-series
-      const selectedSeries = filterSeries.find(s => s._id === seriesFilterId)
-      if (selectedSeries && selectedSeries.subSeries && selectedSeries.subSeries.length > 0) {
-        setFilterSubSeries(selectedSeries.subSeries.filter(ss => ss.active !== false))
-      } else {
-        setFilterSubSeries([])
-      }
-      setSubSeriesFilter('')
-      setSubSeriesFilterId('')
-    } else {
-      setFilterSubSeries([])
-      setSubSeriesFilter('')
-      setSubSeriesFilterId('')
-    }
-  }, [seriesFilterId, filterSeries])
 
   const handlePageChange = (page) => {
     setCurrentPage(page)
@@ -3016,27 +2920,7 @@ export default function Products() {
             <option value="">Series</option>
             {filterSeries.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
           </select>
-          {filterSubSeries.length > 0 && (
-            <select
-              value={subSeriesFilterId}
-              onChange={(e) => {
-                const selectedSubSeries = filterSubSeries.find(s => s._id === e.target.value)
-                setSubSeriesFilterId(e.target.value)
-                setSubSeriesFilter(selectedSubSeries?.name || '')
-                setCurrentPage(1)
-              }}
-              disabled={!seriesFilterId}
-              className="px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50"
-            >
-              <option value="">Sub-Series</option>
-              {filterSubSeries.map(ss => (
-                <option key={ss._id} value={ss._id}>
-                  {ss.code} - {ss.name}
-                </option>
-              ))}
-            </select>
-          )}
-          {(brandFilter || categoryFilter || subcategoryFilter || seriesFilter || subSeriesFilter || searchQuery) && (
+          {(brandFilter || categoryFilter || subcategoryFilter || seriesFilter || searchQuery) && (
             <button
               onClick={() => {
                 setBrandFilter('')
@@ -3046,9 +2930,6 @@ export default function Products() {
                 setSubcategoryFilterId('')
                 setSeriesFilter('')
                 setSeriesFilterId('')
-                setSubSeriesFilter('')
-                setSubSeriesFilterId('')
-                setFilterSubSeries([])
                 setSearchQuery('')
                 setCategories(allCategories)
                 setCurrentPage(1)
