@@ -7,6 +7,7 @@ import {
   updateAdminProduct,
   deleteAdminProduct,
   syncProducts,
+  bulkUpdateProducts,
   getBrands,
   uploadFile,
   getCategories,
@@ -53,12 +54,10 @@ function Modal({ isOpen, onClose, title, children, size = 'md' }) {
 // Column Visibility Popup Component
 function ColumnVisibilityPopup({ visibleColumns, onToggle, onClose }) {
   const allColumns = [
-    { key: 'status', label: 'Status', group: 'Basic' },
+    // { key: 'status', label: 'Status', group: 'Basic' },
     { key: 'stock', label: 'Stock', group: 'Basic' },
     { key: 'mrp', label: 'MRP', group: 'Prices' },
     { key: 'mop', label: 'MOP', group: 'Prices' },
-    { key: 'purchase', label: 'Purchase', group: 'Prices' },
-    { key: 'market', label: 'Market', group: 'Prices' },
     { key: 'base', label: 'Base Type', group: 'Prices' },
     { key: 'd1', label: 'D1', group: 'Discounts' },
     { key: 'd2', label: 'D2', group: 'Discounts' },
@@ -66,11 +65,14 @@ function ColumnVisibilityPopup({ visibleColumns, onToggle, onClose }) {
     { key: 'd4', label: 'D4', group: 'Discounts' },
     { key: 'd5', label: 'D5', group: 'Discounts' },
     { key: 'nlc', label: 'NLC', group: 'Results' },
-    { key: 'profit', label: 'Profit', group: 'Results' },
-    { key: 't1', label: 'T1', group: 'Tier Prices' },
-    { key: 't2', label: 'T2', group: 'Tier Prices' },
-    { key: 't3', label: 'T3', group: 'Tier Prices' },
-    { key: 't4', label: 'T4', group: 'Tier Prices' },
+    // { key: 'profit', label: 'Profit', group: 'Results' },
+    { key: 'purchase', label: 'Purchase', group: 'Cost' },
+    { key: 'market', label: 'Market', group: 'Cost' },
+    { key: 'c1', label: 'C1', group: 'Price List' },
+    { key: 'si1', label: 'SI1', group: 'Price List' },
+    { key: 'si2', label: 'SI2', group: 'Price List' },
+    { key: 't1', label: 'T1', group: 'Price List' },
+    { key: 't2', label: 'T2', group: 'Price List' },
   ]
 
   const groups = [...new Set(allColumns.map(c => c.group))]
@@ -228,25 +230,29 @@ function ProductViewModal({ product, onClose }) {
             </div>
           </div>
 
-          {/* Tier Prices (T1-T4) */}
+          {/* Price List (C1, SI1, SI2, T1, T2) */}
           <div className="bg-green-50 p-2 sm:p-3 rounded-lg overflow-x-auto">
-            <h5 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Tier Prices</h5>
+            <h5 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Price List</h5>
             <div className="flex gap-2 sm:gap-3 text-xs sm:text-sm min-w-max">
               <div className="min-w-[60px]">
+                <span className="text-gray-500 text-[10px] sm:text-xs">C1:</span>
+                <p className="font-medium text-green-700">{formatPrice(product.opC1 || product.c1 || product.t1)}</p>
+              </div>
+              <div className="min-w-[60px]">
+                <span className="text-gray-500 text-[10px] sm:text-xs">SI1:</span>
+                <p className="font-medium text-green-700">{formatPrice(product.opSi1 || product.si1)}</p>
+              </div>
+              <div className="min-w-[60px]">
+                <span className="text-gray-500 text-[10px] sm:text-xs">SI2:</span>
+                <p className="font-medium text-green-700">{formatPrice(product.opSi2 || product.si2)}</p>
+              </div>
+              <div className="min-w-[60px]">
                 <span className="text-gray-500 text-[10px] sm:text-xs">T1:</span>
-                <p className="font-medium text-green-700">{formatPrice(product.op1 || product.t1)}</p>
+                <p className="font-medium text-green-700">{formatPrice(product.opT1 || product.t1)}</p>
               </div>
               <div className="min-w-[60px]">
                 <span className="text-gray-500 text-[10px] sm:text-xs">T2:</span>
-                <p className="font-medium text-green-700">{formatPrice(product.op2 || product.t2)}</p>
-              </div>
-              <div className="min-w-[60px]">
-                <span className="text-gray-500 text-[10px] sm:text-xs">T3:</span>
-                <p className="font-medium text-green-700">{formatPrice(product.op3 || product.t3)}</p>
-              </div>
-              <div className="min-w-[60px]">
-                <span className="text-gray-500 text-[10px] sm:text-xs">T4:</span>
-                <p className="font-medium text-green-700">{formatPrice(product.op4 || product.t4)}</p>
+                <p className="font-medium text-green-700">{formatPrice(product.opT2 || product.t2)}</p>
               </div>
             </div>
           </div>
@@ -426,6 +432,17 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       nlc: p?.nlc || '',
       profit: p?.profit ?? '',
       profitType: p?.profitType || 'percent',
+      // New Price List fields
+      // System Integrator: SI1 is input, SI2 and C1 are auto-calculated
+      opSi1: p?.opSi1 ?? '',
+      opSi1Type: p?.opSi1Type || 'percent',
+      // opSi2 is auto-calculated (SI1 + 1%)
+      // opC1 is auto-calculated (SI1 + 20%)
+      // Reseller: T1 is input, T2 is auto-calculated
+      opT1: p?.opT1 ?? '',
+      opT1Type: p?.opT1Type || 'percent',
+      // opT2 is auto-calculated (T1 + 0.5%)
+      // Legacy OP fields (kept for backward compatibility)
       op1: p?.op1 ?? '',
       op1Type: p?.op1Type || 'percent',
       op2: p?.op2 ?? '',
@@ -438,6 +455,9 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       cnlc: p?.cnlc || '',
       mnlc: p?.mnlc || '',
       opPrice: p?.opPrice || '',
+      c1: p?.c1 || p?.t1 || '',
+      si1: p?.si1 || '',
+      si2: p?.si2 || '',
       t1: p?.t1 || '',
       t2: p?.t2 || '',
       t3: p?.t3 || '',
@@ -819,7 +839,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     let newValue = value
 
     // Filter numeric fields to only allow numbers and decimals
-    const numericFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'cnlc', 'mnlc', 'opPrice', 't1', 't2', 't3', 't4', 'bottomPrice', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'op1', 'op2', 'op3', 'op4', 'nlc']
+    const numericFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'cnlc', 'mnlc', 'opPrice', 'c1', 'si1', 'si2', 't1', 't2', 't3', 't4', 'bottomPrice', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'opC1', 'opSi1', 'opSi2', 'opT1', 'opT2', 'op1', 'op2', 'op3', 'op4', 'nlc']
     const integerFields = ['stock']
 
     if (numericFields.includes(name)) {
@@ -906,18 +926,33 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     const priceWithProfit = nlc + profitAmount
 
     // Calculate OP prices based on type
-    const getOpPrice = (opField, opTypeField) => {
+    const getOpPrice = (opField, opTypeField, basePrice = priceWithProfit) => {
       const inputValue = parseFloat(formData[opField]) || 0
       const type = formData[opTypeField]
 
       if (type === 'flat') {
-        // For flat type, the input IS the final price
-        return inputValue
+        // For flat type: final price = basePrice + flatAmount
+        return Math.round((basePrice + inputValue) * 100) / 100
       } else {
-        // For percent type, calculate from priceWithProfit
-        return Math.round((priceWithProfit * (1 + inputValue / 100)) * 100) / 100
+        // For percent type: final price = basePrice * (1 + percentage/100)
+        return Math.round((basePrice * (1 + inputValue / 100)) * 100) / 100
       }
     }
+
+    // Calculate SI1 price from SI1 margin
+    const si1Price = getOpPrice('opSi1', 'opSi1Type', priceWithProfit)
+
+    // Calculate SI2 = SI1 + 1% (auto-calculated)
+    const si2Price = Math.round(si1Price * 1.01 * 100) / 100
+
+    // Calculate C1 = SI1 + 20% (auto-calculated)
+    const c1Price = Math.round(si1Price * 1.20 * 100) / 100
+
+    // Calculate T1 price from T1 margin
+    const t1Price = getOpPrice('opT1', 'opT1Type', priceWithProfit)
+
+    // Calculate T2 = T1 + 0.5% (auto-calculated)
+    const t2Price = Math.round(t1Price * 1.005 * 100) / 100
 
     return {
       basePriceWithoutGst,
@@ -925,6 +960,14 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       gstAmount: basePriceWithoutGst * gstRate / 100,
       gstRate,
       nlc,
+      // System Integrator prices (SI1 is input, SI2 and C1 are auto-calculated)
+      opSi1: si1Price,
+      opSi2: si2Price,
+      opC1: c1Price,
+      // Reseller prices (T1 is input, T2 is auto-calculated)
+      opT1: t1Price,
+      opT2: t2Price,
+      // Legacy OP prices (kept for backward compatibility)
       op1: getOpPrice('op1', 'op1Type'),
       op2: getOpPrice('op2', 'op2Type'),
       op3: getOpPrice('op3', 'op3Type'),
@@ -932,16 +975,14 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     }
   }
 
-  // Update form data with calculated prices
+  // Update form data with calculated prices (called on blur for display purposes)
   const updateCalculatedPrices = () => {
     const calculated = calculatePrices()
     setFormData(prev => ({
       ...prev,
       nlc: calculated.nlc,
-      op1: calculated.op1,
-      op2: calculated.op2,
-      op3: calculated.op3,
-      op4: calculated.op4,
+      // SI2, C1, T2 are auto-calculated and stored in the calculated object
+      // These will be submitted with the form data
     }))
   }
 
@@ -984,6 +1025,18 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       }
     }
 
+    // New Price List prices
+    // SI1 is input by user
+    const priceSi1 = getTierPrice('opSi1', 'opSi1Type', calculated.opSi1)
+    // SI2 and C1 are auto-calculated from SI1
+    const priceSi2 = calculated.opSi2
+    const priceC1 = calculated.opC1
+    // T1 is input by user
+    const priceT1 = getTierPrice('opT1', 'opT1Type', calculated.opT1)
+    // T2 is auto-calculated from T1
+    const priceT2 = calculated.opT2
+
+    // Legacy tier prices (kept for backward compatibility)
     const tier1 = getTierPrice('op1', 'op1Type', calculated.op1)
     const tier2 = getTierPrice('op2', 'op2Type', calculated.op2)
     const tier3 = getTierPrice('op3', 'op3Type', calculated.op3)
@@ -1010,7 +1063,21 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       nlc: calculated.nlc,
       profit: parseFloat(formData.profit) || 0,
       profitType: formData.profitType,
-      // OP fields store the user's input (percentage or flat amount), NOT the calculated price
+      // System Integrator: SI1 is input, SI2 and C1 are auto-calculated
+      opSi1: parseFloat(formData.opSi1) || 0,
+      opSi1Type: formData.opSi1Type,
+      // opSi2 and opC1 are not stored as separate OP fields - they're auto-calculated
+      // Reseller: T1 is input, T2 is auto-calculated
+      opT1: parseFloat(formData.opT1) || 0,
+      opT1Type: formData.opT1Type,
+      // opT2 is not stored as separate OP field - it's auto-calculated
+      // Calculated tier prices (stored for display)
+      c1: priceC1,
+      si1: priceSi1,
+      si2: priceSi2,
+      t1: priceT1,
+      t2: priceT2,
+      // Legacy OP fields (kept for backward compatibility)
       op1: parseFloat(formData.op1) || 0,
       op1Type: formData.op1Type,
       op2: parseFloat(formData.op2) || 0,
@@ -1019,12 +1086,10 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       op3Type: formData.op3Type,
       op4: parseFloat(formData.op4) || 0,
       op4Type: formData.op4Type,
-      // T1-T4 prices = calculated final prices for customer price lists
-      t1: tier1,
-      t2: tier2,
+      // Legacy T1-T4 prices
       t3: tier3,
       t4: tier4,
-      opPrice: tier1, // Default OP Price is T1
+      opPrice: priceC1, // Default OP Price is C1
       // Legacy fields for backward compatibility
       cnlc: calculated.nlc,
       mnlc: parseFloat(formData.mnlc) || 0,
@@ -1215,7 +1280,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
         <h4 className="font-medium text-gray-800 mb-2 sm:mb-3 text-sm sm:text-base">Basic Information</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Item Name <span className="text-red-500">*</span></label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Model Name <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="name"
@@ -1569,27 +1634,26 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
           </div>
         </div>
 
-        {/* Step 4: T1-T4 Prices (OP Prices) */}
+        {/* Step 4: Price List Prices (OP Prices) */}
         <div className="bg-green-50 rounded-xl p-3 sm:p-4">
           <h5 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3 flex items-center gap-2">
             <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-600 text-white text-xs flex items-center justify-center">4</span>
-            Tier Prices (T1, T2, T3, T4) - For Customer Price Lists
+            Price List - For Customer Price Lists
           </h5>
-          <div className="overflow-x-auto -mx-3 sm:mx-0">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 min-w-[400px] px-3 sm:px-0">
-              {[
-                { field: 'op1', label: 'T1 Price', tier: 'Tier 1' },
-                { field: 'op2', label: 'T2 Price', tier: 'Tier 2' },
-                { field: 'op3', label: 'T3 Price', tier: 'Tier 3' },
-                { field: 'op4', label: 'T4 Price', tier: 'Tier 4' },
-              ].map((op, index) => (
-                <div key={op.field} className="bg-white rounded-lg p-2 sm:p-3 text-center">
-                  <label className="block text-xs text-gray-500 mb-1">{op.label}</label>
+
+          {/* System Integrator Section */}
+          <div className="mb-4">
+            <h6 className="text-xs font-semibold text-gray-600 mb-2">System Integrator</h6>
+            <div className="overflow-x-auto -mx-3 sm:mx-0">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 min-w-[300px] px-3 sm:px-0">
+                {/* SI1 - Input */}
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center">
+                  <label className="block text-xs text-gray-500 mb-1">SI1 Price</label>
                   <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white mb-1">
                     <input
                       type="number"
-                      name={op.field}
-                      value={formData[op.field]}
+                      name="opSi1"
+                      value={formData.opSi1}
                       onChange={handleChange}
                       onKeyDown={handleNumberKeyDown}
                       placeholder="0"
@@ -1598,8 +1662,8 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                       className="w-full px-1 sm:px-2 py-1.5 sm:py-2 text-center text-sm font-medium focus:outline-none"
                     />
                     <select
-                      name={`${op.field}Type`}
-                      value={formData[`${op.field}Type`]}
+                      name="opSi1Type"
+                      value={formData.opSi1Type}
                       onChange={handleChange}
                       className="w-12 h-8 text-xs text-center bg-gray-50 border-l focus:outline-none"
                     >
@@ -1608,14 +1672,102 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                     </select>
                   </div>
                   <div className="text-xs text-green-600 font-medium">
-                    ₹{calculatePrices()[op.field].toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+                    ₹{calculatePrices().opSi1?.toLocaleString('en-IN', { minimumFractionDigits: 0 }) || '0'}
                   </div>
                 </div>
-              ))}
+
+                {/* SI2 - Auto-calculated (SI1 + 1%) */}
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center opacity-75">
+                  <label className="block text-xs text-gray-500 mb-1">SI2 (SI1+1%)</label>
+                  <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-gray-100 mb-1">
+                    <input
+                      type="text"
+                      value="+1%"
+                      disabled
+                      className="w-full px-1 sm:px-2 py-1.5 sm:py-2 text-center text-sm font-medium bg-gray-100 cursor-not-allowed"
+                    />
+                  </div>
+                  <div className="text-xs text-blue-600 font-medium">
+                    ₹{calculatePrices().opSi2?.toLocaleString('en-IN', { minimumFractionDigits: 0 }) || '0'}
+                  </div>
+                </div>
+
+                {/* C1 - Auto-calculated (SI1 + 20%) */}
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center opacity-75">
+                  <label className="block text-xs text-gray-500 mb-1">C1 (SI1+20%)</label>
+                  <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-gray-100 mb-1">
+                    <input
+                      type="text"
+                      value="+20%"
+                      disabled
+                      className="w-full px-1 sm:px-2 py-1.5 sm:py-2 text-center text-sm font-medium bg-gray-100 cursor-not-allowed"
+                    />
+                  </div>
+                  <div className="text-xs text-blue-600 font-medium">
+                    ₹{calculatePrices().opC1?.toLocaleString('en-IN', { minimumFractionDigits: 0 }) || '0'}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            These T1-T4 prices are used for different customer price lists. Select markup % or flat ₹ to add on NLC+Profit.
+
+          {/* Reseller Section */}
+          <div>
+            <h6 className="text-xs font-semibold text-gray-600 mb-2">Reseller</h6>
+            <div className="overflow-x-auto -mx-3 sm:mx-0">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 min-w-[200px] px-3 sm:px-0">
+                {/* T1 - Input */}
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center">
+                  <label className="block text-xs text-gray-500 mb-1">T1 Price</label>
+                  <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white mb-1">
+                    <input
+                      type="number"
+                      name="opT1"
+                      value={formData.opT1}
+                      onChange={handleChange}
+                      onKeyDown={handleNumberKeyDown}
+                      placeholder="0"
+                      min="0"
+                      step="any"
+                      className="w-full px-1 sm:px-2 py-1.5 sm:py-2 text-center text-sm font-medium focus:outline-none"
+                    />
+                    <select
+                      name="opT1Type"
+                      value={formData.opT1Type}
+                      onChange={handleChange}
+                      className="w-12 h-8 text-xs text-center bg-gray-50 border-l focus:outline-none"
+                    >
+                      <option value="percent">%</option>
+                      <option value="flat">Rs</option>
+                    </select>
+                  </div>
+                  <div className="text-xs text-green-600 font-medium">
+                    ₹{calculatePrices().opT1?.toLocaleString('en-IN', { minimumFractionDigits: 0 }) || '0'}
+                  </div>
+                </div>
+
+                {/* T2 - Auto-calculated (T1 + 0.5%) */}
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center opacity-75">
+                  <label className="block text-xs text-gray-500 mb-1">T2 (T1+0.5%)</label>
+                  <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-gray-100 mb-1">
+                    <input
+                      type="text"
+                      value="+0.5%"
+                      disabled
+                      className="w-full px-1 sm:px-2 py-1.5 sm:py-2 text-center text-sm font-medium bg-gray-100 cursor-not-allowed"
+                    />
+                  </div>
+                  <div className="text-xs text-blue-600 font-medium">
+                    ₹{calculatePrices().opT2?.toLocaleString('en-IN', { minimumFractionDigits: 0 }) || '0'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500 mt-3 text-center">
+            <strong>System Integrator:</strong> Enter SI1 margin → SI2 and C1 auto-calculated.
+            <strong className="ml-2">Reseller:</strong> Enter T1 margin → T2 auto-calculated.
           </p>
         </div>
       </div>
@@ -2135,11 +2287,26 @@ export default function Products() {
   // Column visibility state - all columns visible by default
   const [showColumnPopup, setShowColumnPopup] = useState(false)
   const [visibleColumns, setVisibleColumns] = useState([
-    'status', 'stock', 'mrp', 'mop', 'purchase', 'market', 'base',
-    'd1', 'd2', 'd3', 'd4', 'd5', 'nlc', 'profit',
-    't1', 't2', 't3', 't4'
+    'stock', 'mrp', 'mop', 'base',
+    'd1', 'd2', 'd3', 'd4', 'd5', 'nlc',
+    'purchase', 'market',
+    'c1', 'si1', 'si2', 't1', 't2'
   ])
   const columnPopupRef = useRef(null)
+
+  // Bulk update state - for applying discounts to filtered products
+  const [bulkValues, setBulkValues] = useState({
+    dis1: { value: '', type: 'percent' },
+    dis2: { value: '', type: 'percent' },
+    dis3: { value: '', type: 'percent' },
+    dis4: { value: '', type: 'percent' },
+    dis5: { value: '', type: 'percent' },
+    // System Integrator: only SI1 is editable, SI2 and C1 are auto-calculated
+    opSi1: { value: '', type: 'percent' },
+    // Reseller: only T1 is editable, T2 is auto-calculated
+    opT1: { value: '', type: 'percent' },
+  })
+  const [bulkUpdating, setBulkUpdating] = useState(false)
 
   // Close column popup when clicking outside
   useEffect(() => {
@@ -2160,7 +2327,7 @@ export default function Products() {
   const toggleColumnVisibility = (key) => {
     if (key === 'all') {
       // Show all columns
-      setVisibleColumns(['status', 'stock', 'mrp', 'mop', 'purchase', 'market', 'base', 'd1', 'd2', 'd3', 'd4', 'd5', 'nlc', 'profit', 't1', 't2', 't3', 't4'])
+      setVisibleColumns(['stock', 'mrp', 'mop', 'base', 'd1', 'd2', 'd3', 'd4', 'd5', 'nlc', 'purchase', 'market', 'c1', 'si1', 'si2', 't1', 't2'])
     } else if (key === 'none') {
       // Hide all columns (keep at least one visible)
       setVisibleColumns([])
@@ -2442,6 +2609,62 @@ export default function Products() {
     }
   }
 
+  // Bulk update filtered products with discounts/tier prices
+  const handleBulkUpdate = async (fieldKey) => {
+    const value = bulkValues[fieldKey]?.value
+    const type = bulkValues[fieldKey]?.type || 'percent'
+
+    // Don't update if value is empty
+    if (value === '' || value === undefined || value === null) {
+      return
+    }
+
+    // Build updates object for this single field
+    const updates = {}
+
+    if (fieldKey.startsWith('dis')) {
+      // Discount fields
+      const disNum = fieldKey.replace('dis', '')
+      updates[fieldKey] = parseFloat(value) || 0
+      updates[`dis${disNum}Type`] = type
+    } else {
+      // Tier price fields
+      updates[fieldKey] = parseFloat(value) || 0
+      updates[`${fieldKey}Type`] = type
+    }
+
+    setBulkUpdating(true)
+    try {
+      // Build filters object
+      const filters = {}
+      if (brandFilter) filters.brand = brandFilter
+      if (categoryFilter) filters.category = categoryFilter
+      if (subcategoryFilter) filters.subcategory = subcategoryFilter
+      if (seriesFilter) filters.series = seriesFilter
+      if (debouncedSearch) filters.search = debouncedSearch
+
+      const response = await bulkUpdateProducts(filters, updates)
+      if (response.success !== false) {
+        // Refresh products to show updated values
+        fetchProducts(currentPage)
+      } else {
+        alert(response.message || 'Failed to update products')
+      }
+    } catch (err) {
+      alert('Failed to update products')
+    } finally {
+      setBulkUpdating(false)
+    }
+  }
+
+  // Handle Enter key press for bulk update inputs
+  const handleBulkKeyDown = (e, fieldKey) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleBulkUpdate(fieldKey)
+    }
+  }
+
   // Inline editing functions - Auto-save on blur
   const startEditingField = (productId, field, currentValue) => {
     setEditingField({ productId, field })
@@ -2475,7 +2698,7 @@ export default function Products() {
       }
 
       // Recalculate NLC and tier prices if pricing fields changed
-      const pricingFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'basePriceType', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'op1', 'op2', 'op3', 'op4']
+      const pricingFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'basePriceType', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'opC1', 'opSi1', 'opSi2', 'opT1', 'opT2']
       if (pricingFields.includes(field)) {
         const updatedProduct = { ...product, ...updateData }
         const gstRate = parseFloat(updatedProduct.gstRate) || 0
@@ -2518,20 +2741,27 @@ export default function Products() {
         const calculateOpPrice = (opField, opTypeField) => {
           const inputValue = parseFloat(updatedProduct[opField]) || 0
           if (updatedProduct[opTypeField] === 'flat') {
-            return inputValue
+            // For flat margin: final price = priceWithProfit + flatAmount
+            return Math.round((priceWithProfit + inputValue) * 100) / 100
           } else {
+            // For percent margin: final price = priceWithProfit * (1 + percentage/100)
             return Math.round((priceWithProfit * (1 + inputValue / 100)) * 100) / 100
           }
         }
 
         updateData.nlc = nlc
-        updateData.t1 = calculateOpPrice('op1', 'op1Type')
-        updateData.t2 = calculateOpPrice('op2', 'op2Type')
+        // New Price List prices
+        updateData.c1 = calculateOpPrice('opC1', 'opC1Type')
+        updateData.si1 = calculateOpPrice('opSi1', 'opSi1Type')
+        updateData.si2 = calculateOpPrice('opSi2', 'opSi2Type')
+        updateData.t1 = calculateOpPrice('opT1', 'opT1Type')
+        updateData.t2 = calculateOpPrice('opT2', 'opT2Type')
+        updateData.opPrice = calculateOpPrice('opC1', 'opC1Type')
+        // Legacy tier prices (kept for backward compatibility)
         updateData.t3 = calculateOpPrice('op3', 'op3Type')
         updateData.t4 = calculateOpPrice('op4', 'op4Type')
-        updateData.opPrice = calculateOpPrice('op1', 'op1Type')
-        // Note: op1-op4 store the user's input (percentage or flat amount), NOT the calculated price
-        // t1-t4 store the calculated final prices
+        // Note: op fields store the user's input (percentage or flat amount), NOT the calculated price
+        // c1, si1, si2, t1, t2 store the calculated final prices
       }
 
       const response = await updateAdminProduct(product._id, updateData)
@@ -2570,7 +2800,7 @@ export default function Products() {
       const updateData = { [typeField]: newType }
 
       // Recalculate prices if this is a pricing-related type field
-      const pricingTypeFields = ['dis1Type', 'dis2Type', 'dis3Type', 'dis4Type', 'dis5Type', 'profitType', 'op1Type', 'op2Type', 'op3Type', 'op4Type']
+      const pricingTypeFields = ['dis1Type', 'dis2Type', 'dis3Type', 'dis4Type', 'dis5Type', 'profitType', 'opC1Type', 'opSi1Type', 'opSi2Type', 'opT1Type', 'opT2Type']
       if (pricingTypeFields.includes(typeField)) {
         // Get current product values with the new type
         const updatedProduct = { ...product, [typeField]: newType }
@@ -2682,7 +2912,7 @@ export default function Products() {
       }
 
       // Recalculate NLC and tier prices if pricing fields changed
-      const pricingFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'basePriceType', 'dis1', 'dis1Type', 'dis2', 'dis2Type', 'dis3', 'dis3Type', 'dis4', 'dis4Type', 'dis5', 'dis5Type', 'profit', 'profitType', 'op1', 'op1Type', 'op2', 'op2Type', 'op3', 'op3Type', 'op4', 'op4Type']
+      const pricingFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'basePriceType', 'dis1', 'dis1Type', 'dis2', 'dis2Type', 'dis3', 'dis3Type', 'dis4', 'dis4Type', 'dis5', 'dis5Type', 'profit', 'profitType', 'opC1', 'opC1Type', 'opSi1', 'opSi1Type', 'opSi2', 'opSi2Type', 'opT1', 'opT1Type', 'opT2', 'opT2Type']
       if (pricingFields.includes(field)) {
         // Get current product values with the new value
         const updatedProduct = { ...product, ...updateData }
@@ -2726,20 +2956,27 @@ export default function Products() {
         const calculateOpPrice = (opField, opTypeField) => {
           const inputValue = parseFloat(updatedProduct[opField]) || 0
           if (updatedProduct[opTypeField] === 'flat') {
-            return inputValue
+            // For flat margin: final price = priceWithProfit + flatAmount
+            return Math.round((priceWithProfit + inputValue) * 100) / 100
           } else {
+            // For percent margin: final price = priceWithProfit * (1 + percentage/100)
             return Math.round((priceWithProfit * (1 + inputValue / 100)) * 100) / 100
           }
         }
 
         updateData.nlc = nlc
-        updateData.t1 = calculateOpPrice('op1', 'op1Type')
-        updateData.t2 = calculateOpPrice('op2', 'op2Type')
+        // New Price List prices
+        updateData.c1 = calculateOpPrice('opC1', 'opC1Type')
+        updateData.si1 = calculateOpPrice('opSi1', 'opSi1Type')
+        updateData.si2 = calculateOpPrice('opSi2', 'opSi2Type')
+        updateData.t1 = calculateOpPrice('opT1', 'opT1Type')
+        updateData.t2 = calculateOpPrice('opT2', 'opT2Type')
+        updateData.opPrice = calculateOpPrice('opC1', 'opC1Type')
+        // Legacy tier prices (kept for backward compatibility)
         updateData.t3 = calculateOpPrice('op3', 'op3Type')
         updateData.t4 = calculateOpPrice('op4', 'op4Type')
-        updateData.opPrice = calculateOpPrice('op1', 'op1Type')
-        // Note: op1-op4 store the user's input (percentage or flat amount), NOT the calculated price
-        // t1-t4 store the calculated final prices
+        // Note: op fields store the user's input (percentage or flat amount), NOT the calculated price
+        // c1, si1, si2, t1, t2 store the calculated final prices
       }
 
       const response = await updateAdminProduct(productId, updateData)
@@ -2769,7 +3006,7 @@ export default function Products() {
     'basePriceType',
     'dis1', 'dis2', 'dis3', 'dis4', 'dis5',
     'profit',
-    'op1', 'op2', 'op3', 'op4'
+    'opC1', 'opSi1', 'opSi2', 'opT1', 'opT2'
   ]
 
   const handleKeyDown = (e, product) => {
@@ -2973,12 +3210,10 @@ export default function Products() {
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '150px' }}>Product</th>
-                {visibleColumns.includes('status') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Status</th>}
+                {/* {visibleColumns.includes('status') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Status</th>} */}
                 {visibleColumns.includes('stock') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Stock</th>}
                 {visibleColumns.includes('mrp') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MRP</th>}
                 {visibleColumns.includes('mop') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MOP</th>}
-                {visibleColumns.includes('purchase') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Purchase</th>}
-                {visibleColumns.includes('market') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Market</th>}
                 {visibleColumns.includes('base') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Base</th>}
                 {visibleColumns.includes('d1') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D1</th>}
                 {visibleColumns.includes('d2') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D2</th>}
@@ -2986,12 +3221,200 @@ export default function Products() {
                 {visibleColumns.includes('d4') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D4</th>}
                 {visibleColumns.includes('d5') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D5</th>}
                 {visibleColumns.includes('nlc') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-100" style={{ minWidth: '85px' }}>NLC</th>}
-                {visibleColumns.includes('profit') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '75px' }}>Profit</th>}
+                {/* {visibleColumns.includes('profit') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '75px' }}>Profit</th>} */}
+                {visibleColumns.includes('purchase') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Purchase</th>}
+                {visibleColumns.includes('market') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Market</th>}
+                {visibleColumns.includes('c1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>C1</th>}
+                {visibleColumns.includes('si1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>SI1</th>}
+                {visibleColumns.includes('si2') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>SI2</th>}
                 {visibleColumns.includes('t1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T1</th>}
                 {visibleColumns.includes('t2') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T2</th>}
-                {visibleColumns.includes('t3') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T3</th>}
-                {visibleColumns.includes('t4') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T4</th>}
                 <th className="text-center px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Actions</th>
+              </tr>
+              {/* Bulk Update Row */}
+              <tr className="bg-yellow-50 border-b border-yellow-100">
+                <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 whitespace-nowrap">
+                  <span className="text-yellow-700">Bulk ({pagination.total})</span>
+                  <div className="text-[10px] text-gray-400">prices shown on ₹100 NLC</div>
+                </th>
+                {visibleColumns.includes('stock') && <th></th>}
+                {visibleColumns.includes('mrp') && <th></th>}
+                {visibleColumns.includes('mop') && <th></th>}
+                {visibleColumns.includes('base') && <th></th>}
+                {visibleColumns.includes('d1') && (
+                  <th className="px-1 py-1 bg-blue-50">
+                    <div className="flex items-center gap-1 justify-center">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={bulkValues.dis1.value}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, dis1: { ...prev.dis1, value: e.target.value } }))}
+                        onKeyDown={(e) => handleBulkKeyDown(e, 'dis1')}
+                        disabled={bulkUpdating}
+                        className="w-10 px-1 py-0.5 text-xs text-center border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                      />
+                      <select
+                        value={bulkValues.dis1.type}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, dis1: { ...prev.dis1, type: e.target.value } }))}
+                        className="w-10 h-5 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                      >
+                        <option value="percent">%</option>
+                        <option value="flat">Rs</option>
+                      </select>
+                    </div>
+                  </th>
+                )}
+                {visibleColumns.includes('d2') && (
+                  <th className="px-1 py-1 bg-blue-50">
+                    <div className="flex items-center gap-1 justify-center">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={bulkValues.dis2.value}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, dis2: { ...prev.dis2, value: e.target.value } }))}
+                        onKeyDown={(e) => handleBulkKeyDown(e, 'dis2')}
+                        disabled={bulkUpdating}
+                        className="w-10 px-1 py-0.5 text-xs text-center border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                      />
+                      <select
+                        value={bulkValues.dis2.type}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, dis2: { ...prev.dis2, type: e.target.value } }))}
+                        className="w-10 h-5 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                      >
+                        <option value="percent">%</option>
+                        <option value="flat">Rs</option>
+                      </select>
+                    </div>
+                  </th>
+                )}
+                {visibleColumns.includes('d3') && (
+                  <th className="px-1 py-1 bg-blue-50">
+                    <div className="flex items-center gap-1 justify-center">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={bulkValues.dis3.value}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, dis3: { ...prev.dis3, value: e.target.value } }))}
+                        onKeyDown={(e) => handleBulkKeyDown(e, 'dis3')}
+                        disabled={bulkUpdating}
+                        className="w-10 px-1 py-0.5 text-xs text-center border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                      />
+                      <select
+                        value={bulkValues.dis3.type}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, dis3: { ...prev.dis3, type: e.target.value } }))}
+                        className="w-10 h-5 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                      >
+                        <option value="percent">%</option>
+                        <option value="flat">Rs</option>
+                      </select>
+                    </div>
+                  </th>
+                )}
+                {visibleColumns.includes('d4') && (
+                  <th className="px-1 py-1 bg-blue-50">
+                    <div className="flex items-center gap-1 justify-center">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={bulkValues.dis4.value}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, dis4: { ...prev.dis4, value: e.target.value } }))}
+                        onKeyDown={(e) => handleBulkKeyDown(e, 'dis4')}
+                        disabled={bulkUpdating}
+                        className="w-10 px-1 py-0.5 text-xs text-center border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                      />
+                      <select
+                        value={bulkValues.dis4.type}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, dis4: { ...prev.dis4, type: e.target.value } }))}
+                        className="w-10 h-5 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                      >
+                        <option value="percent">%</option>
+                        <option value="flat">Rs</option>
+                      </select>
+                    </div>
+                  </th>
+                )}
+                {visibleColumns.includes('d5') && (
+                  <th className="px-1 py-1 bg-blue-50">
+                    <div className="flex items-center gap-1 justify-center">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={bulkValues.dis5.value}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, dis5: { ...prev.dis5, value: e.target.value } }))}
+                        onKeyDown={(e) => handleBulkKeyDown(e, 'dis5')}
+                        disabled={bulkUpdating}
+                        className="w-10 px-1 py-0.5 text-xs text-center border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                      />
+                      <select
+                        value={bulkValues.dis5.type}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, dis5: { ...prev.dis5, type: e.target.value } }))}
+                        className="w-10 h-5 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                      >
+                        <option value="percent">%</option>
+                        <option value="flat">Rs</option>
+                      </select>
+                    </div>
+                  </th>
+                )}
+                {visibleColumns.includes('nlc') && <th></th>}
+                {visibleColumns.includes('purchase') && <th></th>}
+                {visibleColumns.includes('market') && <th></th>}
+                {visibleColumns.includes('c1') && (
+                  <th className="px-2 py-1 bg-green-50"></th>
+                )}
+                {visibleColumns.includes('si1') && (
+                  <th className="px-2 py-1 bg-green-50">
+                    <div className="flex items-center gap-1 justify-center">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={bulkValues.opSi1?.value || ''}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, opSi1: { ...prev.opSi1, value: e.target.value } }))}
+                        onKeyDown={(e) => handleBulkKeyDown(e, 'opSi1')}
+                        disabled={bulkUpdating}
+                        className="w-10 px-1 py-0.5 text-xs text-center border border-green-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50"
+                      />
+                      <select
+                        value={bulkValues.opSi1?.type || 'percent'}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, opSi1: { ...prev.opSi1, type: e.target.value } }))}
+                        className="w-10 h-5 text-xs border border-green-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 bg-white"
+                      >
+                        <option value="percent">%</option>
+                        <option value="flat">Rs</option>
+                      </select>
+                    </div>
+                  </th>
+                )}
+                {visibleColumns.includes('si2') && (
+                  <th className="px-2 py-1 bg-green-50"></th>
+                )}
+                {visibleColumns.includes('t1') && (
+                  <th className="px-2 py-1 bg-green-50">
+                    <div className="flex items-center gap-1 justify-center">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={bulkValues.opT1?.value || ''}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, opT1: { ...prev.opT1, value: e.target.value } }))}
+                        onKeyDown={(e) => handleBulkKeyDown(e, 'opT1')}
+                        disabled={bulkUpdating}
+                        className="w-10 px-1 py-0.5 text-xs text-center border border-green-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50"
+                      />
+                      <select
+                        value={bulkValues.opT1?.type || 'percent'}
+                        onChange={(e) => setBulkValues(prev => ({ ...prev, opT1: { ...prev.opT1, type: e.target.value } }))}
+                        className="w-10 h-5 text-xs border border-green-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 bg-white"
+                      >
+                        <option value="percent">%</option>
+                        <option value="flat">Rs</option>
+                      </select>
+                    </div>
+                  </th>
+                )}
+                {visibleColumns.includes('t2') && (
+                  <th className="px-2 py-1 bg-green-50"></th>
+                )}
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -3016,13 +3439,18 @@ export default function Products() {
                   return (
                     <tr key={product._id} className="border-b border-gray-50 hover:bg-gray-50/50">
                       {/* Product Name */}
-                      <td className="px-3 py-2 bg-white" style={{ minWidth: '150px' }}>
+                      <td
+                        className="px-3 py-2 bg-white cursor-pointer hover:bg-blue-50 transition-colors"
+                        style={{ minWidth: '150px' }}
+                        onClick={() => { setSelectedProduct(product); setShowModal(true); }}
+                        title="Click to edit product"
+                      >
                         <p className="font-medium text-gray-900 text-s truncate max-w-[130px]">{product.brand}</p>
                         {product.partNumber && <p className="text-[15px] text-gray-500 truncate">{product.partNumber}</p>}
                         <p className="text-[13px] text-gray-400" title={product.name}>{product.name}</p>
                       </td>
 
-                      {/* Status - Continue/Discontinue toggle */}
+                      {/* Status - Continue/Discontinue toggle (commented out)
                       {visibleColumns.includes('status') && (
                         <td className="px-2 py-2 text-center">
                           <button
@@ -3047,7 +3475,7 @@ export default function Products() {
                             )}
                           </button>
                         </td>
-                      )}
+                      )} */}
 
                       {/* Stock - Always visible input */}
                       {visibleColumns.includes('stock') && (
@@ -3076,6 +3504,11 @@ export default function Products() {
                             width="w-20"
                             savingFields={savingFields}
                           />
+                          {product.gstRate > 0 && product.mrp > 0 && (
+                            <div className="text-[9px] text-gray-400 mt-0.5 whitespace-nowrap">
+                              ₹{product.mrp.toLocaleString('en-IN')} + {product.gstRate}% = ₹{(product.mrp * (1 + product.gstRate / 100)).toFixed(2)}
+                            </div>
+                          )}
                         </td>
                       )}
 
@@ -3091,36 +3524,16 @@ export default function Products() {
                             width="w-20"
                             savingFields={savingFields}
                           />
-                        </td>
-                      )}
-
-                      {/* Purchase */}
-                      {visibleColumns.includes('purchase') && (
-                        <td className="px-2 py-2 text-right">
-                          <InlineInput
-                            product={product}
-                            field="purchasePrice"
-                            value={product.purchasePrice}
-                            onSave={saveFieldDirectly}
-                            type="number"
-                            width="w-20"
-                            savingFields={savingFields}
-                          />
-                        </td>
-                      )}
-
-                      {/* Market */}
-                      {visibleColumns.includes('market') && (
-                        <td className="px-2 py-2 text-right">
-                          <InlineInput
-                            product={product}
-                            field="marketPrice"
-                            value={product.marketPrice}
-                            onSave={saveFieldDirectly}
-                            type="number"
-                            width="w-20"
-                            savingFields={savingFields}
-                          />
+                          {product.gstRate > 0 && product.mop > 0 && (
+                            <div className="text-[9px] text-gray-400 mt-0.5 whitespace-nowrap">
+                              ₹{product.mop.toLocaleString('en-IN')} + {product.gstRate}% = ₹{(product.mop * (1 + product.gstRate / 100)).toFixed(2)}
+                            </div>
+                          )}
+                          {product.basePriceType === 'mop' && product.gstRate > 0 && product.mop > 0 && (
+                            <div className="text-[9px] text-blue-600 font-medium mt-0.5">
+                              Base: ₹{(product.mop * (1 + product.gstRate / 100)).toFixed(2)} (with GST)
+                            </div>
+                          )}
                         </td>
                       )}
 
@@ -3166,7 +3579,7 @@ export default function Products() {
                         </td>
                       )}
 
-                      {/* Profit */}
+                      {/* Profit (commented out)
                       {visibleColumns.includes('profit') && (
                         <td className="px-1 py-2 text-center">
                           <InlineDiscount
@@ -3180,25 +3593,129 @@ export default function Products() {
                             savingFields={savingFields}
                           />
                         </td>
+                      )} */}
+
+                      {/* Purchase */}
+                      {visibleColumns.includes('purchase') && (
+                        <td className="px-2 py-2 text-right">
+                          <InlineInput
+                            product={product}
+                            field="purchasePrice"
+                            value={product.purchasePrice}
+                            onSave={saveFieldDirectly}
+                            type="number"
+                            width="w-20"
+                            savingFields={savingFields}
+                          />
+                          {product.gstRate > 0 && product.purchasePrice > 0 && (
+                            <div className="text-[9px] text-gray-400 mt-0.5 whitespace-nowrap">
+                              ₹{product.purchasePrice.toLocaleString('en-IN')} + {product.gstRate}% = ₹{(product.purchasePrice * (1 + product.gstRate / 100)).toFixed(2)}
+                            </div>
+                          )}
+                          {product.basePriceType === 'purchase' && product.gstRate > 0 && product.purchasePrice > 0 && (
+                            <div className="text-[9px] text-blue-600 font-medium mt-0.5">
+                              Base: ₹{(product.purchasePrice * (1 + product.gstRate / 100)).toFixed(2)} (with GST)
+                            </div>
+                          )}
+                        </td>
                       )}
 
-                      {/* T1-T4 */}
-                      {[1, 2, 3, 4].map(i => (
-                        visibleColumns.includes(`t${i}`) && (
-                          <td key={`op${i}`} className="px-2 py-2 text-right bg-green-50">
-                            <InlineDiscount
-                              product={product}
-                              disIndex={null}
-                              field={`op${i}`}
-                              value={product[`op${i}`] || product[`t${i}`] || 0}
-                              type={product[`op${i}Type`] || 'percent'}
-                              onSave={saveFieldDirectly}
-                              onSaveType={saveTypeDirectly}
-                              savingFields={savingFields}
-                            />
-                          </td>
-                        )
-                      ))}
+                      {/* Market */}
+                      {visibleColumns.includes('market') && (
+                        <td className="px-2 py-2 text-right">
+                          <InlineInput
+                            product={product}
+                            field="marketPrice"
+                            value={product.marketPrice}
+                            onSave={saveFieldDirectly}
+                            type="number"
+                            width="w-20"
+                            savingFields={savingFields}
+                          />
+                          {product.gstRate > 0 && product.marketPrice > 0 && (
+                            <div className="text-[9px] text-gray-400 mt-0.5 whitespace-nowrap">
+                              ₹{product.marketPrice.toLocaleString('en-IN')} + {product.gstRate}% = ₹{(product.marketPrice * (1 + product.gstRate / 100)).toFixed(2)}
+                            </div>
+                          )}
+                          {product.basePriceType === 'market' && product.gstRate > 0 && product.marketPrice > 0 && (
+                            <div className="text-[9px] text-blue-600 font-medium mt-0.5">
+                              Base: ₹{(product.marketPrice * (1 + product.gstRate / 100)).toFixed(2)} (with GST)
+                            </div>
+                          )}
+                        </td>
+                      )}
+
+                      {/* Price List (C1, SI1, SI2, T1, T2) */}
+                      {visibleColumns.includes('c1') && (
+                        <td className="px-2 py-2 text-right bg-green-50">
+                          <InlineDiscount
+                            product={product}
+                            disIndex={null}
+                            field="opC1"
+                            value={product.opC1 || product.c1 || 0}
+                            type={product.opC1Type || 'percent'}
+                            onSave={saveFieldDirectly}
+                            onSaveType={saveTypeDirectly}
+                            savingFields={savingFields}
+                          />
+                        </td>
+                      )}
+                      {visibleColumns.includes('si1') && (
+                        <td className="px-2 py-2 text-right bg-green-50">
+                          <InlineDiscount
+                            product={product}
+                            disIndex={null}
+                            field="opSi1"
+                            value={product.opSi1 || product.si1 || 0}
+                            type={product.opSi1Type || 'percent'}
+                            onSave={saveFieldDirectly}
+                            onSaveType={saveTypeDirectly}
+                            savingFields={savingFields}
+                          />
+                        </td>
+                      )}
+                      {visibleColumns.includes('si2') && (
+                        <td className="px-2 py-2 text-right bg-green-50">
+                          <InlineDiscount
+                            product={product}
+                            disIndex={null}
+                            field="opSi2"
+                            value={product.opSi2 || product.si2 || 0}
+                            type={product.opSi2Type || 'percent'}
+                            onSave={saveFieldDirectly}
+                            onSaveType={saveTypeDirectly}
+                            savingFields={savingFields}
+                          />
+                        </td>
+                      )}
+                      {visibleColumns.includes('t1') && (
+                        <td className="px-2 py-2 text-right bg-green-50">
+                          <InlineDiscount
+                            product={product}
+                            disIndex={null}
+                            field="opT1"
+                            value={product.opT1 || product.t1 || 0}
+                            type={product.opT1Type || 'percent'}
+                            onSave={saveFieldDirectly}
+                            onSaveType={saveTypeDirectly}
+                            savingFields={savingFields}
+                          />
+                        </td>
+                      )}
+                      {visibleColumns.includes('t2') && (
+                        <td className="px-2 py-2 text-right bg-green-50">
+                          <InlineDiscount
+                            product={product}
+                            disIndex={null}
+                            field="opT2"
+                            value={product.opT2 || product.t2 || 0}
+                            type={product.opT2Type || 'percent'}
+                            onSave={saveFieldDirectly}
+                            onSaveType={saveTypeDirectly}
+                            savingFields={savingFields}
+                          />
+                        </td>
+                      )}
 
                       {/* Actions */}
                       <td className="px-2 py-2 bg-white">

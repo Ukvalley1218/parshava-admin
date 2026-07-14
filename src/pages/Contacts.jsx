@@ -45,11 +45,23 @@ function Modal({ isOpen, onClose, title, children, size = 'md' }) {
 
 // Contact Form Component
 function ContactForm({ contact, onSubmit, onCancel, loading, customers, designations: propDesignations }) {
+  // Support both old single customer and new customers array
+  const getInitialCustomers = () => {
+    if (contact?.customers && Array.isArray(contact.customers)) {
+      return contact.customers.map(c => typeof c === 'object' ? c._id : c)
+    }
+    if (contact?.customer) {
+      const custId = typeof contact.customer === 'object' ? contact.customer._id : contact.customer
+      return custId ? [custId] : []
+    }
+    return []
+  }
+
   const [formData, setFormData] = useState({
     firstName: contact?.firstName || '',
     middleName: contact?.middleName || '',
     lastName: contact?.lastName || '',
-    customer: contact?.customer?._id || contact?.customer || '',
+    customers: getInitialCustomers(),
     firmName: contact?.firmName || '',
     designation: contact?.designation || '',
     customDesignation: '',
@@ -303,28 +315,33 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
     )
   })
 
-  // Get selected customer name
-  const selectedCustomer = customers.find(c => c._id === formData.customer)
+  // Get selected customers (multiple)
+  const selectedCustomers = customers.filter(c => formData.customers?.includes(c._id))
 
-  // Handle customer selection
+  // Handle customer selection (toggle in array)
   const handleCustomerSelect = (customer) => {
-    setFormData((prev) => ({
-      ...prev,
-      customer: customer._id,
-      firmName: customer.firmName || customer.name
-    }))
-    setCustomerSearch('')
-    setShowCustomerDropdown(false)
+    const isSelected = formData.customers?.includes(customer._id)
+    if (isSelected) {
+      // Remove from selection
+      setFormData((prev) => ({
+        ...prev,
+        customers: prev.customers.filter(id => id !== customer._id)
+      }))
+    } else {
+      // Add to selection
+      setFormData((prev) => ({
+        ...prev,
+        customers: [...(prev.customers || []), customer._id]
+      }))
+    }
   }
 
-  // Clear customer selection
-  const handleClearCustomer = () => {
+  // Remove customer from selection
+  const handleRemoveCustomer = (customerId) => {
     setFormData((prev) => ({
       ...prev,
-      customer: '',
-      firmName: ''
+      customers: prev.customers.filter(id => id !== customerId)
     }))
-    setCustomerSearch('')
   }
 
   return (
@@ -415,66 +432,78 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
         </div>
       </div>
 
-      {/* Link to Client/Firm */}
+      {/* Link to Client/Account - Multiple Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Firm Name</label>
-        {formData.customer ? (
-          <div className="flex items-center gap-2 p-2.5 border border-gray-200 rounded-xl bg-gray-50">
-            <Building className="w-4 h-4 text-gray-400" />
-            <span className="flex-1 text-sm text-gray-900 truncate">
-              {selectedCustomer?.firmName || selectedCustomer?.name || formData.firmName}
-            </span>
-            <button
-              type="button"
-              onClick={handleClearCustomer}
-              className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-            >
-              <X className="w-4 h-4 text-gray-500" />
-            </button>
-          </div>
-        ) : (
-          <div className="relative" ref={dropdownRef}>
-            <input
-              type="text"
-              value={customerSearch}
-              onChange={(e) => {
-                setCustomerSearch(e.target.value)
-                setShowCustomerDropdown(true)
-              }}
-              onFocus={() => setShowCustomerDropdown(true)}
-              className="input-field"
-              placeholder="Type to search firms..."
-            />
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
 
-            {showCustomerDropdown && (
-              <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-                {customers.length === 0 ? (
-                  <div className="p-3 text-sm text-gray-500 text-center">
-                    No firms available
-                  </div>
-                ) : filteredCustomers.length === 0 ? (
-                  <div className="p-3 text-sm text-gray-500 text-center">
-                    No firms found matching "{customerSearch}"
-                  </div>
-                ) : (
-                  <>
-                    {customerSearch === '' && (
-                      <div className="px-4 py-2 text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
-                        Select a firm or type to search
-                      </div>
-                    )}
-                    {filteredCustomers.slice(0, 20).map((customer) => (
-                      <button
+        {/* Selected Accounts Tags */}
+        {selectedCustomers.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {selectedCustomers.map((customer) => (
+              <span
+                key={customer._id}
+                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm"
+              >
+                <Building className="w-3 h-3" />
+                {customer.firmName || customer.name}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveCustomer(customer._id)}
+                  className="p-0.5 hover:bg-blue-200 rounded-full"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Dropdown for selecting accounts */}
+        <div className="relative" ref={dropdownRef}>
+          <input
+            type="text"
+            value={customerSearch}
+            onChange={(e) => {
+              setCustomerSearch(e.target.value)
+              setShowCustomerDropdown(true)
+            }}
+            onFocus={() => setShowCustomerDropdown(true)}
+            className="input-field"
+            placeholder={selectedCustomers.length > 0 ? "Add more accounts..." : "Type to search accounts..."}
+          />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+
+          {showCustomerDropdown && (
+            <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+              {customers.length === 0 ? (
+                <div className="p-3 text-sm text-gray-500 text-center">
+                  No accounts available
+                </div>
+              ) : filteredCustomers.length === 0 ? (
+                <div className="p-3 text-sm text-gray-500 text-center">
+                  No accounts found matching "{customerSearch}"
+                </div>
+              ) : (
+                <>
+                  {customerSearch === '' && (
+                    <div className="px-4 py-2 text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
+                      Select accounts to link this contact
+                    </div>
+                  )}
+                  {filteredCustomers.slice(0, 20).map((customer) => {
+                    const isSelected = formData.customers?.includes(customer._id)
+                    return (
+                      <label
                         key={customer._id}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault()
-                          handleCustomerSelect(customer)
-                        }}
-                        className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-b-0"
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 transition-colors cursor-pointer border-b border-gray-50 last:border-b-0"
                       >
-                        <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleCustomerSelect(customer)}
+                          className="w-4 h-4 text-blue-600 rounded"
+                        />
+                        <div className="flex items-center gap-2 flex-1">
                           <Building className="w-4 h-4 text-gray-400" />
                           <div className="flex-1">
                             <p className="text-sm font-medium text-gray-900">
@@ -485,19 +514,19 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
                             )}
                           </div>
                         </div>
-                      </button>
-                    ))}
-                    {filteredCustomers.length > 20 && (
-                      <div className="px-4 py-2 text-xs text-gray-400 bg-gray-50">
-                        +{filteredCustomers.length - 20} more firms...
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+                      </label>
+                    )
+                  })}
+                  {filteredCustomers.length > 20 && (
+                    <div className="px-4 py-2 text-xs text-gray-400 bg-gray-50">
+                      +{filteredCustomers.length - 20} more accounts...
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Designation */}
@@ -868,15 +897,36 @@ function ContactViewModal({ contact, onClose }) {
         </div>
       </div>
 
-      {/* Linked Firm */}
-      {(contact.customer || contact.firmName) && (
-        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-          <Building className="w-4 h-4 text-blue-600" />
-          <div className="flex-1">
-            <span className="text-xs text-blue-600">Linked to</span>
-            <p className="text-sm font-medium text-gray-900">
-              {contact.customer?.firmName || contact.customer?.name || contact.firmName}
-            </p>
+      {/* Linked Accounts */}
+      {((contact.customers && contact.customers.length > 0) || contact.customer || contact.firmName) && (
+        <div className="bg-blue-50 rounded-lg p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Building className="w-4 h-4 text-blue-600" />
+            <span className="text-xs text-blue-600 font-medium">
+              {contact.customers?.length > 1 ? 'Linked Accounts' : 'Linked to'}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {contact.customers && contact.customers.length > 0 ? (
+              contact.customers.map((cust) => (
+                <span
+                  key={typeof cust === 'object' ? cust._id : cust}
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-white rounded-lg text-sm text-gray-900"
+                >
+                  {typeof cust === 'object' ? (cust.firmName || cust.name) : cust}
+                </span>
+              ))
+            ) : contact.customer ? (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-white rounded-lg text-sm text-gray-900">
+                {typeof contact.customer === 'object'
+                  ? (contact.customer.firmName || contact.customer.name)
+                  : contact.firmName}
+              </span>
+            ) : contact.firmName ? (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-white rounded-lg text-sm text-gray-900">
+                {contact.firmName}
+              </span>
+            ) : null}
           </div>
         </div>
       )}
@@ -1015,6 +1065,7 @@ export default function Contacts() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
@@ -1056,13 +1107,16 @@ export default function Contacts() {
     }
   }
 
-  const fetchContacts = async (page = currentPage, limit = pagination.limit) => {
+  const fetchContacts = async (page = currentPage, limit = pagination.limit, search = '') => {
     setLoading(true)
     setError(null)
     try {
       const params = { page, limit }
       if (statusFilter !== 'all') {
         params.status = statusFilter
+      }
+      if (search) {
+        params.search = search
       }
       const response = await getContacts(params)
       if (response.success !== false) {
@@ -1091,35 +1145,34 @@ export default function Contacts() {
     }
   }
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      // Reset to page 1 when search changes
+      if (searchQuery !== debouncedSearch) {
+        setCurrentPage(1)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
   useEffect(() => {
     fetchContacts(1)
     fetchCustomers()
     fetchDesignations()
   }, [statusFilter])
 
+  // Fetch contacts when search or page changes
+  useEffect(() => {
+    fetchContacts(currentPage, pagination.limit, debouncedSearch)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, currentPage])
+
   const handlePageChange = (page) => {
     setCurrentPage(page)
-    fetchContacts(page)
+    fetchContacts(page, pagination.limit, debouncedSearch)
   }
-
-  // Client-side search filter
-  const filteredContacts = contacts.filter((c) => {
-    if (!searchQuery) return true
-    const query = searchQuery.toLowerCase()
-    const fullName = [c.firstName, c.middleName, c.lastName].filter(Boolean).join(' ') || c.name
-    return (
-      fullName.toLowerCase().includes(query) ||
-      c.firmName?.toLowerCase().includes(query) ||
-      c.customer?.firmName?.toLowerCase().includes(query) ||
-      c.customer?.name?.toLowerCase().includes(query) ||
-      c.mobile1?.toLowerCase().includes(query) ||
-      c.mobile2?.toLowerCase().includes(query) ||
-      c.mobile3?.toLowerCase().includes(query) ||
-      c.email?.toLowerCase().includes(query) ||
-      c.designation?.toLowerCase().includes(query) ||
-      c.city?.toLowerCase().includes(query)
-    )
-  })
 
   const handleCreate = async (data) => {
     setFormLoading(true)
@@ -1230,7 +1283,7 @@ export default function Contacts() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by name, firm, mobile, or city..."
+              placeholder="Search by name, account, mobile, or city..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -1255,7 +1308,7 @@ export default function Contacts() {
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Contact</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Firm</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Account</th>
                 <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Mobile</th>
                 <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
                 <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Created</th>
@@ -1269,7 +1322,7 @@ export default function Contacts() {
                     <Loader className="w-8 h-8 text-blue-500 animate-spin mx-auto" />
                   </td>
                 </tr>
-              ) : filteredContacts.length === 0 ? (
+              ) : contacts.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12">
                     <User className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -1277,7 +1330,7 @@ export default function Contacts() {
                   </td>
                 </tr>
               ) : (
-                filteredContacts.map((contact) => {
+                contacts.map((contact) => {
                   const fullName = [contact.firstName, contact.middleName, contact.lastName].filter(Boolean).join(' ') || contact.name
                   return (
                     <tr key={contact._id} className="border-b border-gray-50 hover:bg-gray-50/50">

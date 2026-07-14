@@ -206,6 +206,10 @@ export const syncProducts = async () => {
   return post('/admin/products/sync')
 }
 
+export const bulkUpdateProducts = async (filters, updates) => {
+  return post('/admin/products/bulk-update', { filters, updates })
+}
+
 // ============================================
 // DASHBOARD API
 // ============================================
@@ -503,6 +507,7 @@ export default {
   updateAdminProduct,
   deleteAdminProduct,
   syncProducts,
+  bulkUpdateProducts,
   // Dashboard
   getDashboardStats,
   getRecentInquiries,

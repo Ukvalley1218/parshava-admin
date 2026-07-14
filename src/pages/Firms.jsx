@@ -23,7 +23,7 @@ const DEFAULT_DESIGNATIONS = [
   'Staff'
 ]
 
-// Contact Mini Form for adding/editing contacts within firm form
+// Contact Mini Form for adding/editing contacts within account form
 function ContactMiniForm({ contact, onSave, onCancel, customerId, designations = [] }) {
   const [formData, setFormData] = useState({
     firstName: contact?.firstName || '',
@@ -194,7 +194,8 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
     onSave({
       ...formData,
       name: fullName,
-      customer: customerId
+      customer: customerId,
+      customers: [customerId] // Also set customers array for multi-firm support
     })
   }
 
@@ -526,7 +527,7 @@ function Modal({ isOpen, onClose, title, children, size = 'lg' }) {
   )
 }
 
-// Firm Form Component
+// Account Form Component
 function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategories, brandCategories }) {
   const [formData, setFormData] = useState({
     // Personal Details
@@ -534,10 +535,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
     firmName: customer?.firmName || '',
     firmPhoto: customer?.firmPhoto || '',
     firmPhotoName: customer?.firmPhoto?.split('/').pop() || '',
-    name: customer?.name || '',
-    customerPhoto: customer?.customerPhoto || '',
-    customerPhotoName: customer?.customerPhoto?.split('/').pop() || '',
-    designation: customer?.designation || '',
 
     // Address
     address: customer?.address || '',
@@ -560,16 +557,15 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
     // Business Details (Numbers)
     gstin: customer?.gstin || '',
     panNumber: customer?.panNumber || '',
-    aadharNumber: customer?.aadharNumber || '',
     shopActNumber: customer?.shopActNumber || '',
     msmeNumber: customer?.msmeNumber || '',
 
     // Documents
     documents: customer?.documents || [],
 
-    // Categories
-    businessCategory: customer?.businessCategory || '',
-    brandCategory: customer?.brandCategory || '',
+    // Categories (multiple selection)
+    businessCategory: customer?.businessCategory || [],
+    brandCategory: customer?.brandCategory || [],
 
     // Management
     priceListCategory: customer?.priceListCategory || 'T1',
@@ -583,6 +579,26 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
 
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
+
+  // Dropdown state for multi-select
+  const [showBusinessDropdown, setShowBusinessDropdown] = useState(false)
+  const [showBrandDropdown, setShowBrandDropdown] = useState(false)
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showBusinessDropdown && !event.target.closest('.business-dropdown-container')) {
+        setShowBusinessDropdown(false)
+      }
+      if (showBrandDropdown && !event.target.closest('.brand-dropdown-container')) {
+        setShowBrandDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showBusinessDropdown, showBrandDropdown])
 
   // Contacts state
   const [contacts, setContacts] = useState([])
@@ -657,9 +673,13 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
       } else {
         // For new contacts, we need the customer ID
         if (customer?._id) {
-          response = await createContact({ ...contactData, customer: customer._id })
+          response = await createContact({
+            ...contactData,
+            customer: customer._id,
+            customers: [customer._id]
+          })
         } else {
-          // For new firms, store temporarily
+          // For new accounts, store temporarily
           const tempId = 'temp_' + Date.now()
           setContacts(prev => [...prev, { ...contactData, _id: tempId, isNew: true }])
           setShowContactForm(false)
@@ -684,7 +704,7 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
     }
   }
 
-  // Get contacts to submit with firm
+  // Get contacts to submit with account
   const getContactsToSubmit = () => {
     return contacts.filter(c => c.isNew || c._id?.toString().startsWith('temp_'))
   }
@@ -692,7 +712,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
   // Document types for upload
   const documentTypes = [
     { key: 'panCard', label: 'PAN Card' },
-    { key: 'aadharCard', label: 'Aadhar Card' },
     { key: 'shopAct', label: 'Shop Act' },
     { key: 'msme', label: 'MSME Certificate' },
     { key: 'gstCertificate', label: 'GST Certificate' },
@@ -705,16 +724,8 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
     firmName: {
       required: true,
       validate: (value) => {
-        if (!value?.trim()) return 'Firm name is required'
-        if (value.length > 150) return 'Firm name must be less than 150 characters'
-        return null
-      }
-    },
-    name: {
-      required: true,
-      validate: (value) => {
-        if (!value?.trim()) return 'Contact name is required'
-        if (value.length > 100) return 'Name must be less than 100 characters'
+        if (!value?.trim()) return 'Account name is required'
+        if (value.length > 150) return 'Account name must be less than 150 characters'
         return null
       }
     },
@@ -778,14 +789,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
       validate: (value) => {
         if (!value?.trim()) return 'PAN number is required'
         if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value.toUpperCase())) return 'Enter valid PAN (10 characters)'
-        return null
-      }
-    },
-    aadharNumber: {
-      required: true,
-      validate: (value) => {
-        if (!value?.trim()) return 'Aadhar number is required'
-        if (!/^\d{12}$/.test(value)) return 'Enter valid 12-digit Aadhar number'
         return null
       }
     },
@@ -891,9 +894,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
     } else if (name === 'pincode') {
       // Only allow digits, max 6
       newValue = value.replace(/\D/g, '').slice(0, 6)
-    } else if (name === 'aadharNumber') {
-      // Only allow digits, max 12
-      newValue = value.replace(/\D/g, '').slice(0, 12)
     } else if (name === 'gstin') {
       // Alphanumeric, max 15
       newValue = value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 15).toUpperCase()
@@ -1019,7 +1019,7 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Firm Name <span className="text-red-500">*</span>
+              Account Name <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
               <div className="flex-1">
@@ -1030,7 +1030,7 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
                   onChange={handleChange}
                   onBlur={handleBlur}
                   className={`input-field flex-1 ${errors.firmName && touched.firmName ? 'border-red-500' : ''}`}
-                  placeholder="Enter firm name"
+                  placeholder="Enter account name"
                 />
                 {errors.firmName && touched.firmName && (
                   <p className="text-xs text-red-500 mt-1">{errors.firmName}</p>
@@ -1051,56 +1051,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
                 {formData.firmPhotoName.length > 25 ? formData.firmPhotoName.substring(0, 22) + '...' : formData.firmPhotoName}
               </p>
             )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Contact Name <span className="text-red-500">*</span>
-            </label>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  className={`input-field flex-1 ${errors.name && touched.name ? 'border-red-500' : ''}`}
-                  placeholder="Enter contact name"
-                />
-                {errors.name && touched.name && (
-                  <p className="text-xs text-red-500 mt-1">{errors.name}</p>
-                )}
-              </div>
-              <label className="flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
-                <Upload className="w-4 h-4 text-gray-500" />
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={(e) => handleFileChange(e, 'customerPhoto')}
-                />
-              </label>
-            </div>
-            {formData.customerPhotoName && (
-              <p className="text-xs text-green-600 mt-1 truncate" title={formData.customerPhotoName}>
-                {formData.customerPhotoName.length > 25 ? formData.customerPhotoName.substring(0, 22) + '...' : formData.customerPhotoName}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Designation <span className="text-gray-400 text-xs">(Optional)</span>
-            </label>
-            <input
-              type="text"
-              name="designation"
-              value={formData.designation}
-              onChange={handleChange}
-              className="input-field"
-              placeholder="Owner / Manager / Proprietor"
-            />
           </div>
         </div>
 
@@ -1197,8 +1147,56 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
               })}
             </div>
           ) : (
-            <div className="text-center py-4 text-gray-500 text-sm">
-              No contacts added yet. Click "Add Contact" to add one.
+            <div className="space-y-2">
+              {/* Show default contact from form mobile numbers if no contact persons */}
+              {formData.mobile ? (
+                <div className="rounded-lg p-3 border border-blue-200 bg-blue-50">
+                  <div className="flex items-start gap-2">
+                    <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden bg-[#1F3A5F] flex items-center justify-center">
+                      <span className="text-white font-medium text-xs">{formData.firmName?.charAt(0)?.toUpperCase() || 'C'}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-gray-900 text-sm">{formData.firmName || 'Primary Contact'}</span>
+                        <span className="px-1.5 py-0.5 text-xs bg-blue-500 text-white rounded">Primary</span>
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500 space-y-0.5">
+                        {formData.mobile && (
+                          <div className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            <span>+91 {formData.mobile}</span>
+                            {formData.isWhatsApp && <span className="text-green-600">(WhatsApp)</span>}
+                          </div>
+                        )}
+                        {formData.mobile2 && (
+                          <div className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            <span>+91 {formData.mobile2}</span>
+                            {formData.mobile2Whatsapp && <span className="text-green-600">(WhatsApp)</span>}
+                          </div>
+                        )}
+                        {formData.mobile3 && (
+                          <div className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            <span>+91 {formData.mobile3}</span>
+                            {formData.mobile3Whatsapp && <span className="text-green-600">(WhatsApp)</span>}
+                          </div>
+                        )}
+                        {formData.email && (
+                          <div className="flex items-center gap-1">
+                            <Mail className="w-3 h-3" />
+                            <span>{formData.email}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  No contacts added yet. Click "Add Contact" to add one.
+                </div>
+              )}
             </div>
           )}
 
@@ -1627,41 +1625,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Aadhar Number <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="aadharNumber"
-              value={formData.aadharNumber}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              onKeyDown={(e) => {
-                if ([8, 46, 9, 27, 13].includes(e.keyCode) ||
-                    (e.ctrlKey && [65, 67, 86, 88].includes(e.keyCode)) ||
-                    (e.keyCode >= 35 && e.keyCode <= 39)) {
-                  return
-                }
-                if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
-                  e.preventDefault()
-                }
-              }}
-              onPaste={(e) => {
-                const pastedText = (e.clipboardData || window.clipboardData).getData('text')
-                if (!/^\d*$/.test(pastedText)) {
-                  e.preventDefault()
-                }
-              }}
-              maxLength={12}
-              inputMode="numeric"
-              className={`input-field ${errors.aadharNumber && touched.aadharNumber ? 'border-red-500' : ''}`}
-              placeholder="12-digit Aadhar number"
-            />
-            {errors.aadharNumber && touched.aadharNumber && (
-              <p className="text-xs text-red-500 mt-1">{errors.aadharNumber}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
               Shop Act Number <span className="text-red-500">*</span>
             </label>
             <input
@@ -1705,33 +1668,143 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Business Category <span className="text-gray-400 text-xs">(Optional)</span>
             </label>
-            <select
-              name="businessCategory"
-              value={formData.businessCategory}
-              onChange={handleChange}
-              className="input-field"
-            >
-              <option value="">Select Business Category</option>
-              {businessCategories?.map((cat) => (
-                <option key={cat._id} value={cat._id}>{cat.name}</option>
-              ))}
-            </select>
+            <div className="relative business-dropdown-container">
+              <div
+                className="input-field min-h-[38px] cursor-pointer flex flex-wrap gap-1 items-center"
+                onClick={() => setShowBusinessDropdown(!showBusinessDropdown)}
+              >
+                {formData.businessCategory?.length > 0 ? (
+                  formData.businessCategory.map(catId => {
+                    const cat = businessCategories?.find(c => c._id === catId)
+                    return (
+                      <span
+                        key={catId}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {cat?.name || catId}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setFormData(prev => ({
+                              ...prev,
+                              businessCategory: prev.businessCategory.filter(id => id !== catId)
+                            }))
+                          }}
+                          className="hover:text-red-500"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )
+                  })
+                ) : (
+                  <span className="text-gray-400">Select Business Categories</span>
+                )}
+              </div>
+              {showBusinessDropdown && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {businessCategories?.map((cat) => (
+                    <label
+                      key={cat._id}
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.businessCategory?.includes(cat._id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData(prev => ({
+                              ...prev,
+                              businessCategory: [...(prev.businessCategory || []), cat._id]
+                            }))
+                          } else {
+                            setFormData(prev => ({
+                              ...prev,
+                              businessCategory: prev.businessCategory.filter(id => id !== cat._id)
+                            }))
+                          }
+                        }}
+                        className="w-4 h-4 text-blue-600 rounded"
+                      />
+                      <span className="text-sm">{cat.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Brand Category <span className="text-gray-400 text-xs">(Optional)</span>
             </label>
-            <select
-              name="brandCategory"
-              value={formData.brandCategory}
-              onChange={handleChange}
-              className="input-field"
-            >
-              <option value="">Select Brand Category</option>
-              {brandCategories?.map((cat) => (
-                <option key={cat._id} value={cat._id}>{cat.name}</option>
-              ))}
-            </select>
+            <div className="relative brand-dropdown-container">
+              <div
+                className="input-field min-h-[38px] cursor-pointer flex flex-wrap gap-1 items-center"
+                onClick={() => setShowBrandDropdown(!showBrandDropdown)}
+              >
+                {formData.brandCategory?.length > 0 ? (
+                  formData.brandCategory.map(catId => {
+                    const cat = brandCategories?.find(c => c._id === catId)
+                    return (
+                      <span
+                        key={catId}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {cat?.name || catId}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setFormData(prev => ({
+                              ...prev,
+                              brandCategory: prev.brandCategory.filter(id => id !== catId)
+                            }))
+                          }}
+                          className="hover:text-red-500"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )
+                  })
+                ) : (
+                  <span className="text-gray-400">Select Brand Categories</span>
+                )}
+              </div>
+              {showBrandDropdown && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {brandCategories?.map((cat) => (
+                    <label
+                      key={cat._id}
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.brandCategory?.includes(cat._id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData(prev => ({
+                              ...prev,
+                              brandCategory: [...(prev.brandCategory || []), cat._id]
+                            }))
+                          } else {
+                            setFormData(prev => ({
+                              ...prev,
+                              brandCategory: prev.brandCategory.filter(id => id !== cat._id)
+                            }))
+                          }
+                        }}
+                        className="w-4 h-4 text-green-600 rounded"
+                      />
+                      <span className="text-sm">{cat.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1744,10 +1817,11 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
               onBlur={handleBlur}
               className={`input-field ${errors.priceListCategory && touched.priceListCategory ? 'border-red-500' : ''}`}
             >
+              <option value="C1">C1</option>
+              <option value="SI1">SI1</option>
+              <option value="SI2">SI2</option>
               <option value="T1">T1</option>
               <option value="T2">T2</option>
-              <option value="T3">T3</option>
-              <option value="T4">T4</option>
             </select>
             {errors.priceListCategory && touched.priceListCategory && (
               <p className="text-xs text-red-500 mt-1">{errors.priceListCategory}</p>
@@ -1765,9 +1839,8 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
               className={`input-field ${errors.customerType && touched.customerType ? 'border-red-500' : ''}`}
             >
               <option value="customer">Customer</option>
-              <option value="dealer">Dealer</option>
-              <option value="distributor">Distributor</option>
-              <option value="retailer">Retailer</option>
+              <option value="system integrator">System Integrator</option>
+              <option value="reseller">Reseller</option>
             </select>
             {errors.customerType && touched.customerType && (
               <p className="text-xs text-red-500 mt-1">{errors.customerType}</p>
@@ -1882,7 +1955,7 @@ function DeleteModal({ customer, onConfirm, onCancel, loading }) {
       <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
         <AlertCircle className="w-6 h-6 text-red-600" />
       </div>
-      <h3 className="font-semibold text-gray-900 mb-2">Delete Firm</h3>
+      <h3 className="font-semibold text-gray-900 mb-2">Delete Account</h3>
       <p className="text-gray-500 mb-6">
         Are you sure you want to delete <strong>{customer?.name}</strong>? This action cannot be undone.
       </p>
@@ -1897,7 +1970,7 @@ function DeleteModal({ customer, onConfirm, onCancel, loading }) {
   )
 }
 
-// Firm View Modal - Display all firm details
+// Account View Modal - Display all account details
 function CustomerViewModal({ customer, onClose }) {
   const [contacts, setContacts] = useState([])
   const [loadingContacts, setLoadingContacts] = useState(false)
@@ -1969,7 +2042,12 @@ function CustomerViewModal({ customer, onClose }) {
       if (editingContact?._id) {
         response = await updateContact(editingContact._id, contactData)
       } else {
-        response = await createContact({ ...contactData, customer: customer._id })
+        // For new contacts, set both customer and customers array
+        response = await createContact({
+          ...contactData,
+          customer: customer._id,
+          customers: [customer._id]
+        })
       }
 
       if (response.success) {
@@ -1989,7 +2067,6 @@ function CustomerViewModal({ customer, onClose }) {
 
   const documentTypes = [
     { key: 'panCard', label: 'PAN Card' },
-    { key: 'aadharCard', label: 'Aadhar Card' },
     { key: 'shopAct', label: 'Shop Act' },
     { key: 'msme', label: 'MSME Certificate' },
     { key: 'gstCertificate', label: 'GST Certificate' },
@@ -2068,34 +2145,15 @@ function CustomerViewModal({ customer, onClose }) {
               <Building className="w-8 h-8 text-blue-600" />
             </div>
           )}
-          {customer.customerPhoto ? (
-            <div className="relative group">
-              <img
-                src={getFileUrl(customer.customerPhoto)}
-                alt="Contact"
-                className="w-16 h-16 rounded-lg object-cover border border-gray-200 cursor-pointer hover:border-blue-400"
-                onClick={() => window.open(getFileUrl(customer.customerPhoto), '_blank')}
-              />
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
-                <Eye className="w-5 h-5 text-white" />
-              </div>
-            </div>
-          ) : (
-            <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-              <UserCircle className="w-8 h-8 text-gray-400" />
-            </div>
-          )}
         </div>
 
         {/* Name & Status */}
         <div className="flex-1">
-          <h3 className="font-semibold text-lg text-gray-900">{customer.firmName || customer.name}</h3>
-          {customer.firmName && <p className="text-sm text-gray-500">{customer.name}</p>}
-          {customer.designation && <p className="text-xs text-gray-400">{customer.designation}</p>}
+          <h3 className="font-semibold text-lg text-gray-900">{customer.firmName}</h3>
           <div className="flex gap-2 mt-2">
             <StatusBadge status={customer.customerStatus} />
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              {customer.customerType || 'customer'}
+              {(customer.customerType || 'customer').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
             </span>
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
               {customer.priceListCategory || 'T1'}
@@ -2108,9 +2166,7 @@ function CustomerViewModal({ customer, onClose }) {
       <DetailSection title="Personal Details">
         <div className="grid grid-cols-2 gap-4">
           <DetailRow label="Software ID" value={customer.softwareId} />
-          <DetailRow label="Firm Name" value={customer.firmName} />
-          <DetailRow label="Contact Name" value={customer.name} />
-          <DetailRow label="Designation" value={customer.designation} />
+          <DetailRow label="Account Name" value={customer.firmName} />
         </div>
       </DetailSection>
 
@@ -2293,7 +2349,84 @@ function CustomerViewModal({ customer, onClose }) {
             })}
           </div>
         ) : (
-          <p className="text-sm text-gray-500 text-center py-2">No contact persons added</p>
+          <div className="space-y-3">
+            {/* Show default contact from customer's mobile if no contact persons */}
+            {customer.mobile ? (
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden bg-[#1F3A5F] flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm">{customer.firmName?.charAt(0)?.toUpperCase() || 'C'}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-gray-900">{customer.name || customer.firmName || 'Primary Contact'}</p>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500 text-white">
+                        Primary
+                      </span>
+                    </div>
+                    <div className="mt-1 space-y-0.5">
+                      {customer.mobile && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3 h-3 text-gray-400" />
+                          <a href={`tel:+91${customer.mobile}`} className="text-sm text-gray-600 hover:text-blue-600">
+                            +91 {customer.mobile}
+                          </a>
+                          {customer.isWhatsApp && (
+                            <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                          )}
+                        </div>
+                      )}
+                      {customer.mobile2 && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3 h-3 text-gray-400" />
+                          <a href={`tel:+91${customer.mobile2}`} className="text-sm text-gray-600 hover:text-blue-600">
+                            +91 {customer.mobile2}
+                          </a>
+                          {customer.mobile2Whatsapp && (
+                            <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                          )}
+                        </div>
+                      )}
+                      {customer.mobile3 && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3 h-3 text-gray-400" />
+                          <a href={`tel:+91${customer.mobile3}`} className="text-sm text-gray-600 hover:text-blue-600">
+                            +91 {customer.mobile3}
+                          </a>
+                          {customer.mobile3Whatsapp && (
+                            <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                          )}
+                        </div>
+                      )}
+                      {customer.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-3 h-3 text-gray-400" />
+                          <a href={`mailto:${customer.email}`} className="text-sm text-gray-600 hover:text-blue-600">
+                            {customer.email}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {customer.mobile && (
+                    <a
+                      href={`https://wa.me/91${customer.mobile}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 text-green-500 hover:text-green-600"
+                      title="WhatsApp"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.298-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.558 9.558 0 01-4.877-1.352l-.349-.21-3.615.947.964-3.52-.226-.357a9.57 9.57 0 01-1.467-5.109c0-5.281 4.303-9.572 9.594-9.572 2.577 0 5.001 1.006 6.821 2.836a9.556 9.556 0 012.806 6.821c-.002 5.281-4.306 9.572-9.594 9.572M21.884 6.5c-2.485-2.485-5.787-3.854-9.304-3.854-7.262 0-13.163 5.901-13.166 13.162 0 2.321.605 4.583 1.755 6.573L.268 24l3.502-.92a13.157 13.157 0 006.291 1.602h.005c7.26 0 13.162-5.901 13.165-13.163 0-3.515-1.37-6.831-3.855-9.318"/>
+                      </svg>
+                    </a>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-2">No contact persons added</p>
+            )}
+          </div>
         )}
       </DetailSection>
 
@@ -2356,7 +2489,6 @@ function CustomerViewModal({ customer, onClose }) {
         <div className="grid grid-cols-2 gap-4">
           <DetailRow label="GSTIN" value={customer.gstin} />
           <DetailRow label="PAN Number" value={customer.panNumber} />
-          <DetailRow label="Aadhar Number" value={customer.aadharNumber} />
           <DetailRow label="Shop Act" value={customer.shopActNumber} />
           <DetailRow label="MSME Number" value={customer.msmeNumber} />
         </div>
@@ -2365,6 +2497,41 @@ function CustomerViewModal({ customer, onClose }) {
       {/* Management */}
       <DetailSection title="Management">
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Business Categories</p>
+            <div className="flex flex-wrap gap-1">
+              {customer.businessCategory?.length > 0 ? (
+                customer.businessCategory.map((catId, index) => {
+                  // If populated, catId will be an object with name, otherwise just an ID
+                  const catName = typeof catId === 'object' ? catId.name : catId
+                  return (
+                    <span key={index} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                      {catName}
+                    </span>
+                  )
+                })
+              ) : (
+                <span className="text-sm text-gray-400">None</span>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Brand Categories</p>
+            <div className="flex flex-wrap gap-1">
+              {customer.brandCategory?.length > 0 ? (
+                customer.brandCategory.map((catId, index) => {
+                  const catName = typeof catId === 'object' ? catId.name : catId
+                  return (
+                    <span key={index} className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">
+                      {catName}
+                    </span>
+                  )
+                })
+              ) : (
+                <span className="text-sm text-gray-400">None</span>
+              )}
+            </div>
+          </div>
           <DetailRow label="Account Manager" value={customer.accountManager} icon={User} />
           <DetailRow label="Notes" value={customer.notes} />
         </div>
@@ -2454,6 +2621,7 @@ export default function Firms() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
@@ -2470,11 +2638,23 @@ export default function Firms() {
     limit: 10,
   })
 
-  const fetchCustomers = async (page = currentPage, limit = pagination.limit) => {
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      // Reset to page 1 when search changes
+      if (searchQuery !== debouncedSearch) {
+        setCurrentPage(1)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const fetchCustomers = async (page = 1, limit = pagination.limit, search = '') => {
     setLoading(true)
     setError(null)
     try {
-      const response = await getAdminCustomers({ page, limit })
+      const response = await getAdminCustomers({ page, limit, search: search || undefined })
       if (response.success !== false) {
         // Handle both paginated and non-paginated responses
         if (response.pagination) {
@@ -2521,27 +2701,19 @@ export default function Firms() {
   }
 
   useEffect(() => {
-    fetchCustomers(1)
     fetchCategories()
   }, [])
 
+  // Fetch customers when search or page changes
+  useEffect(() => {
+    fetchCustomers(currentPage, pagination.limit, debouncedSearch)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, currentPage])
+
   const handlePageChange = (page) => {
     setCurrentPage(page)
-    fetchCustomers(page)
+    fetchCustomers(page, pagination.limit, debouncedSearch)
   }
-
-  // Client-side search filter (for immediate feedback)
-  const filteredCustomers = customers.filter((c) => {
-    if (!searchQuery) return true
-    const query = searchQuery.toLowerCase()
-    return (
-      c.name?.toLowerCase().includes(query) ||
-      
-      c.mobile?.toLowerCase().includes(query) ||
-      c.email?.toLowerCase().includes(query) ||
-      c.city?.toLowerCase().includes(query)
-    )
-  })
 
   const handleCreate = async (data, newContacts = []) => {
     setFormLoading(true)
@@ -2650,19 +2822,19 @@ export default function Firms() {
     <div className="space-y-6 animate-fadeIn">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Firms</h1>
-          <p className="text-gray-500 mt-1">Manage your firm database</p>
+          <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
+          <p className="text-gray-500 mt-1">Manage your account database</p>
         </div>
         <button onClick={() => { setSelectedCustomer(null); setShowModal(true) }} className="btn-primary flex items-center gap-2 whitespace-nowrap">
           <Plus className="w-5 h-5" />
-          Add Firm
+          Add Account
         </button>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input type="text" placeholder="Search firms..." value={searchQuery}
+          <input type="text" placeholder="Search accounts..." value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
         </div>
@@ -2673,7 +2845,7 @@ export default function Firms() {
           <table className="w-full min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Firm</th>
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Account</th>
                 <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Contact</th>
                 <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Location</th>
                 <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">GSTIN</th>
@@ -2682,15 +2854,15 @@ export default function Firms() {
               </tr>
             </thead>
             <tbody>
-              {filteredCustomers.length === 0 ? (
+              {customers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12">
                     <UserCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">No firms found</p>
+                    <p className="text-gray-500">No accounts found</p>
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map((customer) => (
+                customers.map((customer) => (
                   <tr key={customer._id} className="border-b border-gray-50 hover:bg-gray-50/50">
                     <td className="px-6 py-4">
                       <div>
@@ -2752,18 +2924,18 @@ export default function Firms() {
       </div>
 
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); setSelectedCustomer(null) }}
-        title={selectedCustomer ? 'Edit Firm' : 'Add Firm'} size="xl">
+        title={selectedCustomer ? 'Edit Account' : 'Add Account'} size="xl">
         <CustomerForm customer={selectedCustomer} onSubmit={selectedCustomer ? handleUpdate : handleCreate}
           onCancel={() => { setShowModal(false); setSelectedCustomer(null) }} loading={formLoading}
           businessCategories={businessCategories} brandCategories={brandCategories} />
       </Modal>
 
-      <Modal isOpen={showDeleteModal} onClose={() => { setShowDeleteModal(false); setSelectedCustomer(null) }} title="Delete Firm">
+      <Modal isOpen={showDeleteModal} onClose={() => { setShowDeleteModal(false); setSelectedCustomer(null) }} title="Delete Account">
         <DeleteModal customer={selectedCustomer} onConfirm={handleDelete}
           onCancel={() => { setShowDeleteModal(false); setSelectedCustomer(null) }} loading={formLoading} />
       </Modal>
 
-      <Modal isOpen={showViewModal} onClose={() => { setShowViewModal(false); setSelectedCustomer(null) }} title="Firm Details" size="xl">
+      <Modal isOpen={showViewModal} onClose={() => { setShowViewModal(false); setSelectedCustomer(null) }} title="Account Details" size="xl">
         <CustomerViewModal customer={selectedCustomer} onClose={() => { setShowViewModal(false); setSelectedCustomer(null) }} />
       </Modal>
     </div>

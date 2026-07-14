@@ -11,7 +11,7 @@ import { useAdminAuth } from '../context/AdminAuthContext'
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { path: '/admin/users', label: 'Sales Users', icon: Users },
-  { path: '/admin/firms', label: 'Firms', icon: UserCircle },
+  { path: '/admin/firms', label: 'Accounts', icon: UserCircle },
   { path: '/admin/contacts', label: 'Contacts', icon: Mail },
   { path: '/admin/inquiries', label: 'Inquiries', icon: FileText },
   { path: '/admin/orders', label: 'Orders', icon: ShoppingBag },

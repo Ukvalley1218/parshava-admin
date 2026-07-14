@@ -227,9 +227,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
     softwareId: customer?.softwareId || '',
     firmName: customer?.firmName || '',
     firmPhoto: customer?.firmPhoto || '',
-    name: customer?.name || '',
-    customerPhoto: customer?.customerPhoto || '',
-    designation: customer?.designation || '',
 
     // Address
     address: customer?.address || '',
@@ -252,7 +249,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
     // Business Details (Numbers)
     gstin: customer?.gstin || '',
     panNumber: customer?.panNumber || '',
-    aadharNumber: customer?.aadharNumber || '',
     shopActNumber: customer?.shopActNumber || '',
     msmeNumber: customer?.msmeNumber || '',
 
@@ -346,7 +342,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
   // Document types for upload
   const documentTypes = [
     { key: 'panCard', label: 'PAN Card' },
-    { key: 'aadharCard', label: 'Aadhar Card' },
     { key: 'shopAct', label: 'Shop Act' },
     { key: 'msme', label: 'MSME Certificate' },
     { key: 'gstCertificate', label: 'GST Certificate' },
@@ -358,16 +353,8 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
     firmName: {
       required: true,
       validate: (value) => {
-        if (!value?.trim()) return 'Firm name is required'
-        if (value.length > 150) return 'Firm name must be less than 150 characters'
-        return null
-      }
-    },
-    name: {
-      required: true,
-      validate: (value) => {
-        if (!value?.trim()) return 'Contact name is required'
-        if (value.length > 100) return 'Name must be less than 100 characters'
+        if (!value?.trim()) return 'Account name is required'
+        if (value.length > 150) return 'Account name must be less than 150 characters'
         return null
       }
     },
@@ -418,13 +405,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
       required: false,
       validate: (value) => {
         if (value && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value.toUpperCase())) return 'Enter valid PAN (10 characters)'
-        return null
-      }
-    },
-    aadharNumber: {
-      required: false,
-      validate: (value) => {
-        if (value && !/^\d{12}$/.test(value)) return 'Enter valid 12-digit Aadhar number'
         return null
       }
     },
@@ -479,9 +459,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
     } else if (name === 'pincode') {
       // Only allow digits, max 6
       newValue = value.replace(/\D/g, '').slice(0, 6)
-    } else if (name === 'aadharNumber') {
-      // Only allow digits, max 12
-      newValue = value.replace(/\D/g, '').slice(0, 12)
     } else if (name === 'gstin') {
       // Alphanumeric, max 15
       newValue = value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 15).toUpperCase()
@@ -604,7 +581,7 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Firm Name <span className="text-red-500">*</span>
+              Account Name <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
               <div className="flex-1">
@@ -615,7 +592,7 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
                   onChange={handleChange}
                   onBlur={handleBlur}
                   className={`input-field flex-1 ${errors.firmName && touched.firmName ? 'border-red-500' : ''}`}
-                  placeholder="Enter firm name"
+                  placeholder="Enter account name"
                 />
                 {errors.firmName && touched.firmName && (
                   <p className="text-xs text-red-500 mt-1">{errors.firmName}</p>
@@ -634,52 +611,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
             {formData.firmPhoto && (
               <p className="text-xs text-green-600 mt-1">Shop photo uploaded</p>
             )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Contact Name <span className="text-red-500">*</span>
-            </label>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  className={`input-field flex-1 ${errors.name && touched.name ? 'border-red-500' : ''}`}
-                  placeholder="Enter contact name"
-                />
-                {errors.name && touched.name && (
-                  <p className="text-xs text-red-500 mt-1">{errors.name}</p>
-                )}
-              </div>
-              <label className="flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
-                <Upload className="w-4 h-4 text-gray-500" />
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={(e) => handleFileChange(e, 'customerPhoto')}
-                />
-              </label>
-            </div>
-            {formData.customerPhoto && (
-              <p className="text-xs text-green-600 mt-1">Photo uploaded</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-            <input
-              type="text"
-              name="designation"
-              value={formData.designation}
-              onChange={handleChange}
-              className="input-field"
-              placeholder="Owner / Manager / Proprietor"
-            />
           </div>
         </div>
       </div>
@@ -785,6 +716,53 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
                 </div>
               )
             })}
+          </div>
+        ) : formData.mobile ? (
+          /* Show default contact from form mobile numbers if no contact persons */
+          <div className="p-3 rounded-lg border border-blue-200 bg-blue-50">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-gray-900">{formData.firmName || 'Primary Contact'}</p>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500 text-white">
+                    Primary
+                  </span>
+                </div>
+                {formData.mobile && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <Phone className="w-3 h-3 text-gray-400" />
+                    <span className="text-sm text-gray-600">+91 {formData.mobile}</span>
+                    {formData.isWhatsApp && (
+                      <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                    )}
+                  </div>
+                )}
+                {formData.mobile2 && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <Phone className="w-3 h-3 text-gray-400" />
+                    <span className="text-sm text-gray-600">+91 {formData.mobile2}</span>
+                    {formData.mobile2Whatsapp && (
+                      <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                    )}
+                  </div>
+                )}
+                {formData.mobile3 && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <Phone className="w-3 h-3 text-gray-400" />
+                    <span className="text-sm text-gray-600">+91 {formData.mobile3}</span>
+                    {formData.mobile3Whatsapp && (
+                      <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                    )}
+                  </div>
+                )}
+                {formData.email && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <Mail className="w-3 h-3 text-gray-400" />
+                    <span className="text-sm text-gray-600">{formData.email}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         ) : (
           <p className="text-sm text-gray-500 text-center py-4">No contacts added yet</p>
@@ -1143,39 +1121,6 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Number</label>
-            <input
-              type="text"
-              name="aadharNumber"
-              value={formData.aadharNumber}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              onKeyDown={(e) => {
-                if ([8, 46, 9, 27, 13].includes(e.keyCode) ||
-                    (e.ctrlKey && [65, 67, 86, 88].includes(e.keyCode)) ||
-                    (e.keyCode >= 35 && e.keyCode <= 39)) {
-                  return
-                }
-                if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
-                  e.preventDefault()
-                }
-              }}
-              onPaste={(e) => {
-                const pastedText = (e.clipboardData || window.clipboardData).getData('text')
-                if (!/^\d*$/.test(pastedText)) {
-                  e.preventDefault()
-                }
-              }}
-              maxLength={12}
-              inputMode="numeric"
-              className={`input-field ${errors.aadharNumber && touched.aadharNumber ? 'border-red-500' : ''}`}
-              placeholder="12-digit Aadhar number"
-            />
-            {errors.aadharNumber && touched.aadharNumber && (
-              <p className="text-xs text-red-500 mt-1">{errors.aadharNumber}</p>
-            )}
-          </div>
-          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Shop Act Number</label>
             <input
               type="text"
@@ -1212,10 +1157,11 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
               onChange={handleChange}
               className="input-field"
             >
+              <option value="C1">C1</option>
+              <option value="SI1">SI1</option>
+              <option value="SI2">SI2</option>
               <option value="T1">T1</option>
               <option value="T2">T2</option>
-              <option value="T3">T3</option>
-              <option value="T4">T4</option>
             </select>
           </div>
           <div>
@@ -1227,9 +1173,8 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
               className="input-field"
             >
               <option value="customer">Customer</option>
-              <option value="dealer">Dealer</option>
-              <option value="distributor">Distributor</option>
-              <option value="retailer">Retailer</option>
+              <option value="system integrator">System Integrator</option>
+              <option value="reseller">Reseller</option>
             </select>
           </div>
           <div>
@@ -1364,7 +1309,6 @@ function CustomerViewModal({ customer, onClose }) {
 
   const documentTypes = [
     { key: 'panCard', label: 'PAN Card' },
-    { key: 'aadharCard', label: 'Aadhar Card' },
     { key: 'shopAct', label: 'Shop Act' },
     { key: 'msme', label: 'MSME Certificate' },
     { key: 'gstCertificate', label: 'GST Certificate' },
@@ -1443,34 +1387,15 @@ function CustomerViewModal({ customer, onClose }) {
               <Building className="w-8 h-8 text-blue-600" />
             </div>
           )}
-          {customer.customerPhoto ? (
-            <div className="relative group">
-              <img
-                src={getFileUrl(customer.customerPhoto)}
-                alt="Contact"
-                className="w-16 h-16 rounded-lg object-cover border border-gray-200 cursor-pointer hover:border-blue-400"
-                onClick={() => window.open(getFileUrl(customer.customerPhoto), '_blank')}
-              />
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
-                <Eye className="w-5 h-5 text-white" />
-              </div>
-            </div>
-          ) : (
-            <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-              <UserCircle className="w-8 h-8 text-gray-400" />
-            </div>
-          )}
         </div>
 
         {/* Name & Status */}
         <div className="flex-1">
-          <h3 className="font-semibold text-lg text-gray-900">{customer.firmName || customer.name}</h3>
-          {customer.firmName && <p className="text-sm text-gray-500">{customer.name}</p>}
-          {customer.designation && <p className="text-xs text-gray-400">{customer.designation}</p>}
+          <h3 className="font-semibold text-lg text-gray-900">{customer.firmName}</h3>
           <div className="flex gap-2 mt-2">
             <StatusBadge status={customer.customerStatus} />
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              {customer.customerType || 'customer'}
+              {(customer.customerType || 'customer').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
             </span>
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
               {customer.priceListCategory || 'T1'}
@@ -1483,9 +1408,7 @@ function CustomerViewModal({ customer, onClose }) {
       <DetailSection title="Personal Details">
         <div className="grid grid-cols-2 gap-4">
           <DetailRow label="Software ID" value={customer.softwareId} />
-          <DetailRow label="Firm Name" value={customer.firmName} />
-          <DetailRow label="Contact Name" value={customer.name} />
-          <DetailRow label="Designation" value={customer.designation} />
+          <DetailRow label="Account Name" value={customer.firmName} />
         </div>
       </DetailSection>
 
@@ -1536,10 +1459,10 @@ function CustomerViewModal({ customer, onClose }) {
       </DetailSection>
 
       {/* Contact Persons */}
-      {customer.contactPersons && customer.contactPersons.length > 0 && (
-        <DetailSection title="Contact Persons">
-          <div className="space-y-3">
-            {customer.contactPersons.map((contact, index) => (
+      <DetailSection title="Contact Persons">
+        <div className="space-y-3">
+          {customer.contactPersons && customer.contactPersons.length > 0 ? (
+            customer.contactPersons.map((contact, index) => (
               <div key={contact._id || index} className={`p-3 rounded-lg ${contact.isPrimary ? 'bg-blue-50 border border-blue-200' : 'bg-white border border-gray-200'}`}>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -1586,10 +1509,75 @@ function CustomerViewModal({ customer, onClose }) {
                   )}
                 </div>
               </div>
-            ))}
-          </div>
-        </DetailSection>
-      )}
+            ))
+          ) : customer.mobile ? (
+            /* Show default contact from customer's mobile if no contact persons */
+            <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900">{customer.name || customer.firmName || 'Primary Contact'}</p>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500 text-white">
+                      Primary
+                    </span>
+                  </div>
+                  {customer.mobile && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Phone className="w-3 h-3 text-gray-400" />
+                      <a href={`tel:${customer.mobile}`} className="text-sm text-gray-600 hover:text-blue-600">
+                        {customer.mobile}
+                      </a>
+                      {customer.isWhatsApp && (
+                        <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                      )}
+                    </div>
+                  )}
+                  {customer.mobile2 && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Phone className="w-3 h-3 text-gray-400" />
+                      <a href={`tel:${customer.mobile2}`} className="text-sm text-gray-600 hover:text-blue-600">
+                        {customer.mobile2}
+                      </a>
+                      {customer.mobile2Whatsapp && (
+                        <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                      )}
+                    </div>
+                  )}
+                  {customer.mobile3 && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Phone className="w-3 h-3 text-gray-400" />
+                      <a href={`tel:${customer.mobile3}`} className="text-sm text-gray-600 hover:text-blue-600">
+                        {customer.mobile3}
+                      </a>
+                      {customer.mobile3Whatsapp && (
+                        <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">WhatsApp</span>
+                      )}
+                    </div>
+                  )}
+                  {customer.email && (
+                    <p className="text-xs text-gray-500 mt-1">{customer.email}</p>
+                  )}
+                </div>
+                {customer.mobile && (
+                  <a
+                    href={`https://wa.me/${customer.mobile.replace(/[\s+-]/g, '').replace(/^0+/, '91')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-lg bg-green-500 hover:bg-green-600 transition-colors"
+                    title="WhatsApp"
+                  >
+                    <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.298-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.558 9.558 0 01-4.877-1.352l-.349-.21-3.615.947.964-3.52-.226-.357a9.57 9.57 0 01-1.467-5.109c0-5.281 4.303-9.572 9.594-9.572 2.577 0 5.001 1.006 6.821 2.836a9.556 9.556 0 012.806 6.821c-.002 5.281-4.306 9.572-9.594 9.572M21.884 6.5c-2.485-2.485-5.787-3.854-9.304-3.854-7.262 0-13.163 5.901-13.166 13.162 0 2.321.605 4.583 1.755 6.573L.268 24l3.502-.92a13.157 13.157 0 006.291 1.602h.005c7.26 0 13.162-5.901 13.165-13.163 0-3.515-1.37-6.831-3.855-9.318"/>
+                    </svg>
+                  </a>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 text-center py-2">No contact persons added</p>
+          )}
+        </div>
+      </DetailSection>
 
       {/* Address */}
       <DetailSection title="Address">
@@ -1650,7 +1638,6 @@ function CustomerViewModal({ customer, onClose }) {
         <div className="grid grid-cols-2 gap-4">
           <DetailRow label="GSTIN" value={customer.gstin} />
           <DetailRow label="PAN Number" value={customer.panNumber} />
-          <DetailRow label="Aadhar Number" value={customer.aadharNumber} />
           <DetailRow label="Shop Act" value={customer.shopActNumber} />
           <DetailRow label="MSME Number" value={customer.msmeNumber} />
         </div>
