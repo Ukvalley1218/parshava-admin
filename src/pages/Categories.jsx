@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Search, Plus, Edit2, Trash2, Loader, AlertCircle, FolderTree, ChevronDown, ChevronUp, Tag } from 'lucide-react'
 import { getCategories, createCategory, updateCategory, deleteCategory, getBrands } from '../services/adminApi'
 import Pagination from '../components/Pagination'
@@ -14,6 +15,32 @@ function CategoryForm({ category, onSubmit, onCancel, loading, brands }) {
   })
   const [error, setError] = useState('')
   const [showBrandsDropdown, setShowBrandsDropdown] = useState(false)
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 })
+  const dropdownRef = useRef(null)
+  const buttonRef = useRef(null)
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showBrandsDropdown && dropdownRef.current && !dropdownRef.current.contains(e.target) && buttonRef.current && !buttonRef.current.contains(e.target)) {
+        setShowBrandsDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showBrandsDropdown])
+
+  const openDropdown = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      setDropdownPos({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      })
+    }
+    setShowBrandsDropdown(!showBrandsDropdown)
+  }
 
   // Get selected brand names for display
   const selectedBrands = brands?.filter(b => formData.brands.includes(b._id)) || []
@@ -68,8 +95,9 @@ function CategoryForm({ category, onSubmit, onCancel, loading, brands }) {
         <label className="block text-sm font-medium text-gray-700 mb-1">Linked Brands</label>
         <div className="relative">
           <button
+            ref={buttonRef}
             type="button"
-            onClick={() => setShowBrandsDropdown(!showBrandsDropdown)}
+            onClick={openDropdown}
             className="w-full input-field text-left flex items-center justify-between"
           >
             <span className={selectedBrands.length > 0 ? 'text-gray-900' : 'text-gray-400'}>
@@ -84,8 +112,12 @@ function CategoryForm({ category, onSubmit, onCancel, loading, brands }) {
             )}
           </button>
 
-          {showBrandsDropdown && (
-            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          {showBrandsDropdown && createPortal(
+            <div
+              ref={dropdownRef}
+              className="fixed bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-[9999]"
+              style={{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px`, width: `${dropdownPos.width}px` }}
+            >
               {brands && brands.length > 0 ? (
                 <div className="py-1">
                   {brands.map((brand) => (
@@ -106,7 +138,8 @@ function CategoryForm({ category, onSubmit, onCancel, loading, brands }) {
               ) : (
                 <div className="px-3 py-2 text-sm text-gray-500">No brands available</div>
               )}
-            </div>
+            </div>,
+            document.body
           )}
         </div>
 

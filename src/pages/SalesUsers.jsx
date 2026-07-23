@@ -215,17 +215,53 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-     // Name validation
-  if (!/^[a-zA-Z\s]+$/.test(formData.name)) {
-    toast.error('Name should contain only letters')
-    return
-  }
 
-  // Phone validation (optional but recommended)
-  if (formData.phone && !/^\d{10}$/.test(formData.phone)) {
-    toast.error('Phone must be 10 digits')
-    return
-  }
+    // Name validation
+    if (!formData.name.trim()) {
+      toast.error('Name is required')
+      return
+    }
+    if (!/^[a-zA-Z\s]+$/.test(formData.name.trim())) {
+      toast.error('Name should contain only letters and spaces')
+      return
+    }
+
+    // Email validation
+    if (!formData.email.trim()) {
+      toast.error('Email is required')
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      toast.error('Please enter a valid email address')
+      return
+    }
+
+    // Password validation (required for new users)
+    if (!user) {
+      if (!formData.password) {
+        toast.error('Password is required')
+        return
+      }
+      if (formData.password.length < 6) {
+        toast.error('Password must be at least 6 characters')
+        return
+      }
+    } else if (formData.password && formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+
+    // Phone validation (optional but must be valid if provided)
+    if (formData.phone && !/^\d{10}$/.test(formData.phone)) {
+      toast.error('Phone must be 10 digits')
+      return
+    }
+
+    // Assigned brands validation for product_manager/account_manager
+    if ((formData.role === 'product_manager' || formData.role === 'account_manager') && formData.assignedBrands.length === 0) {
+      toast.error('Please assign at least one brand for this role')
+      return
+    }
 
     const data = { ...formData }
     if (!data.password) delete data.password

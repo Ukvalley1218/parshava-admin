@@ -125,19 +125,26 @@ function InquiryDetailModal({ inquiry, onClose, onConvert, onStatusChange, loadi
       {/* Status */}
       <div className="mb-6">
         <h4 className="text-sm font-semibold text-gray-500 uppercase mb-3">Status</h4>
-        <div className="flex flex-wrap gap-2">
-          {['draft', 'converted', 'cancelled'].map((status) => (
-            <button key={status} onClick={() => handleStatusUpdate(status)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                inquiry.status === status
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-              disabled={loading}>
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </button>
-          ))}
-        </div>
+        {inquiry.status === 'cancelled' ? (
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-100 text-red-700 text-sm font-medium">
+            <AlertCircle className="w-4 h-4" />
+            Cancelled — status cannot be changed
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {['draft', 'converted', 'cancelled'].map((status) => (
+              <button key={status} onClick={() => handleStatusUpdate(status)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  inquiry.status === status
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                disabled={loading}>
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Actions */}
@@ -270,9 +277,11 @@ export default function Inquiries() {
         setInquiries((prev) => prev.map((i) => i._id === id ? { ...i, status } : i))
         setSelectedInquiry((prev) => prev._id === id ? { ...prev, status } : prev)
         toast.success('Status updated successfully')
+      } else {
+        toast.error(response.message || 'Failed to update status')
       }
     } catch (err) {
-      toast.error('Failed to update status')
+      toast.error(err.response?.data?.message || 'Failed to update status')
     } finally {
       setActionLoading(false)
     }
@@ -290,7 +299,7 @@ export default function Inquiries() {
         toast.error(response.message || 'Failed to convert quotation')
       }
     } catch (err) {
-      toast.error('Failed to convert quotation')
+      toast.error(err.response?.data?.message || 'Failed to convert quotation')
     } finally {
       setActionLoading(false)
     }

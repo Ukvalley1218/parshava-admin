@@ -22,12 +22,12 @@ function SubcategoryForm({ subcategory, categories, onSubmit, onCancel, loading 
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!formData.name.trim()) {
-      setError('Subcategory name is required')
-      return
-    }
     if (!formData.category) {
       setError('Please select a category')
+      return
+    }
+    if (!formData.name.trim()) {
+      setError('Subcategory name is required')
       return
     }
     if (formData.name.trim().length < 2) {
@@ -46,8 +46,7 @@ function SubcategoryForm({ subcategory, categories, onSubmit, onCancel, loading 
             name="category"
             value={formData.category}
             onChange={handleChange}
-            required
-            className="input-field appearance-none pr-10"
+            className={`input-field appearance-none pr-10 ${error && !formData.category ? 'border-red-500' : ''}`}
           >
             <option value="">Select a category</option>
             {categories.map((cat) => (
@@ -56,6 +55,7 @@ function SubcategoryForm({ subcategory, categories, onSubmit, onCancel, loading 
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
         </div>
+        {error && !formData.category && <p className="text-xs text-red-500 mt-1">{error}</p>}
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Subcategory Name *</label>
@@ -64,12 +64,11 @@ function SubcategoryForm({ subcategory, categories, onSubmit, onCancel, loading 
           name="name"
           value={formData.name}
           onChange={handleChange}
-          required
           maxLength={100}
-          className={`input-field ${error && !formData.name ? 'border-red-500' : ''}`}
+          className={`input-field ${error && !formData.name.trim() && formData.category ? 'border-red-500' : ''}`}
           placeholder="Enter subcategory name"
         />
-        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+        {error && formData.category && <p className="text-xs text-red-500 mt-1">{error}</p>}
       </div>
       <div className="flex items-center gap-2">
         <input
