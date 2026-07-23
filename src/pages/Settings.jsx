@@ -203,7 +203,7 @@ export default function Settings() {
             {[
               { key: 'emailNotifications', label: 'Email Notifications', desc: 'Receive notifications via email' },
               { key: 'orderNotifications', label: 'Order Notifications', desc: 'Get notified when orders are placed' },
-              { key: 'inquiryNotifications', label: 'Inquiry Notifications', desc: 'Get notified when inquiries are submitted' },
+              { key: 'inquiryNotifications', label: 'Quotation Notifications', desc: 'Get notified when quotations are submitted' },
               { key: 'reportNotifications', label: 'Report Notifications', desc: 'Receive weekly report summaries' },
             ].map((item) => (
               <div key={item.key} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">

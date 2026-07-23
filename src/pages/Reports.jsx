@@ -81,7 +81,7 @@ export default function Reports() {
   const handleExport = () => {
     // Generate CSV export
     const csvContent = [
-      'Date,Sales,Revenue,Orders,Inquiries',
+      'Date,Sales,Revenue,Orders,Quotations',
       ...(salesData.length > 0 ? salesData.map((s, i) =>
         `${s.date || ''},${s.amount || 0},${revenueData[i]?.amount || 0},${s.orders || 0},${revenueData[i]?.inquiries || 0}`
       ) : ['No data available'])
@@ -127,7 +127,7 @@ export default function Reports() {
         <StatCard title="Total Sales" value={fmt(summary.totalSales)} icon={DollarSign} change={12} color="green" />
         <StatCard title="Total Revenue" value={fmt(summary.totalRevenue)} icon={TrendingUp} change={8} color="blue" />
         <StatCard title="Total Orders" value={summary.totalOrders} icon={ShoppingBag} change={15} color="amber" />
-        <StatCard title="Total Inquiries" value={summary.totalInquiries} icon={FileText} change={5} color="purple" />
+        <StatCard title="Total Quotations" value={summary.totalInquiries} icon={FileText} change={5} color="purple" />
       </div>
 
       {/* Sales Chart Placeholder */}
@@ -168,7 +168,7 @@ export default function Reports() {
                 <th className="text-left px-6 py-3 text-sm font-medium text-gray-500">Date</th>
                 <th className="text-right px-6 py-3 text-sm font-medium text-gray-500">Revenue</th>
                 <th className="text-right px-6 py-3 text-sm font-medium text-gray-500">Orders</th>
-                <th className="text-right px-6 py-3 text-sm font-medium text-gray-500">Inquiries</th>
+                <th className="text-right px-6 py-3 text-sm font-medium text-gray-500">Quotations</th>
               </tr>
             </thead>
             <tbody>

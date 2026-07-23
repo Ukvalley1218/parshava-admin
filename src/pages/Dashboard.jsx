@@ -195,7 +195,7 @@ export default function Dashboard() {
   color="purple"
 />
         <StatCard
-          title="Total Inquiries"
+          title="Total Quotations"
           value={stats.totalInquiries || 0}
           icon={FileText}
           change={12}
@@ -234,7 +234,7 @@ export default function Dashboard() {
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RecentActivityCard
-          title="Recent Inquiries"
+          title="Recent Quotations"
           items={recentInquiries}
           type="inquiries"
           loading={loading}
@@ -270,7 +270,7 @@ export default function Dashboard() {
             className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
           >
             <FileText className="w-6 h-6 text-amber-600" />
-            <span className="text-sm font-medium text-gray-700">View Inquiries</span>
+            <span className="text-sm font-medium text-gray-700">View Quotations</span>
           </a>
           
         </div>

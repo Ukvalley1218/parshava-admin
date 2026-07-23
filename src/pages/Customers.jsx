@@ -3,8 +3,9 @@ import {
   Plus, Search, Edit2, Trash2, X, Loader, AlertCircle, Eye,
   UserCircle, Mail, Phone, MapPin, Building, Globe, FileText, Tag, User, Upload, Camera, Users
 } from 'lucide-react'
-import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, uploadFile, getCustomerContacts, createContact, updateContact, deleteContact, getContactDesignations } from '../services/adminApi'
+import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, uploadFile, getCustomerContacts, createContact, updateContact, deleteContact, getContactDesignations, getSalesUsers } from '../services/adminApi'
 import Pagination from '../components/Pagination'
+import { INDIAN_STATES, getCitiesForState } from '../data/indianStatesCities'
 
 // Modal Component
 function Modal({ isOpen, onClose, title, children, size = 'lg' }) {
@@ -257,18 +258,55 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
 
     // Management
     priceListCategory: customer?.priceListCategory || 'T1',
-    accountManager: customer?.accountManager || '',
+    accountManager: customer?.accountManager
+      ? (Array.isArray(customer.accountManager)
+        ? customer.accountManager.map(m => m._id || m)
+        : [customer.accountManager._id || customer.accountManager])
+      : [],
     productManager: customer?.productManager || '',
     leadSource: customer?.leadSource || '',
 
     // Status
     customerType: customer?.customerType || 'customer',
+    accountType: customer?.accountType || 'in_house',
     customerStatus: customer?.customerStatus || 'active',
     notes: customer?.notes || ''
   })
 
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
+  const [showManagerDropdown, setShowManagerDropdown] = useState(false)
+  const [accountManagers, setAccountManagers] = useState([])
+
+  // Load account managers
+  useEffect(() => {
+    const fetchAccountManagers = async () => {
+      try {
+        const response = await getSalesUsers({ role: 'account_manager', limit: 100 })
+        if (response?.data?.users) {
+          setAccountManagers(response.data.users)
+        } else if (Array.isArray(response?.data)) {
+          setAccountManagers(response.data)
+        }
+      } catch (error) {
+        console.error('Error loading account managers:', error)
+      }
+    }
+    fetchAccountManagers()
+  }, [])
+
+  // Close manager dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showManagerDropdown && !event.target.closest('.manager-dropdown-container')) {
+        setShowManagerDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showManagerDropdown])
 
   // Contacts state
   const [contacts, setContacts] = useState([])
@@ -819,27 +857,47 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-            <input
-              type="text"
-              name="city"
-              value={formData.city}
-              onChange={handleChange}
+            <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+            <select
+              name="state"
+              value={formData.state}
+              onChange={(e) => {
+                const value = e.target.value
+                setFormData(prev => ({ ...prev, state: value, city: '' }))
+              }}
               className="input-field"
-              placeholder="Enter city"
-            />
+            >
+              <option value="">Select State</option>
+              {INDIAN_STATES.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-            <input
-              type="text"
-              name="state"
-              value={formData.state}
-              onChange={handleChange}
-              className="input-field"
-              placeholder="Enter state"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+            {formData.state && getCitiesForState(formData.state).length > 0 ? (
+              <select
+                name="city"
+                value={formData.city}
+                onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                className="input-field"
+              >
+                <option value="">Select City</option>
+                {getCitiesForState(formData.state).map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                className="input-field"
+                placeholder={formData.state ? 'Enter city name' : 'Select state first'}
+              />
+            )}
           </div>
 
           <div>
@@ -1178,6 +1236,18 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
             </select>
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Account Type</label>
+            <select
+              name="accountType"
+              value={formData.accountType}
+              onChange={handleChange}
+              className="input-field"
+            >
+              <option value="in_house">In House</option>
+              <option value="shop">Shop</option>
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Customer Status</label>
             <select
               name="customerStatus"
@@ -1192,14 +1262,81 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Account Manager</label>
-            <input
-              type="text"
-              name="accountManager"
-              value={formData.accountManager}
-              onChange={handleChange}
-              className="input-field"
-              placeholder="Manager name"
-            />
+            <div className="relative manager-dropdown-container">
+              <div
+                className="input-field min-h-[38px] cursor-pointer flex flex-wrap gap-1 items-center"
+                onClick={() => setShowManagerDropdown(!showManagerDropdown)}
+              >
+                {formData.accountManager?.length > 0 ? (
+                  formData.accountManager.map(managerId => {
+                    const manager = accountManagers?.find(m => m._id === managerId)
+                    return (
+                      <span
+                        key={managerId}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded text-xs"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {manager?.name || managerId}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setFormData(prev => ({
+                              ...prev,
+                              accountManager: prev.accountManager.filter(id => id !== managerId)
+                            }))
+                          }}
+                          className="hover:text-red-500"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )
+                  })
+                ) : (
+                  <span className="text-gray-400">Select Account Managers</span>
+                )}
+              </div>
+              {showManagerDropdown && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {accountManagers.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-gray-400">No account managers found</div>
+                  ) : (
+                    accountManagers.map((manager) => (
+                      <label
+                        key={manager._id}
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.accountManager?.includes(manager._id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData(prev => ({
+                                ...prev,
+                                accountManager: [...(prev.accountManager || []), manager._id]
+                              }))
+                            } else {
+                              setFormData(prev => ({
+                                ...prev,
+                                accountManager: prev.accountManager.filter(id => id !== manager._id)
+                              }))
+                            }
+                          }}
+                          className="w-4 h-4 text-indigo-600 rounded"
+                        />
+                        <div>
+                          <span className="text-sm font-medium">{manager.name}</span>
+                          {manager.email && (
+                            <span className="text-xs text-gray-400 ml-1">({manager.email})</span>
+                          )}
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Product Manager</label>
@@ -1396,6 +1533,9 @@ function CustomerViewModal({ customer, onClose }) {
             <StatusBadge status={customer.customerStatus} />
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
               {(customer.customerType || 'customer').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+            </span>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${(customer.accountType || 'in_house') === 'in_house' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+              {(customer.accountType || 'in_house') === 'in_house' ? 'In House' : 'Shop'}
             </span>
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
               {customer.priceListCategory || 'T1'}
@@ -1646,7 +1786,8 @@ function CustomerViewModal({ customer, onClose }) {
       {/* Management */}
       <DetailSection title="Management">
         <div className="grid grid-cols-2 gap-4">
-          <DetailRow label="Account Manager" value={customer.accountManager} icon={User} />
+          <DetailRow label="Account Type" value={(customer.accountType || 'in_house') === 'in_house' ? 'In House' : 'Shop'} icon={Building} />
+          <DetailRow label="Account Manager" value={Array.isArray(customer.accountManager) ? customer.accountManager.map(m => m?.name || m).join(', ') || '-' : customer.accountManager?.name || customer.accountManager || '-'} icon={User} />
           <DetailRow label="Product Manager" value={customer.productManager} icon={User} />
           <DetailRow label="Lead Source" value={customer.leadSource} />
           <DetailRow label="Notes" value={customer.notes} />
@@ -1934,6 +2075,9 @@ export default function Customers() {
                       <div>
                         <p className="font-medium text-gray-900">{customer.firmName || customer.name}</p>
                         {customer.firmName && <p className="text-sm text-gray-500">{customer.name}</p>}
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium mt-1 ${(customer.accountType || 'in_house') === 'in_house' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+                          {(customer.accountType || 'in_house') === 'in_house' ? 'In House' : 'Shop'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 hidden md:table-cell">

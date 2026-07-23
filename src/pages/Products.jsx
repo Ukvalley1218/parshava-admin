@@ -67,10 +67,11 @@ function ColumnVisibilityPopup({ visibleColumns, onToggle, onClose }) {
     { key: 'nlc', label: 'NLC', group: 'Results' },
     // { key: 'profit', label: 'Profit', group: 'Results' },
     { key: 'purchase', label: 'Purchase', group: 'Cost' },
-    { key: 'market', label: 'Market', group: 'Cost' },
-    { key: 'c1', label: 'C1', group: 'Price List' },
+    { key: 'marketSI', label: 'Mkt(SI)', group: 'Price List' },
     { key: 'si1', label: 'SI1', group: 'Price List' },
     { key: 'si2', label: 'SI2', group: 'Price List' },
+    { key: 'c1', label: 'C1', group: 'Price List' },
+    { key: 'marketReseller', label: 'Mkt(Reseller)', group: 'Price List' },
     { key: 't1', label: 'T1', group: 'Price List' },
     { key: 't2', label: 'T2', group: 'Price List' },
   ]
@@ -174,6 +175,12 @@ function ProductViewModal({ product, onClose }) {
             <div><span className="text-gray-500">Box Size:</span><p className="font-medium">{product.boxSize || '-'}</p></div>
             <div><span className="text-gray-500">Procurement:</span><p className="font-medium">{product.procurement || '-'}</p></div>
           </div>
+          {product.shortDescription && (
+            <div className="text-xs sm:text-sm">
+              <span className="text-gray-500">Short Description:</span>
+              <p className="font-medium">{product.shortDescription}</p>
+            </div>
+          )}
           {product.description && (
             <div className="text-xs sm:text-sm">
               <span className="text-gray-500">Description:</span>
@@ -221,7 +228,9 @@ function ProductViewModal({ product, onClose }) {
               <div>
                 <span className="text-gray-500">NLC (After GST & Discounts):</span>
                 <p className="font-bold text-blue-700 text-sm sm:text-lg">{formatPrice(product.nlc)}</p>
-                {gstRate > 0 && <span className="text-[10px] text-blue-500">includes {gstRate}% GST</span>}
+                {gstRate > 0 && product.nlc > 0 && (
+                  <span className="text-[10px] text-blue-500">incl. GST: ₹{(product.nlc / (1 + gstRate / 100)).toFixed(2)} excl.</span>
+                )}
               </div>
               <div>
                 <span className="text-gray-500">Profit:</span>
@@ -233,26 +242,63 @@ function ProductViewModal({ product, onClose }) {
           {/* Price List (C1, SI1, SI2, T1, T2) */}
           <div className="bg-green-50 p-2 sm:p-3 rounded-lg overflow-x-auto">
             <h5 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Price List</h5>
+            {(product.marketPriceSI > 0 || product.marketPriceReseller > 0) && (
+              <div className="flex gap-2 sm:gap-3 text-xs sm:text-sm min-w-max mb-2">
+                {product.marketPriceSI > 0 && (
+                  <div className="min-w-[80px]">
+                    <span className="text-gray-500 text-[10px] sm:text-xs">Mkt (SI):</span>
+                    <p className="font-medium text-blue-600">{formatPrice(product.marketPriceSI)}</p>
+                    {gstRate > 0 && (
+                      <p className="text-[10px] text-blue-500">+GST: ₹{(product.marketPriceSI * (1 + gstRate / 100)).toFixed(2)}</p>
+                    )}
+                  </div>
+                )}
+                {product.marketPriceReseller > 0 && (
+                  <div className="min-w-[80px]">
+                    <span className="text-gray-500 text-[10px] sm:text-xs">Mkt (Reseller):</span>
+                    <p className="font-medium text-blue-600">{formatPrice(product.marketPriceReseller)}</p>
+                    {gstRate > 0 && (
+                      <p className="text-[10px] text-blue-500">+GST: ₹{(product.marketPriceReseller * (1 + gstRate / 100)).toFixed(2)}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex gap-2 sm:gap-3 text-xs sm:text-sm min-w-max">
               <div className="min-w-[60px]">
                 <span className="text-gray-500 text-[10px] sm:text-xs">C1:</span>
                 <p className="font-medium text-green-700">{formatPrice(product.opC1 || product.c1 || product.t1)}</p>
+                {gstRate > 0 && (product.opC1 || product.c1 || product.t1) > 0 && (
+                  <p className="text-[10px] text-green-600">+GST: ₹{((product.opC1 || product.c1 || product.t1) * (1 + gstRate / 100)).toFixed(2)}</p>
+                )}
               </div>
               <div className="min-w-[60px]">
                 <span className="text-gray-500 text-[10px] sm:text-xs">SI1:</span>
                 <p className="font-medium text-green-700">{formatPrice(product.opSi1 || product.si1)}</p>
+                {gstRate > 0 && (product.opSi1 || product.si1) > 0 && (
+                  <p className="text-[10px] text-green-600">+GST: ₹{((product.opSi1 || product.si1) * (1 + gstRate / 100)).toFixed(2)}</p>
+                )}
               </div>
               <div className="min-w-[60px]">
                 <span className="text-gray-500 text-[10px] sm:text-xs">SI2:</span>
                 <p className="font-medium text-green-700">{formatPrice(product.opSi2 || product.si2)}</p>
+                {gstRate > 0 && (product.opSi2 || product.si2) > 0 && (
+                  <p className="text-[10px] text-green-600">+GST: ₹{((product.opSi2 || product.si2) * (1 + gstRate / 100)).toFixed(2)}</p>
+                )}
               </div>
               <div className="min-w-[60px]">
                 <span className="text-gray-500 text-[10px] sm:text-xs">T1:</span>
                 <p className="font-medium text-green-700">{formatPrice(product.opT1 || product.t1)}</p>
+                {gstRate > 0 && (product.opT1 || product.t1) > 0 && (
+                  <p className="text-[10px] text-green-600">+GST: ₹{((product.opT1 || product.t1) * (1 + gstRate / 100)).toFixed(2)}</p>
+                )}
               </div>
               <div className="min-w-[60px]">
                 <span className="text-gray-500 text-[10px] sm:text-xs">T2:</span>
                 <p className="font-medium text-green-700">{formatPrice(product.opT2 || product.t2)}</p>
+                {gstRate > 0 && (product.opT2 || product.t2) > 0 && (
+                  <p className="text-[10px] text-green-600">+GST: ₹{((product.opT2 || product.t2) * (1 + gstRate / 100)).toFixed(2)}</p>
+                )}
               </div>
             </div>
           </div>
@@ -378,6 +424,58 @@ function QuickAddModal({ isOpen, onClose, title, fields, onSubmit, loading }) {
   )
 }
 
+// Form GST Price Input - Editable input showing GST-inclusive price
+// When edited, reverse-calculates the base price and updates formData
+function FormGstInput({ formData, setFormData, baseField, gstRate, isBase = false }) {
+  const rate = parseFloat(gstRate) || 0
+  const [localValue, setLocalValue] = useState('')
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    const newGstValue = (parseFloat(formData[baseField]) || 0) * (1 + rate / 100)
+    setLocalValue(newGstValue ? newGstValue.toFixed(2) : '')
+  }, [formData[baseField], gstRate])
+
+  const handleBlur = () => {
+    const newGstPrice = parseFloat(localValue) || 0
+    if (newGstPrice > 0 && rate > 0) {
+      const basePrice = Math.round((newGstPrice / (1 + rate / 100)) * 100) / 100
+      setFormData(prev => ({ ...prev, [baseField]: basePrice.toString() }))
+    }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === '-') {
+      e.preventDefault()
+      return
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      handleBlur()
+    }
+  }
+
+  if (rate <= 0) return null
+
+  return (
+    <div className="mt-1">
+      <input
+        ref={inputRef}
+        type="number"
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className={`w-full px-2 py-1 text-xs text-right border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${isBase ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-300'}`}
+        min="0"
+        step="any"
+        placeholder="+GST"
+      />
+      <div className="text-[9px] text-gray-500 text-center">+ {gstRate}% GST</div>
+      {isBase && <div className="text-[9px] text-blue-600 font-medium text-center">Base</div>}
+    </div>
+  )
+}
+
 // Product Form Component
 function ProductForm({ product, onSubmit, onCancel, loading, brands, categories: propCategories, subcategories: propSubcategories, series: propSeries, onRefreshBrands, onRefreshCategories }) {
   const [categories, setCategories] = useState(propCategories || [])
@@ -402,6 +500,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       imageUrl: p?.imageUrl || '',
       partNumber: p?.partNumber || '',
       description: p?.description || '',
+      shortDescription: p?.shortDescription || '',
       brand: p?.brand || '',
       brandId: p?.brandId || '',
       category: p?.category || '',
@@ -417,6 +516,8 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       mop: p?.mop || '',
       purchasePrice: p?.purchasePrice || '',
       marketPrice: p?.marketPrice || '',
+      marketPriceSI: p?.marketPriceSI || '',
+      marketPriceReseller: p?.marketPriceReseller || '',
       // Pricing calculator fields
       basePriceType: p?.basePriceType || 'mop', // 'mop', 'purchase', or 'market'
       dis1: p?.dis1 ?? '',
@@ -839,7 +940,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     let newValue = value
 
     // Filter numeric fields to only allow numbers and decimals
-    const numericFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'cnlc', 'mnlc', 'opPrice', 'c1', 'si1', 'si2', 't1', 't2', 't3', 't4', 'bottomPrice', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'opC1', 'opSi1', 'opSi2', 'opT1', 'opT2', 'op1', 'op2', 'op3', 'op4', 'nlc']
+    const numericFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'marketPriceSI', 'marketPriceReseller', 'cnlc', 'mnlc', 'opPrice', 'c1', 'si1', 'si2', 't1', 't2', 't3', 't4', 'bottomPrice', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'opC1', 'opSi1', 'opSi2', 'opT1', 'opT2', 'op1', 'op2', 'op3', 'op4', 'nlc']
     const integerFields = ['stock']
 
     if (numericFields.includes(name)) {
@@ -939,8 +1040,13 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       }
     }
 
+    // Determine base for SI prices: use marketPriceSI if set, otherwise priceWithProfit
+    const siBase = (parseFloat(formData.marketPriceSI) > 0) ? parseFloat(formData.marketPriceSI) : priceWithProfit
+    // Determine base for T prices: use marketPriceReseller if set, otherwise priceWithProfit
+    const tBase = (parseFloat(formData.marketPriceReseller) > 0) ? parseFloat(formData.marketPriceReseller) : priceWithProfit
+
     // Calculate SI1 price from SI1 margin
-    const si1Price = getOpPrice('opSi1', 'opSi1Type', priceWithProfit)
+    const si1Price = getOpPrice('opSi1', 'opSi1Type', siBase)
 
     // Calculate SI2 = SI1 + 1% (auto-calculated)
     const si2Price = Math.round(si1Price * 1.01 * 100) / 100
@@ -949,7 +1055,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     const c1Price = Math.round(si1Price * 1.20 * 100) / 100
 
     // Calculate T1 price from T1 margin
-    const t1Price = getOpPrice('opT1', 'opT1Type', priceWithProfit)
+    const t1Price = getOpPrice('opT1', 'opT1Type', tBase)
 
     // Calculate T2 = T1 + 0.5% (auto-calculated)
     const t2Price = Math.round(t1Price * 1.005 * 100) / 100
@@ -960,6 +1066,10 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       gstAmount: basePriceWithoutGst * gstRate / 100,
       gstRate,
       nlc,
+      // SI base price (marketPriceSI if set, otherwise priceWithProfit)
+      siBase,
+      // Reseller base price (marketPriceReseller if set, otherwise priceWithProfit)
+      tBase,
       // System Integrator prices (SI1 is input, SI2 and C1 are auto-calculated)
       opSi1: si1Price,
       opSi2: si2Price,
@@ -1048,6 +1158,8 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       mop: parseFloat(formData.mop) || 0,
       purchasePrice: parseFloat(formData.purchasePrice) || 0,
       marketPrice: parseFloat(formData.marketPrice) || 0,
+      marketPriceSI: parseFloat(formData.marketPriceSI) || 0,
+      marketPriceReseller: parseFloat(formData.marketPriceReseller) || 0,
       // Pricing calculator fields
       basePriceType: formData.basePriceType,
       dis1: parseFloat(formData.dis1) || 0,
@@ -1099,6 +1211,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
       // New fields
       boxSize: formData.boxSize || '',
       procurement: formData.procurement || '',
+      shortDescription: formData.shortDescription || '',
     }
     onSubmit(submitData)
   }
@@ -1405,9 +1518,21 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
           </div>
         </div>
         <div className="mt-3 sm:mt-4">
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Short Description</label>
+          <input
+            type="text"
+            name="shortDescription"
+            value={formData.shortDescription}
+            onChange={handleChange}
+            placeholder="Brief description (max 200 chars)"
+            maxLength={200}
+            className="input-field text-sm"
+          />
+        </div>
+        <div className="mt-3 sm:mt-4">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Description (Long)</label>
           <textarea name="description" value={formData.description} onChange={handleChange} rows="2"
-            className="input-field text-sm" placeholder="Enter product description" />
+            className="input-field text-sm" placeholder="Enter full product description" />
         </div>
       </div>
 
@@ -1458,11 +1583,12 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   min="0"
                   className="input-field text-sm"
                 />
-                {formData.mrp > 0 && formData.gstRate > 0 && (
-                  <p className="text-[10px] text-green-600 mt-0.5">
-                    ₹{formData.mrp} + {formData.gstRate}% = ₹{(formData.mrp * (1 + formData.gstRate / 100)).toFixed(2)}
-                  </p>
-                )}
+                <FormGstInput
+                  formData={formData}
+                  setFormData={setFormData}
+                  baseField="mrp"
+                  gstRate={formData.gstRate}
+                />
               </div>
               <div>
                 <label className="block text-xs text-gray-600 mb-1">
@@ -1478,16 +1604,13 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   min="0"
                   className={`input-field text-sm ${formData.basePriceType === 'mop' ? 'border-blue-500 ring-1 ring-blue-500/20' : ''}`}
                 />
-                {formData.mop > 0 && formData.gstRate > 0 && (
-                  <p className="text-[10px] text-green-600 mt-0.5">
-                    ₹{formData.mop} + {formData.gstRate}% = ₹{(formData.mop * (1 + formData.gstRate / 100)).toFixed(2)}
-                  </p>
-                )}
-                {formData.basePriceType === 'mop' && formData.mop > 0 && (
-                  <p className="text-[10px] text-blue-600 font-medium mt-0.5">
-                    Base: ₹{calculatePrices().basePriceWithGst.toFixed(2)} (with GST)
-                  </p>
-                )}
+                <FormGstInput
+                  formData={formData}
+                  setFormData={setFormData}
+                  baseField="mop"
+                  gstRate={formData.gstRate}
+                  isBase={formData.basePriceType === 'mop'}
+                />
               </div>
               <div>
                 <label className="block text-xs text-gray-600 mb-1">
@@ -1503,16 +1626,13 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   min="0"
                   className={`input-field text-sm ${formData.basePriceType === 'purchase' ? 'border-blue-500 ring-1 ring-blue-500/20' : ''}`}
                 />
-                {formData.purchasePrice > 0 && formData.gstRate > 0 && (
-                  <p className="text-[10px] text-green-600 mt-0.5">
-                    ₹{formData.purchasePrice} + {formData.gstRate}% = ₹{(formData.purchasePrice * (1 + formData.gstRate / 100)).toFixed(2)}
-                  </p>
-                )}
-                {formData.basePriceType === 'purchase' && formData.purchasePrice > 0 && (
-                  <p className="text-[10px] text-blue-600 font-medium mt-0.5">
-                    Base: ₹{calculatePrices().basePriceWithGst.toFixed(2)} (with GST)
-                  </p>
-                )}
+                <FormGstInput
+                  formData={formData}
+                  setFormData={setFormData}
+                  baseField="purchasePrice"
+                  gstRate={formData.gstRate}
+                  isBase={formData.basePriceType === 'purchase'}
+                />
               </div>
               <div>
                 <label className="block text-xs text-gray-600 mb-1">
@@ -1528,16 +1648,13 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   min="0"
                   className={`input-field text-sm ${formData.basePriceType === 'market' ? 'border-blue-500 ring-1 ring-blue-500/20' : ''}`}
                 />
-                {formData.marketPrice > 0 && formData.gstRate > 0 && (
-                  <p className="text-[10px] text-green-600 mt-0.5">
-                    ₹{formData.marketPrice} + {formData.gstRate}% = ₹{(formData.marketPrice * (1 + formData.gstRate / 100)).toFixed(2)}
-                  </p>
-                )}
-                {formData.basePriceType === 'market' && formData.marketPrice > 0 && (
-                  <p className="text-[10px] text-blue-600 font-medium mt-0.5">
-                    Base: ₹{calculatePrices().basePriceWithGst.toFixed(2)} (with GST)
-                  </p>
-                )}
+                <FormGstInput
+                  formData={formData}
+                  setFormData={setFormData}
+                  baseField="marketPrice"
+                  gstRate={formData.gstRate}
+                  isBase={formData.basePriceType === 'market'}
+                />
               </div>
             </div>
           </div>
@@ -1600,10 +1717,16 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
               <div className="text-xl sm:text-2xl font-bold text-blue-700">
                 ₹{calculatePrices().nlc.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
               </div>
-              {calculatePrices().gstRate > 0 && (
-                <p className="text-[10px] text-gray-500 mt-1">
-                  incl. ₹{calculatePrices().gstAmount.toFixed(2)} GST ({calculatePrices().gstRate}%)
-                </p>
+              {calculatePrices().gstRate > 0 && calculatePrices().nlc > 0 && (
+                <div className="mt-1">
+                  <input
+                    type="text"
+                    value={`₹${(calculatePrices().nlc / (1 + calculatePrices().gstRate / 100)).toFixed(2)}`}
+                    readOnly
+                    className="w-full px-2 py-1 text-xs text-right border border-blue-200 rounded bg-blue-50 cursor-default focus:outline-none"
+                  />
+                  <div className="text-[9px] text-blue-500 text-center">excl. GST</div>
+                </div>
               )}
             </div>
             <div>
@@ -1645,7 +1768,34 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
           <div className="mb-4">
             <h6 className="text-xs font-semibold text-gray-600 mb-2">System Integrator</h6>
             <div className="overflow-x-auto -mx-3 sm:mx-0">
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 min-w-[300px] px-3 sm:px-0">
+              <div className="grid grid-cols-4 gap-2 sm:gap-3 min-w-[400px] px-3 sm:px-0">
+                {/* Market Price (SI) - Input */}
+                <div className="bg-yellow-50 rounded-lg p-2 sm:p-3 text-center">
+                  <label className="block text-xs text-gray-500 mb-1">Market Price (SI)</label>
+                  <div className="flex rounded-lg overflow-hidden border border-yellow-300 bg-white mb-1">
+                    <input
+                      type="number"
+                      name="marketPriceSI"
+                      value={formData.marketPriceSI}
+                      onChange={handleChange}
+                      onKeyDown={handleNumberKeyDown}
+                      placeholder="0"
+                      min="0"
+                      step="any"
+                      className="w-full px-1 sm:px-2 py-1.5 sm:py-2 text-center text-sm font-medium focus:outline-none"
+                    />
+                  </div>
+                  <FormGstInput
+                    formData={formData}
+                    setFormData={setFormData}
+                    baseField="marketPriceSI"
+                    gstRate={formData.gstRate}
+                  />
+                  <div className="text-xs text-gray-400 font-medium mt-0.5">
+                    {parseFloat(formData.marketPriceSI) > 0 ? 'SI base price' : 'Uses default base'}
+                  </div>
+                </div>
+
                 {/* SI1 - Input */}
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center">
                   <label className="block text-xs text-gray-500 mb-1">SI1 Price</label>
@@ -1661,19 +1811,21 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                       step="any"
                       className="w-full px-1 sm:px-2 py-1.5 sm:py-2 text-center text-sm font-medium focus:outline-none"
                     />
-                    <select
-                      name="opSi1Type"
-                      value={formData.opSi1Type}
-                      onChange={handleChange}
-                      className="w-12 h-8 text-xs text-center bg-gray-50 border-l focus:outline-none"
-                    >
-                      <option value="percent">%</option>
-                      <option value="flat">Rs</option>
-                    </select>
                   </div>
                   <div className="text-xs text-green-600 font-medium">
                     ₹{calculatePrices().opSi1?.toLocaleString('en-IN', { minimumFractionDigits: 0 }) || '0'}
                   </div>
+                  {formData.gstRate > 0 && (calculatePrices().opSi1 || 0) > 0 && (
+                    <div className="mt-0.5">
+                      <input
+                        type="text"
+                        value={`₹${((calculatePrices().opSi1 || 0) * (1 + formData.gstRate / 100)).toFixed(2)}`}
+                        readOnly
+                        className="w-full px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-50 cursor-default focus:outline-none"
+                      />
+                      <div className="text-[9px] text-green-600 text-center">+ {formData.gstRate}% GST</div>
+                    </div>
+                  )}
                 </div>
 
                 {/* SI2 - Auto-calculated (SI1 + 1%) */}
@@ -1690,6 +1842,17 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   <div className="text-xs text-blue-600 font-medium">
                     ₹{calculatePrices().opSi2?.toLocaleString('en-IN', { minimumFractionDigits: 0 }) || '0'}
                   </div>
+                  {formData.gstRate > 0 && (calculatePrices().opSi2 || 0) > 0 && (
+                    <div className="mt-0.5">
+                      <input
+                        type="text"
+                        value={`₹${((calculatePrices().opSi2 || 0) * (1 + formData.gstRate / 100)).toFixed(2)}`}
+                        readOnly
+                        className="w-full px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-50 cursor-default focus:outline-none"
+                      />
+                      <div className="text-[9px] text-green-600 text-center">+ {formData.gstRate}% GST</div>
+                    </div>
+                  )}
                 </div>
 
                 {/* C1 - Auto-calculated (SI1 + 20%) */}
@@ -1706,6 +1869,17 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   <div className="text-xs text-blue-600 font-medium">
                     ₹{calculatePrices().opC1?.toLocaleString('en-IN', { minimumFractionDigits: 0 }) || '0'}
                   </div>
+                  {formData.gstRate > 0 && (calculatePrices().opC1 || 0) > 0 && (
+                    <div className="mt-0.5">
+                      <input
+                        type="text"
+                        value={`₹${((calculatePrices().opC1 || 0) * (1 + formData.gstRate / 100)).toFixed(2)}`}
+                        readOnly
+                        className="w-full px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-50 cursor-default focus:outline-none"
+                      />
+                      <div className="text-[9px] text-green-600 text-center">+ {formData.gstRate}% GST</div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1715,7 +1889,34 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
           <div>
             <h6 className="text-xs font-semibold text-gray-600 mb-2">Reseller</h6>
             <div className="overflow-x-auto -mx-3 sm:mx-0">
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 min-w-[200px] px-3 sm:px-0">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 min-w-[300px] px-3 sm:px-0">
+                {/* Market Price (Reseller) - Input */}
+                <div className="bg-yellow-50 rounded-lg p-2 sm:p-3 text-center">
+                  <label className="block text-xs text-gray-500 mb-1">Market Price (Reseller)</label>
+                  <div className="flex rounded-lg overflow-hidden border border-yellow-300 bg-white mb-1">
+                    <input
+                      type="number"
+                      name="marketPriceReseller"
+                      value={formData.marketPriceReseller}
+                      onChange={handleChange}
+                      onKeyDown={handleNumberKeyDown}
+                      placeholder="0"
+                      min="0"
+                      step="any"
+                      className="w-full px-1 sm:px-2 py-1.5 sm:py-2 text-center text-sm font-medium focus:outline-none"
+                    />
+                  </div>
+                  <FormGstInput
+                    formData={formData}
+                    setFormData={setFormData}
+                    baseField="marketPriceReseller"
+                    gstRate={formData.gstRate}
+                  />
+                  <div className="text-xs text-gray-400 font-medium mt-0.5">
+                    {parseFloat(formData.marketPriceReseller) > 0 ? 'Reseller base price' : 'Uses default base'}
+                  </div>
+                </div>
+
                 {/* T1 - Input */}
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center">
                   <label className="block text-xs text-gray-500 mb-1">T1 Price</label>
@@ -1731,19 +1932,21 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                       step="any"
                       className="w-full px-1 sm:px-2 py-1.5 sm:py-2 text-center text-sm font-medium focus:outline-none"
                     />
-                    <select
-                      name="opT1Type"
-                      value={formData.opT1Type}
-                      onChange={handleChange}
-                      className="w-12 h-8 text-xs text-center bg-gray-50 border-l focus:outline-none"
-                    >
-                      <option value="percent">%</option>
-                      <option value="flat">Rs</option>
-                    </select>
                   </div>
                   <div className="text-xs text-green-600 font-medium">
                     ₹{calculatePrices().opT1?.toLocaleString('en-IN', { minimumFractionDigits: 0 }) || '0'}
                   </div>
+                  {formData.gstRate > 0 && (calculatePrices().opT1 || 0) > 0 && (
+                    <div className="mt-0.5">
+                      <input
+                        type="text"
+                        value={`₹${((calculatePrices().opT1 || 0) * (1 + formData.gstRate / 100)).toFixed(2)}`}
+                        readOnly
+                        className="w-full px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-50 cursor-default focus:outline-none"
+                      />
+                      <div className="text-[9px] text-green-600 text-center">+ {formData.gstRate}% GST</div>
+                    </div>
+                  )}
                 </div>
 
                 {/* T2 - Auto-calculated (T1 + 0.5%) */}
@@ -1760,14 +1963,25 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
                   <div className="text-xs text-blue-600 font-medium">
                     ₹{calculatePrices().opT2?.toLocaleString('en-IN', { minimumFractionDigits: 0 }) || '0'}
                   </div>
+                  {formData.gstRate > 0 && (calculatePrices().opT2 || 0) > 0 && (
+                    <div className="mt-0.5">
+                      <input
+                        type="text"
+                        value={`₹${((calculatePrices().opT2 || 0) * (1 + formData.gstRate / 100)).toFixed(2)}`}
+                        readOnly
+                        className="w-full px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-50 cursor-default focus:outline-none"
+                      />
+                      <div className="text-[9px] text-green-600 text-center">+ {formData.gstRate}% GST</div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
           <p className="text-xs text-gray-500 mt-3 text-center">
-            <strong>System Integrator:</strong> Enter SI1 margin → SI2 and C1 auto-calculated.
-            <strong className="ml-2">Reseller:</strong> Enter T1 margin → T2 auto-calculated.
+            <strong>System Integrator:</strong> Market Price (SI) overrides base for SI calculations. SI1 margin → SI2 and C1 auto-calculated.
+            <strong className="ml-2">Reseller:</strong> Market Price (Reseller) overrides base for T calculations. T1 margin → T2 auto-calculated.
           </p>
         </div>
       </div>
@@ -1845,6 +2059,70 @@ function InlineInput({ product, field, value, onSave, onKeyDown, type = 'number'
       min={type === 'number' ? min : undefined}
       step={type === 'number' ? 'any' : undefined}
     />
+  )
+}
+
+// Inline GST Price Component - Shows price with GST in an editable input-style box
+// When edited, reverse-calculates the base price (e.g., MRP or MOP)
+function InlineGstPrice({ product, baseField, gstRate, onSave, savingFields, isBase = false }) {
+  const gstValue = (parseFloat(product[baseField]) || 0) * (1 + (parseFloat(gstRate) || 0) / 100)
+  const [localValue, setLocalValue] = useState(gstValue ? gstValue.toFixed(2) : '')
+  const inputRef = useRef(null)
+  const isSaving = savingFields?.[`${product._id}-${baseField}`]
+
+  useEffect(() => {
+    const newGstValue = (parseFloat(product[baseField]) || 0) * (1 + (parseFloat(gstRate) || 0) / 100)
+    setLocalValue(newGstValue ? newGstValue.toFixed(2) : '')
+  }, [product[baseField], gstRate])
+
+  const handleBlur = () => {
+    const newGstPrice = parseFloat(localValue) || 0
+    if (newGstPrice > 0 && parseFloat(gstRate) > 0) {
+      // Reverse calculate: basePrice = gstPrice / (1 + gstRate/100)
+      const basePrice = Math.round((newGstPrice / (1 + parseFloat(gstRate) / 100)) * 100) / 100
+      const oldBase = parseFloat(product[baseField]) || 0
+      if (basePrice !== oldBase) {
+        onSave(product, baseField, basePrice)
+      }
+    }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === '-') {
+      e.preventDefault()
+      return
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      const newGstPrice = parseFloat(localValue) || 0
+      if (newGstPrice > 0 && parseFloat(gstRate) > 0) {
+        const basePrice = Math.round((newGstPrice / (1 + parseFloat(gstRate) / 100)) * 100) / 100
+        const oldBase = parseFloat(product[baseField]) || 0
+        if (basePrice !== oldBase) {
+          onSave(product, baseField, basePrice)
+        }
+      }
+    }
+  }
+
+  return (
+    <div className="mt-0.5">
+      <input
+        ref={inputRef}
+        type="number"
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className={`w-20 px-2 py-1 text-xs text-right border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${isBase ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-300'} ${isSaving ? 'opacity-50' : ''}`}
+        disabled={isSaving}
+        min={0}
+        step="any"
+        placeholder="+GST"
+      />
+      {isBase && (
+        <div className="text-[9px] text-blue-600 font-medium text-center">Base</div>
+      )}
+    </div>
   )
 }
 
@@ -2289,7 +2567,7 @@ export default function Products() {
   const [visibleColumns, setVisibleColumns] = useState([
     'stock', 'mrp', 'mop', 'base',
     'd1', 'd2', 'd3', 'd4', 'd5', 'nlc',
-    'purchase', 'market',
+    'purchase', 'marketSI', 'marketReseller',
     'c1', 'si1', 'si2', 't1', 't2'
   ])
   const columnPopupRef = useRef(null)
@@ -2327,7 +2605,7 @@ export default function Products() {
   const toggleColumnVisibility = (key) => {
     if (key === 'all') {
       // Show all columns
-      setVisibleColumns(['stock', 'mrp', 'mop', 'base', 'd1', 'd2', 'd3', 'd4', 'd5', 'nlc', 'purchase', 'market', 'c1', 'si1', 'si2', 't1', 't2'])
+      setVisibleColumns(['stock', 'mrp', 'mop', 'base', 'd1', 'd2', 'd3', 'd4', 'd5', 'nlc', 'purchase', 'marketSI', 'si1', 'si2', 'c1', 'marketReseller', 't1', 't2'])
     } else if (key === 'none') {
       // Hide all columns (keep at least one visible)
       setVisibleColumns([])
@@ -2691,14 +2969,14 @@ export default function Products() {
         updateData[field] = parseInt(newValue) || 0
       } else if (field === 'basePriceType') {
         updateData[field] = newValue
-      } else if (['mrp', 'mop', 'purchasePrice', 'marketPrice', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'op1', 'op2', 'op3', 'op4'].includes(field)) {
+      } else if (['mrp', 'mop', 'purchasePrice', 'marketPrice', 'marketPriceSI', 'marketPriceReseller', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'op1', 'op2', 'op3', 'op4'].includes(field)) {
         updateData[field] = parseFloat(newValue) || 0
       } else {
         updateData[field] = newValue
       }
 
       // Recalculate NLC and tier prices if pricing fields changed
-      const pricingFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'basePriceType', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'opC1', 'opSi1', 'opSi2', 'opT1', 'opT2']
+      const pricingFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'marketPriceSI', 'marketPriceReseller', 'basePriceType', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'opC1', 'opSi1', 'opSi2', 'opT1', 'opT2']
       if (pricingFields.includes(field)) {
         const updatedProduct = { ...product, ...updateData }
         const gstRate = parseFloat(updatedProduct.gstRate) || 0
@@ -2738,25 +3016,39 @@ export default function Products() {
         }
 
         // Calculate OP prices
-        const calculateOpPrice = (opField, opTypeField) => {
+        const calculateOpPrice = (opField, opTypeField, basePrice = priceWithProfit) => {
           const inputValue = parseFloat(updatedProduct[opField]) || 0
           if (updatedProduct[opTypeField] === 'flat') {
-            // For flat margin: final price = priceWithProfit + flatAmount
-            return Math.round((priceWithProfit + inputValue) * 100) / 100
+            // For flat margin: final price = basePrice + flatAmount
+            return Math.round((basePrice + inputValue) * 100) / 100
           } else {
-            // For percent margin: final price = priceWithProfit * (1 + percentage/100)
-            return Math.round((priceWithProfit * (1 + inputValue / 100)) * 100) / 100
+            // For percent margin: final price = basePrice * (1 + percentage/100)
+            return Math.round((basePrice * (1 + inputValue / 100)) * 100) / 100
           }
         }
 
+        // Determine base for SI prices: use marketPriceSI if set, otherwise priceWithProfit
+        const siBase = (parseFloat(updatedProduct.marketPriceSI) > 0) ? parseFloat(updatedProduct.marketPriceSI) : priceWithProfit
+        // Determine base for T prices: use marketPriceReseller if set, otherwise priceWithProfit
+        const tBase = (parseFloat(updatedProduct.marketPriceReseller) > 0) ? parseFloat(updatedProduct.marketPriceReseller) : priceWithProfit
+
+        // Calculate SI1 from SI base
+        const si1Price = calculateOpPrice('opSi1', 'opSi1Type', siBase)
+        const si2Price = Math.round(si1Price * 1.01 * 100) / 100
+        const c1Price = Math.round(si1Price * 1.20 * 100) / 100
+
+        // Calculate T1 from T base
+        const t1Price = calculateOpPrice('opT1', 'opT1Type', tBase)
+        const t2Price = Math.round(t1Price * 1.005 * 100) / 100
+
         updateData.nlc = nlc
         // New Price List prices
-        updateData.c1 = calculateOpPrice('opC1', 'opC1Type')
-        updateData.si1 = calculateOpPrice('opSi1', 'opSi1Type')
-        updateData.si2 = calculateOpPrice('opSi2', 'opSi2Type')
-        updateData.t1 = calculateOpPrice('opT1', 'opT1Type')
-        updateData.t2 = calculateOpPrice('opT2', 'opT2Type')
-        updateData.opPrice = calculateOpPrice('opC1', 'opC1Type')
+        updateData.c1 = c1Price
+        updateData.si1 = si1Price
+        updateData.si2 = si2Price
+        updateData.t1 = t1Price
+        updateData.t2 = t2Price
+        updateData.opPrice = c1Price
         // Legacy tier prices (kept for backward compatibility)
         updateData.t3 = calculateOpPrice('op3', 'op3Type')
         updateData.t4 = calculateOpPrice('op4', 'op4Type')
@@ -2844,25 +3136,41 @@ export default function Products() {
         priceWithProfit = Math.max(0, priceWithProfit)
 
         // Calculate OP prices (clamped to minimum 0)
-        const calculateOpPrice = (opField, opTypeField) => {
+        const calculateOpPrice = (opField, opTypeField, basePrice = priceWithProfit) => {
           const inputValue = parseFloat(updatedProduct[opField]) || 0
           let result
           if (updatedProduct[opTypeField] === 'flat') {
-            result = inputValue
+            result = Math.round((basePrice + inputValue) * 100) / 100
           } else {
-            result = Math.round((priceWithProfit * (1 + inputValue / 100)) * 100) / 100
+            result = Math.round((basePrice * (1 + inputValue / 100)) * 100) / 100
           }
           return Math.max(0, result)
         }
 
+        // Determine base for SI prices: use marketPriceSI if set, otherwise priceWithProfit
+        const siBase = (parseFloat(updatedProduct.marketPriceSI) > 0) ? parseFloat(updatedProduct.marketPriceSI) : priceWithProfit
+        // Determine base for T prices: use marketPriceReseller if set, otherwise priceWithProfit
+        const tBase = (parseFloat(updatedProduct.marketPriceReseller) > 0) ? parseFloat(updatedProduct.marketPriceReseller) : priceWithProfit
+
+        // Calculate SI prices from SI base
+        const si1Price = calculateOpPrice('opSi1', 'opSi1Type', siBase)
+        const si2Price = Math.round(si1Price * 1.01 * 100) / 100
+        const c1Price = Math.round(si1Price * 1.20 * 100) / 100
+
+        // Calculate T prices from T base
+        const t1Price = calculateOpPrice('opT1', 'opT1Type', tBase)
+        const t2Price = Math.round(t1Price * 1.005 * 100) / 100
+
         updateData.nlc = nlc
-        updateData.t1 = calculateOpPrice('op1', 'op1Type')
-        updateData.t2 = calculateOpPrice('op2', 'op2Type')
+        updateData.c1 = c1Price
+        updateData.si1 = si1Price
+        updateData.si2 = si2Price
+        updateData.t1 = t1Price
+        updateData.t2 = t2Price
+        updateData.opPrice = c1Price
+        // Legacy tier prices (kept for backward compatibility)
         updateData.t3 = calculateOpPrice('op3', 'op3Type')
         updateData.t4 = calculateOpPrice('op4', 'op4Type')
-        updateData.opPrice = calculateOpPrice('op1', 'op1Type')
-        // Note: op1-op4 store the user's input (percentage or flat amount), NOT the calculated price
-        // t1-t4 store the calculated final prices
       }
 
       const response = await updateAdminProduct(productId, updateData)
@@ -2907,12 +3215,12 @@ export default function Products() {
         updateData[field] = editingValue
       } else if (field === 'profitType') {
         updateData[field] = editingValue
-      } else if (['mrp', 'mop', 'purchasePrice', 'marketPrice', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'op1', 'op2', 'op3', 'op4'].includes(field)) {
+      } else if (['mrp', 'mop', 'purchasePrice', 'marketPrice', 'marketPriceSI', 'marketPriceReseller', 'dis1', 'dis2', 'dis3', 'dis4', 'dis5', 'profit', 'op1', 'op2', 'op3', 'op4'].includes(field)) {
         updateData[field] = parseFloat(editingValue) || 0
       }
 
       // Recalculate NLC and tier prices if pricing fields changed
-      const pricingFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'basePriceType', 'dis1', 'dis1Type', 'dis2', 'dis2Type', 'dis3', 'dis3Type', 'dis4', 'dis4Type', 'dis5', 'dis5Type', 'profit', 'profitType', 'opC1', 'opC1Type', 'opSi1', 'opSi1Type', 'opSi2', 'opSi2Type', 'opT1', 'opT1Type', 'opT2', 'opT2Type']
+      const pricingFields = ['mrp', 'mop', 'purchasePrice', 'marketPrice', 'marketPriceSI', 'marketPriceReseller', 'basePriceType', 'dis1', 'dis1Type', 'dis2', 'dis2Type', 'dis3', 'dis3Type', 'dis4', 'dis4Type', 'dis5', 'dis5Type', 'profit', 'profitType', 'opC1', 'opC1Type', 'opSi1', 'opSi1Type', 'opSi2', 'opSi2Type', 'opT1', 'opT1Type', 'opT2', 'opT2Type']
       if (pricingFields.includes(field)) {
         // Get current product values with the new value
         const updatedProduct = { ...product, ...updateData }
@@ -2953,25 +3261,39 @@ export default function Products() {
         }
 
         // Calculate OP prices
-        const calculateOpPrice = (opField, opTypeField) => {
+        const calculateOpPrice = (opField, opTypeField, basePrice = priceWithProfit) => {
           const inputValue = parseFloat(updatedProduct[opField]) || 0
           if (updatedProduct[opTypeField] === 'flat') {
-            // For flat margin: final price = priceWithProfit + flatAmount
-            return Math.round((priceWithProfit + inputValue) * 100) / 100
+            // For flat margin: final price = basePrice + flatAmount
+            return Math.round((basePrice + inputValue) * 100) / 100
           } else {
-            // For percent margin: final price = priceWithProfit * (1 + percentage/100)
-            return Math.round((priceWithProfit * (1 + inputValue / 100)) * 100) / 100
+            // For percent margin: final price = basePrice * (1 + percentage/100)
+            return Math.round((basePrice * (1 + inputValue / 100)) * 100) / 100
           }
         }
 
+        // Determine base for SI prices: use marketPriceSI if set, otherwise priceWithProfit
+        const siBase = (parseFloat(updatedProduct.marketPriceSI) > 0) ? parseFloat(updatedProduct.marketPriceSI) : priceWithProfit
+        // Determine base for T prices: use marketPriceReseller if set, otherwise priceWithProfit
+        const tBase = (parseFloat(updatedProduct.marketPriceReseller) > 0) ? parseFloat(updatedProduct.marketPriceReseller) : priceWithProfit
+
+        // Calculate SI prices from SI base
+        const si1Price = calculateOpPrice('opSi1', 'opSi1Type', siBase)
+        const si2Price = Math.round(si1Price * 1.01 * 100) / 100
+        const c1Price = Math.round(si1Price * 1.20 * 100) / 100
+
+        // Calculate T prices from T base
+        const t1Price = calculateOpPrice('opT1', 'opT1Type', tBase)
+        const t2Price = Math.round(t1Price * 1.005 * 100) / 100
+
         updateData.nlc = nlc
         // New Price List prices
-        updateData.c1 = calculateOpPrice('opC1', 'opC1Type')
-        updateData.si1 = calculateOpPrice('opSi1', 'opSi1Type')
-        updateData.si2 = calculateOpPrice('opSi2', 'opSi2Type')
-        updateData.t1 = calculateOpPrice('opT1', 'opT1Type')
-        updateData.t2 = calculateOpPrice('opT2', 'opT2Type')
-        updateData.opPrice = calculateOpPrice('opC1', 'opC1Type')
+        updateData.c1 = c1Price
+        updateData.si1 = si1Price
+        updateData.si2 = si2Price
+        updateData.t1 = t1Price
+        updateData.t2 = t2Price
+        updateData.opPrice = c1Price
         // Legacy tier prices (kept for backward compatibility)
         updateData.t3 = calculateOpPrice('op3', 'op3Type')
         updateData.t4 = calculateOpPrice('op4', 'op4Type')
@@ -2985,7 +3307,7 @@ export default function Products() {
       } else {
         alert(response.message || 'Failed to update')
       }
-      
+
     } catch (err) {
       console.error('Failed to save:', err)
       alert('Failed to save changes')
@@ -3003,10 +3325,13 @@ export default function Products() {
     'mop',
     'purchasePrice',
     'marketPrice',
+    'marketPriceSI',
+    'opSi1', 'opSi2', 'opC1',
+    'marketPriceReseller',
+    'opT1', 'opT2',
     'basePriceType',
     'dis1', 'dis2', 'dis3', 'dis4', 'dis5',
     'profit',
-    'opC1', 'opSi1', 'opSi2', 'opT1', 'opT2'
   ]
 
   const handleKeyDown = (e, product) => {
@@ -3223,10 +3548,11 @@ export default function Products() {
                 {visibleColumns.includes('nlc') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-100" style={{ minWidth: '85px' }}>NLC</th>}
                 {/* {visibleColumns.includes('profit') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '75px' }}>Profit</th>} */}
                 {visibleColumns.includes('purchase') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Purchase</th>}
-                {visibleColumns.includes('market') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Market</th>}
-                {visibleColumns.includes('c1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>C1</th>}
+                {visibleColumns.includes('marketSI') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>Mkt(SI)</th>}
                 {visibleColumns.includes('si1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>SI1</th>}
                 {visibleColumns.includes('si2') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>SI2</th>}
+                {visibleColumns.includes('c1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>C1</th>}
+                {visibleColumns.includes('marketReseller') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>Mkt(Reseller)</th>}
                 {visibleColumns.includes('t1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T1</th>}
                 {visibleColumns.includes('t2') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T2</th>}
                 <th className="text-center px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Actions</th>
@@ -3235,7 +3561,7 @@ export default function Products() {
               <tr className="bg-yellow-50 border-b border-yellow-100">
                 <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 whitespace-nowrap">
                   <span className="text-yellow-700">Bulk ({pagination.total})</span>
-                  <div className="text-[10px] text-gray-400">prices shown on ₹100 NLC</div>
+                 
                 </th>
                 {visibleColumns.includes('stock') && <th></th>}
                 {visibleColumns.includes('mrp') && <th></th>}
@@ -3358,57 +3684,40 @@ export default function Products() {
                 )}
                 {visibleColumns.includes('nlc') && <th></th>}
                 {visibleColumns.includes('purchase') && <th></th>}
-                {visibleColumns.includes('market') && <th></th>}
-                {visibleColumns.includes('c1') && (
-                  <th className="px-2 py-1 bg-green-50"></th>
-                )}
+                {visibleColumns.includes('marketSI') && <th></th>}
                 {visibleColumns.includes('si1') && (
                   <th className="px-2 py-1 bg-green-50">
-                    <div className="flex items-center gap-1 justify-center">
-                      <input
-                        type="number"
-                        placeholder="0"
-                        value={bulkValues.opSi1?.value || ''}
-                        onChange={(e) => setBulkValues(prev => ({ ...prev, opSi1: { ...prev.opSi1, value: e.target.value } }))}
-                        onKeyDown={(e) => handleBulkKeyDown(e, 'opSi1')}
-                        disabled={bulkUpdating}
-                        className="w-10 px-1 py-0.5 text-xs text-center border border-green-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50"
-                      />
-                      <select
-                        value={bulkValues.opSi1?.type || 'percent'}
-                        onChange={(e) => setBulkValues(prev => ({ ...prev, opSi1: { ...prev.opSi1, type: e.target.value } }))}
-                        className="w-10 h-5 text-xs border border-green-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 bg-white"
-                      >
-                        <option value="percent">%</option>
-                        <option value="flat">Rs</option>
-                      </select>
-                    </div>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={bulkValues.opSi1?.value || ''}
+                      onChange={(e) => setBulkValues(prev => ({ ...prev, opSi1: { ...prev.opSi1, value: e.target.value } }))}
+                      onKeyDown={(e) => handleBulkKeyDown(e, 'opSi1')}
+                      disabled={bulkUpdating}
+                      className="w-14 px-1 py-0.5 text-xs text-center border border-green-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50"
+                    />
+                    <span className="text-[10px] text-gray-400 ml-0.5">%</span>
                   </th>
                 )}
                 {visibleColumns.includes('si2') && (
                   <th className="px-2 py-1 bg-green-50"></th>
                 )}
+                {visibleColumns.includes('c1') && (
+                  <th className="px-2 py-1 bg-green-50"></th>
+                )}
+                {visibleColumns.includes('marketReseller') && <th></th>}
                 {visibleColumns.includes('t1') && (
                   <th className="px-2 py-1 bg-green-50">
-                    <div className="flex items-center gap-1 justify-center">
-                      <input
-                        type="number"
-                        placeholder="0"
-                        value={bulkValues.opT1?.value || ''}
-                        onChange={(e) => setBulkValues(prev => ({ ...prev, opT1: { ...prev.opT1, value: e.target.value } }))}
-                        onKeyDown={(e) => handleBulkKeyDown(e, 'opT1')}
-                        disabled={bulkUpdating}
-                        className="w-10 px-1 py-0.5 text-xs text-center border border-green-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50"
-                      />
-                      <select
-                        value={bulkValues.opT1?.type || 'percent'}
-                        onChange={(e) => setBulkValues(prev => ({ ...prev, opT1: { ...prev.opT1, type: e.target.value } }))}
-                        className="w-10 h-5 text-xs border border-green-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 bg-white"
-                      >
-                        <option value="percent">%</option>
-                        <option value="flat">Rs</option>
-                      </select>
-                    </div>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={bulkValues.opT1?.value || ''}
+                      onChange={(e) => setBulkValues(prev => ({ ...prev, opT1: { ...prev.opT1, value: e.target.value } }))}
+                      onKeyDown={(e) => handleBulkKeyDown(e, 'opT1')}
+                      disabled={bulkUpdating}
+                      className="w-14 px-1 py-0.5 text-xs text-center border border-green-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50"
+                    />
+                    <span className="text-[10px] text-gray-400 ml-0.5">%</span>
                   </th>
                 )}
                 {visibleColumns.includes('t2') && (
@@ -3504,10 +3813,14 @@ export default function Products() {
                             width="w-20"
                             savingFields={savingFields}
                           />
-                          {product.gstRate > 0 && product.mrp > 0 && (
-                            <div className="text-[9px] text-gray-400 mt-0.5 whitespace-nowrap">
-                              ₹{product.mrp.toLocaleString('en-IN')} + {product.gstRate}% = ₹{(product.mrp * (1 + product.gstRate / 100)).toFixed(2)}
-                            </div>
+                          {product.gstRate > 0 && (
+                            <InlineGstPrice
+                              product={product}
+                              baseField="mrp"
+                              gstRate={product.gstRate}
+                              onSave={saveFieldDirectly}
+                              savingFields={savingFields}
+                            />
                           )}
                         </td>
                       )}
@@ -3524,15 +3837,15 @@ export default function Products() {
                             width="w-20"
                             savingFields={savingFields}
                           />
-                          {product.gstRate > 0 && product.mop > 0 && (
-                            <div className="text-[9px] text-gray-400 mt-0.5 whitespace-nowrap">
-                              ₹{product.mop.toLocaleString('en-IN')} + {product.gstRate}% = ₹{(product.mop * (1 + product.gstRate / 100)).toFixed(2)}
-                            </div>
-                          )}
-                          {product.basePriceType === 'mop' && product.gstRate > 0 && product.mop > 0 && (
-                            <div className="text-[9px] text-blue-600 font-medium mt-0.5">
-                              Base: ₹{(product.mop * (1 + product.gstRate / 100)).toFixed(2)} (with GST)
-                            </div>
+                          {product.gstRate > 0 && (
+                            <InlineGstPrice
+                              product={product}
+                              baseField="mop"
+                              gstRate={product.gstRate}
+                              onSave={saveFieldDirectly}
+                              savingFields={savingFields}
+                              isBase={product.basePriceType === 'mop'}
+                            />
                           )}
                         </td>
                       )}
@@ -3575,7 +3888,18 @@ export default function Products() {
                       {/* NLC - Display Only */}
                       {visibleColumns.includes('nlc') && (
                         <td className="px-2 py-2 text-right bg-blue-100">
-                          <span className="text-xs font-semibold text-blue-700">{formatPrice(product.nlc)}</span>
+                          <div className="text-xs font-semibold text-blue-700">{formatPrice(product.nlc)}</div>
+                          {product.gstRate > 0 && product.nlc > 0 && (
+                            <div className="mt-0.5">
+                              <input
+                                type="text"
+                                value={`₹${(product.nlc / (1 + product.gstRate / 100)).toFixed(2)}`}
+                                readOnly
+                                className="w-20 px-2 py-1 text-xs text-right border border-blue-200 rounded bg-blue-50 cursor-default focus:outline-none"
+                              />
+                              <div className="text-[9px] text-blue-500 whitespace-nowrap">excl. GST</div>
+                            </div>
+                          )}
                         </td>
                       )}
 
@@ -3607,113 +3931,168 @@ export default function Products() {
                             width="w-20"
                             savingFields={savingFields}
                           />
-                          {product.gstRate > 0 && product.purchasePrice > 0 && (
-                            <div className="text-[9px] text-gray-400 mt-0.5 whitespace-nowrap">
-                              ₹{product.purchasePrice.toLocaleString('en-IN')} + {product.gstRate}% = ₹{(product.purchasePrice * (1 + product.gstRate / 100)).toFixed(2)}
-                            </div>
-                          )}
-                          {product.basePriceType === 'purchase' && product.gstRate > 0 && product.purchasePrice > 0 && (
-                            <div className="text-[9px] text-blue-600 font-medium mt-0.5">
-                              Base: ₹{(product.purchasePrice * (1 + product.gstRate / 100)).toFixed(2)} (with GST)
-                            </div>
+                          {product.gstRate > 0 && (
+                            <InlineGstPrice
+                              product={product}
+                              baseField="purchasePrice"
+                              gstRate={product.gstRate}
+                              onSave={saveFieldDirectly}
+                              savingFields={savingFields}
+                              isBase={product.basePriceType === 'purchase'}
+                            />
                           )}
                         </td>
                       )}
 
-                      {/* Market */}
-                      {visibleColumns.includes('market') && (
-                        <td className="px-2 py-2 text-right">
+                      {/* Market Price (SI) */}
+                      {visibleColumns.includes('marketSI') && (
+                        <td className="px-2 py-2 text-right bg-green-50">
                           <InlineInput
                             product={product}
-                            field="marketPrice"
-                            value={product.marketPrice}
+                            field="marketPriceSI"
+                            value={product.marketPriceSI || 0}
                             onSave={saveFieldDirectly}
                             type="number"
                             width="w-20"
                             savingFields={savingFields}
                           />
-                          {product.gstRate > 0 && product.marketPrice > 0 && (
-                            <div className="text-[9px] text-gray-400 mt-0.5 whitespace-nowrap">
-                              ₹{product.marketPrice.toLocaleString('en-IN')} + {product.gstRate}% = ₹{(product.marketPrice * (1 + product.gstRate / 100)).toFixed(2)}
+                          {product.gstRate > 0 && (
+                            <InlineGstPrice
+                              product={product}
+                              baseField="marketPriceSI"
+                              gstRate={product.gstRate}
+                              onSave={saveFieldDirectly}
+                              savingFields={savingFields}
+                            />
+                          )}
+                        </td>
+                      )}
+                      {visibleColumns.includes('si1') && (
+                        <td className="px-2 py-2 text-right bg-green-50">
+                          <InlineInput
+                            product={product}
+                            field="opSi1"
+                            value={product.opSi1 || product.si1 || 0}
+                            onSave={saveFieldDirectly}
+                            type="number"
+                            width="w-14"
+                            savingFields={savingFields}
+                          />
+                          {product.gstRate > 0 && (product.si1 || product.opSi1) > 0 && (
+                            <div className="mt-0.5">
+                              <input
+                                type="text"
+                                value={`₹${((product.si1 || product.opSi1) * (1 + product.gstRate / 100)).toFixed(2)}`}
+                                readOnly
+                                className="w-20 px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-100 cursor-default focus:outline-none"
+                              />
+                              <div className="text-[9px] text-green-600 whitespace-nowrap">+ {product.gstRate}% GST</div>
                             </div>
                           )}
-                          {product.basePriceType === 'market' && product.gstRate > 0 && product.marketPrice > 0 && (
-                            <div className="text-[9px] text-blue-600 font-medium mt-0.5">
-                              Base: ₹{(product.marketPrice * (1 + product.gstRate / 100)).toFixed(2)} (with GST)
+                        </td>
+                      )}
+                      {visibleColumns.includes('si2') && (
+                        <td className="px-2 py-2 text-right bg-green-50">
+                          <span className="text-xs font-medium text-blue-600">{formatPrice(product.si2 || product.opSi2)}</span>
+                          {product.gstRate > 0 && (product.si2 || product.opSi2) > 0 && (
+                            <div className="mt-0.5">
+                              <input
+                                type="text"
+                                value={`₹${((product.si2 || product.opSi2) * (1 + product.gstRate / 100)).toFixed(2)}`}
+                                readOnly
+                                className="w-20 px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-100 cursor-default focus:outline-none"
+                              />
+                              <div className="text-[9px] text-green-600 whitespace-nowrap">+ {product.gstRate}% GST</div>
+                            </div>
+                          )}
+                        </td>
+                      )}
+                      {visibleColumns.includes('c1') && (
+                        <td className="px-2 py-2 text-right bg-green-50">
+                          <InlineInput
+                            product={product}
+                            field="opC1"
+                            value={product.opC1 || product.c1 || 0}
+                            onSave={saveFieldDirectly}
+                            type="number"
+                            width="w-14"
+                            savingFields={savingFields}
+                          />
+                          {product.gstRate > 0 && (product.c1 || product.opC1) > 0 && (
+                            <div className="mt-0.5">
+                              <input
+                                type="text"
+                                value={`₹${((product.c1 || product.opC1) * (1 + product.gstRate / 100)).toFixed(2)}`}
+                                readOnly
+                                className="w-20 px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-100 cursor-default focus:outline-none"
+                              />
+                              <div className="text-[9px] text-green-600 whitespace-nowrap">+ {product.gstRate}% GST</div>
                             </div>
                           )}
                         </td>
                       )}
 
-                      {/* Price List (C1, SI1, SI2, T1, T2) */}
-                      {visibleColumns.includes('c1') && (
+                      {/* Market Price (Reseller) */}
+                      {visibleColumns.includes('marketReseller') && (
                         <td className="px-2 py-2 text-right bg-green-50">
-                          <InlineDiscount
+                          <InlineInput
                             product={product}
-                            disIndex={null}
-                            field="opC1"
-                            value={product.opC1 || product.c1 || 0}
-                            type={product.opC1Type || 'percent'}
+                            field="marketPriceReseller"
+                            value={product.marketPriceReseller || 0}
                             onSave={saveFieldDirectly}
-                            onSaveType={saveTypeDirectly}
+                            type="number"
+                            width="w-20"
                             savingFields={savingFields}
                           />
-                        </td>
-                      )}
-                      {visibleColumns.includes('si1') && (
-                        <td className="px-2 py-2 text-right bg-green-50">
-                          <InlineDiscount
-                            product={product}
-                            disIndex={null}
-                            field="opSi1"
-                            value={product.opSi1 || product.si1 || 0}
-                            type={product.opSi1Type || 'percent'}
-                            onSave={saveFieldDirectly}
-                            onSaveType={saveTypeDirectly}
-                            savingFields={savingFields}
-                          />
-                        </td>
-                      )}
-                      {visibleColumns.includes('si2') && (
-                        <td className="px-2 py-2 text-right bg-green-50">
-                          <InlineDiscount
-                            product={product}
-                            disIndex={null}
-                            field="opSi2"
-                            value={product.opSi2 || product.si2 || 0}
-                            type={product.opSi2Type || 'percent'}
-                            onSave={saveFieldDirectly}
-                            onSaveType={saveTypeDirectly}
-                            savingFields={savingFields}
-                          />
+                          {product.gstRate > 0 && (
+                            <InlineGstPrice
+                              product={product}
+                              baseField="marketPriceReseller"
+                              gstRate={product.gstRate}
+                              onSave={saveFieldDirectly}
+                              savingFields={savingFields}
+                            />
+                          )}
                         </td>
                       )}
                       {visibleColumns.includes('t1') && (
                         <td className="px-2 py-2 text-right bg-green-50">
-                          <InlineDiscount
+                          <InlineInput
                             product={product}
-                            disIndex={null}
                             field="opT1"
                             value={product.opT1 || product.t1 || 0}
-                            type={product.opT1Type || 'percent'}
                             onSave={saveFieldDirectly}
-                            onSaveType={saveTypeDirectly}
+                            type="number"
+                            width="w-14"
                             savingFields={savingFields}
                           />
+                          {product.gstRate > 0 && (product.t1 || product.opT1) > 0 && (
+                            <div className="mt-0.5">
+                              <input
+                                type="text"
+                                value={`₹${((product.t1 || product.opT1) * (1 + product.gstRate / 100)).toFixed(2)}`}
+                                readOnly
+                                className="w-20 px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-100 cursor-default focus:outline-none"
+                              />
+                              <div className="text-[9px] text-green-600 whitespace-nowrap">+ {product.gstRate}% GST</div>
+                            </div>
+                          )}
                         </td>
                       )}
                       {visibleColumns.includes('t2') && (
                         <td className="px-2 py-2 text-right bg-green-50">
-                          <InlineDiscount
-                            product={product}
-                            disIndex={null}
-                            field="opT2"
-                            value={product.opT2 || product.t2 || 0}
-                            type={product.opT2Type || 'percent'}
-                            onSave={saveFieldDirectly}
-                            onSaveType={saveTypeDirectly}
-                            savingFields={savingFields}
-                          />
+                          <span className="text-xs font-medium text-blue-600">{formatPrice(product.t2 || product.opT2)}</span>
+                          {product.gstRate > 0 && (product.t2 || product.opT2) > 0 && (
+                            <div className="mt-0.5">
+                              <input
+                                type="text"
+                                value={`₹${((product.t2 || product.opT2) * (1 + product.gstRate / 100)).toFixed(2)}`}
+                                readOnly
+                                className="w-20 px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-100 cursor-default focus:outline-none"
+                              />
+                              <div className="text-[9px] text-green-600 whitespace-nowrap">+ {product.gstRate}% GST</div>
+                            </div>
+                          )}
                         </td>
                       )}
 

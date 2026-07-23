@@ -137,6 +137,10 @@ export const deleteAdminCustomer = async (id) => {
   return del(`/admin/customers/${id}`)
 }
 
+export const bulkUpdateCustomers = async (customerIds, updates) => {
+  return post('/admin/customers/bulk-update', { customerIds, updates })
+}
+
 // ============================================
 // INQUIRIES API
 // ============================================
@@ -158,6 +162,14 @@ export const deleteAdminInquiry = async (id) => {
 
 export const convertInquiryToOrder = async (id) => {
   return post(`/admin/inquiries/${id}/convert`)
+}
+
+export const assignInquiryAdmin = async (id, assignedToUserId) => {
+  return post(`/admin/inquiries/${id}/assign`, { assignedToUserId })
+}
+
+export const getUsersForAssignmentAdmin = async () => {
+  return get('/admin/inquiries/users')
 }
 
 // ============================================
@@ -470,6 +482,37 @@ export const deleteBrandCategoryEntity = async (id) => {
   return del(`/brand-categories/${id}`)
 }
 
+// ============================================
+// ENQUIRIES API
+// ============================================
+export const getEnquiries = async (params) => {
+  return get('/enquiries', params)
+}
+
+export const getEnquiryById = async (id) => {
+  return get(`/enquiries/${id}`)
+}
+
+export const createEnquiry = async (data) => {
+  return post('/enquiries', data)
+}
+
+export const updateEnquiry = async (id, data) => {
+  return patch(`/enquiries/${id}`, data)
+}
+
+export const deleteEnquiry = async (id) => {
+  return del(`/enquiries/${id}`)
+}
+
+export const linkQuotation = async (enquiryId, quotationId) => {
+  return post(`/enquiries/${enquiryId}/link-quotation`, { quotationId })
+}
+
+export const getEnquiryCounts = async () => {
+  return get('/enquiries/counts')
+}
+
 export default {
   // Auth
   adminLogin,
@@ -495,6 +538,8 @@ export default {
   updateInquiryStatus,
   deleteAdminInquiry,
   convertInquiryToOrder,
+  assignInquiryAdmin,
+  getUsersForAssignmentAdmin,
   // Orders
   getAdminOrders,
   getAdminOrderById,
@@ -575,4 +620,12 @@ export default {
   createBrandCategoryEntity,
   updateBrandCategoryEntity,
   deleteBrandCategoryEntity,
+  // Enquiries
+  getEnquiries,
+  getEnquiryById,
+  createEnquiry,
+  updateEnquiry,
+  deleteEnquiry,
+  linkQuotation,
+  getEnquiryCounts,
 }

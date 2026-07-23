@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, UserCircle, FileText, ShoppingBag,
   Package, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, X, Menu, Tag,
   FolderTree, FolderOpen, Layers, Mail, Briefcase, Award,
-  BracesIcon
+  BracesIcon, MessageSquare
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAdminAuth } from '../context/AdminAuthContext'
@@ -13,7 +13,8 @@ const navItems = [
   { path: '/admin/users', label: 'Sales Users', icon: Users },
   { path: '/admin/firms', label: 'Accounts', icon: UserCircle },
   { path: '/admin/contacts', label: 'Contacts', icon: Mail },
-  { path: '/admin/inquiries', label: 'Inquiries', icon: FileText },
+  { path: '/admin/enquiries', label: 'Enquiries', icon: MessageSquare },
+  { path: '/admin/inquiries', label: 'Quotations', icon: FileText },
   { path: '/admin/orders', label: 'Orders', icon: ShoppingBag },
   { path: '/admin/products', label: 'Products', icon: Package },
   { path: '/admin/brands', label: 'Brands', icon: Tag },

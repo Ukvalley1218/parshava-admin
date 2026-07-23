@@ -8,6 +8,7 @@ import SalesUsers from './pages/SalesUsers'
 import Firms from './pages/Firms'
 import Contacts from './pages/Contacts'
 import Inquiries from './pages/Inquiries'
+import Enquiries from './pages/Enquiries'
 import Orders from './pages/Orders'
 import Products from './pages/Products'
 import Brands from './pages/Brands'
@@ -39,6 +40,7 @@ function App() {
             <Route path="customers" element={<Navigate to="/admin/firms" replace />} />
             <Route path="contacts" element={<Contacts />} />
             <Route path="inquiries" element={<Inquiries />} />
+            <Route path="enquiries" element={<Enquiries />} />
             <Route path="orders" element={<Orders />} />
             <Route path="products" element={<Products />} />
             <Route path="brands" element={<Brands />} />

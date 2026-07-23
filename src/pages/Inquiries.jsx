@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Search, Eye, Trash2, X, Loader, AlertCircle, FileText,
-  ShoppingBag, User, Calendar, ChevronDown, MoreVertical
+  ShoppingBag, User, Calendar, ChevronDown, MoreVertical, UserPlus, FilePlus, Trash
 } from 'lucide-react'
-import { getAdminInquiries, getAdminInquiryById, updateInquiryStatus, deleteAdminInquiry, convertInquiryToOrder } from '../services/adminApi'
+import { getAdminInquiries, getAdminInquiryById, updateInquiryStatus, deleteAdminInquiry, convertInquiryToOrder, assignInquiryAdmin, getUsersForAssignmentAdmin } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 
 // Modal Component
@@ -71,6 +72,22 @@ function InquiryDetailModal({ inquiry, onClose, onConvert, onStatusChange, loadi
           </div>
         </div>
       </div>
+
+      {/* Assigned To */}
+      {inquiry.assignedTo && (
+        <div className="mb-6">
+          <h4 className="text-sm font-semibold text-gray-500 uppercase mb-3">Assigned To</h4>
+          <div className="bg-indigo-50 rounded-xl p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+              <UserPlus className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <p className="font-medium text-gray-900">{inquiry.assignedTo.name || 'Unknown'}</p>
+              <p className="text-xs text-gray-500">{inquiry.assignedTo.email || ''} · {inquiry.assignedTo.role || ''}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Items */}
       <div className="mb-6">
@@ -165,6 +182,15 @@ export default function Inquiries() {
   const [showModal, setShowModal] = useState(false)
   const [selectedInquiry, setSelectedInquiry] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [assigningInquiry, setAssigningInquiry] = useState(null)
+  const [assignUsers, setAssignUsers] = useState([])
+  const [assignSearch, setAssignSearch] = useState('')
+  const [assigningUserId, setAssigningUserId] = useState(null)
+  const [assigning, setAssigning] = useState(false)
+  const [openActionMenu, setOpenActionMenu] = useState(null)
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 })
+  const [actionMenuInquiry, setActionMenuInquiry] = useState(null)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -198,10 +224,10 @@ export default function Inquiries() {
           })
         }
       } else {
-        setError(response.message || 'Failed to fetch inquiries')
+        setError(response.message || 'Failed to fetch quotations')
       }
     } catch (err) {
-      setError('Failed to fetch inquiries')
+      setError('Failed to fetch quotations')
     } finally {
       setLoading(false)
     }
@@ -210,6 +236,33 @@ export default function Inquiries() {
   useEffect(() => {
     fetchInquiries(1)
   }, [statusFilter])
+
+  // Close action menu on click outside or scroll/resize
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (openActionMenu) {
+        const dropdownEl = document.getElementById('action-dropdown-menu')
+        if (!dropdownEl || !dropdownEl.contains(e.target)) {
+          setOpenActionMenu(null)
+          setActionMenuInquiry(null)
+        }
+      }
+    }
+    const handleClose = () => {
+      if (openActionMenu) {
+        setOpenActionMenu(null)
+        setActionMenuInquiry(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    window.addEventListener('scroll', handleClose, true)
+    window.addEventListener('resize', handleClose)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('scroll', handleClose, true)
+      window.removeEventListener('resize', handleClose)
+    }
+  }, [openActionMenu])
 
   const handlePageChange = (page) => {
     setCurrentPage(page)
@@ -231,6 +284,49 @@ export default function Inquiries() {
   const handleViewInquiry = (inquiry) => {
     setSelectedInquiry(inquiry)
     setShowModal(true)
+  }
+
+  const handleAssign = async (inquiry) => {
+    setAssigningInquiry(inquiry)
+    setAssignSearch('')
+    setAssigningUserId(null)
+    try {
+      const response = await getUsersForAssignmentAdmin()
+      if (response.success) {
+        setAssignUsers(response.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err)
+    }
+    setShowAssignModal(true)
+  }
+
+  const handleAssignConfirm = async () => {
+    if (!assigningInquiry || !assigningUserId) return
+    setAssigning(true)
+    try {
+      const response = await assignInquiryAdmin(assigningInquiry._id, assigningUserId)
+      if (response.success) {
+        setInquiries((prev) => prev.map((i) =>
+          i._id === assigningInquiry._id
+            ? { ...i, assignedTo: response.data?.assignedTo, assignedBy: response.data?.assignedBy, assignedAt: response.data?.assignedAt }
+            : i
+        ))
+        setSelectedInquiry((prev) =>
+          prev._id === assigningInquiry._id
+            ? { ...prev, assignedTo: response.data?.assignedTo, assignedBy: response.data?.assignedBy, assignedAt: response.data?.assignedAt }
+            : prev
+        )
+        setShowAssignModal(false)
+        setAssigningInquiry(null)
+      } else {
+        alert(response.message || 'Failed to assign quotation')
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to assign quotation')
+    } finally {
+      setAssigning(false)
+    }
   }
 
   const handleStatusChange = async (id, status) => {
@@ -255,19 +351,19 @@ export default function Inquiries() {
       if (response.success) {
         setInquiries((prev) => prev.map((i) => i._id === id ? { ...i, status: 'converted' } : i))
         setSelectedInquiry((prev) => prev._id === id ? { ...prev, status: 'converted' } : prev)
-        alert('Inquiry converted to order successfully!')
+        alert('Quotation converted to order successfully!')
       } else {
-        alert(response.message || 'Failed to convert inquiry')
+        alert(response.message || 'Failed to convert quotation')
       }
     } catch (err) {
-      alert('Failed to convert inquiry')
+      alert('Failed to convert quotation')
     } finally {
       setActionLoading(false)
     }
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this inquiry?')) return
+    if (!confirm('Are you sure you want to delete this quotation?')) return
     try {
       const response = await deleteAdminInquiry(id)
       if (response.success) {
@@ -279,7 +375,7 @@ export default function Inquiries() {
         }
       }
     } catch (err) {
-      alert('Failed to delete inquiry')
+      alert('Failed to delete quotation')
     }
   }
 
@@ -306,15 +402,15 @@ export default function Inquiries() {
   return (
     <div className="space-y-6 animate-fadeIn">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Inquiries</h1>
-        <p className="text-gray-500 mt-1">Manage customer inquiries and quotations</p>
+        <h1 className="text-2xl font-bold text-gray-900">Quotations</h1>
+        <p className="text-gray-500 mt-1">Manage customer quotations</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input type="text" placeholder="Search inquiries..." value={searchQuery}
+            <input type="text" placeholder="Search quotations..." value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
           </div>
@@ -338,6 +434,7 @@ export default function Inquiries() {
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Items</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Amount</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Assigned To</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Date</th>
                 <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
               </tr>
@@ -345,9 +442,9 @@ export default function Inquiries() {
             <tbody>
               {filteredInquiries.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12">
+                  <td colSpan={8} className="text-center py-12">
                     <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">No inquiries found</p>
+                    <p className="text-gray-500">No quotations found</p>
                   </td>
                 </tr>
               ) : (
@@ -366,6 +463,16 @@ export default function Inquiries() {
                         {inquiry.status}
                       </span>
                     </td>
+                    <td className="px-6 py-4 hidden lg:table-cell">
+                      {inquiry.assignedTo ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                          <UserPlus className="w-3 h-3" />
+                          {inquiry.assignedTo.name || 'Assigned'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-500 hidden md:table-cell">
                       {new Date(inquiry.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
@@ -374,9 +481,33 @@ export default function Inquiries() {
                         <button onClick={() => handleViewInquiry(inquiry)} className="p-2 hover:bg-gray-100 rounded-lg" title="View">
                           <Eye className="w-4 h-4 text-gray-500" />
                         </button>
-                        <button onClick={() => handleDelete(inquiry._id)} className="p-2 hover:bg-red-50 rounded-lg" title="Delete">
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
+                        <div>
+                          <button
+                            onClick={(e) => {
+                              if (openActionMenu === inquiry._id) {
+                                setOpenActionMenu(null)
+                                setActionMenuInquiry(null)
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                const dropdownWidth = 170
+                                const dropdownHeight = 180
+                                let top = rect.bottom + 4
+                                let left = rect.right - dropdownWidth
+                                if (top + dropdownHeight > window.innerHeight) {
+                                  top = rect.top - dropdownHeight - 4
+                                }
+                                if (left < 8) left = 8
+                                setDropdownPos({ top, left })
+                                setOpenActionMenu(inquiry._id)
+                                setActionMenuInquiry(inquiry)
+                              }
+                            }}
+                            className="p-2 hover:bg-gray-100 rounded-lg"
+                            title="More actions"
+                          >
+                            <MoreVertical className="w-4 h-4 text-gray-500" />
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -397,10 +528,113 @@ export default function Inquiries() {
       </div>
 
       <Modal isOpen={showModal} onClose={() => { setShowModal(false); setSelectedInquiry(null) }}
-        title="Inquiry Details" size="lg">
+        title="Quotation Details" size="lg">
         <InquiryDetailModal inquiry={selectedInquiry} onClose={() => { setShowModal(false); setSelectedInquiry(null) }}
           onConvert={handleConvert} onStatusChange={handleStatusChange} loading={actionLoading} />
       </Modal>
+
+      {/* Assign User Modal */}
+      {showAssignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 className="font-semibold text-lg text-gray-900">Assign Quotation</h3>
+              <button onClick={() => { setShowAssignModal(false); setAssigningInquiry(null); }} className="p-1.5 hover:bg-gray-100 rounded-full">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={assignSearch}
+                  onChange={(e) => setAssignSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div className="max-h-64 overflow-y-auto space-y-1.5">
+                {assignUsers.filter(u => {
+                  const q = assignSearch.toLowerCase()
+                  return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
+                }).length === 0 ? (
+                  <p className="text-center text-gray-400 py-4 text-sm">No users found</p>
+                ) : (
+                  assignUsers.filter(u => {
+                    const q = assignSearch.toLowerCase()
+                    return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
+                  }).map(user => (
+                    <button
+                      key={user._id}
+                      onClick={() => setAssigningUserId(user._id)}
+                      className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-colors text-left ${assigningUserId === user._id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'}`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-[#1F3A5F] flex items-center justify-center text-white text-xs font-bold">
+                        {user.name?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-gray-900 truncate">{user.name}</p>
+                        <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                      </div>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 capitalize">{user.role?.replace('_', ' ')}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+            <div className="p-4 border-t border-gray-100">
+              <button
+                onClick={handleAssignConfirm}
+                disabled={!assigningUserId || assigning}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1F3A5F] text-white rounded-xl font-medium hover:bg-[#162d47] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {assigning ? <><Loader className="w-4 h-4 animate-spin" /> Assigning...</> : <><UserPlus className="w-4 h-4" /> Assign</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Dropdown Portal — rendered outside table overflow containers */}
+      {openActionMenu && actionMenuInquiry && createPortal(
+        <div
+          id="action-dropdown-menu"
+          className="fixed bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[170px] z-[9999]"
+          style={{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px` }}
+        >
+          <button
+            onClick={() => { setOpenActionMenu(null); setActionMenuInquiry(null); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 transition-colors"
+          >
+            <FilePlus className="w-4 h-4" />
+            Create Quotation
+          </button>
+          <button
+            onClick={() => { setOpenActionMenu(null); setActionMenuInquiry(null); handleViewInquiry(actionMenuInquiry); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <Eye className="w-4 h-4" />
+            View Details
+          </button>
+          <button
+            onClick={() => { setOpenActionMenu(null); setActionMenuInquiry(null); handleAssign(actionMenuInquiry); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            Assign
+          </button>
+          <div className="border-t border-gray-100 my-1" />
+          <button
+            onClick={() => { setOpenActionMenu(null); setActionMenuInquiry(null); handleDelete(actionMenuInquiry._id); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <Trash className="w-4 h-4" />
+            Drop Inquiry
+          </button>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
