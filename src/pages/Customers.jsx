@@ -6,30 +6,8 @@ import {
 import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, uploadFile, getCustomerContacts, createContact, updateContact, deleteContact, getContactDesignations, getSalesUsers } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 import { INDIAN_STATES, getCitiesForState } from '../data/indianStatesCities'
-
-// Modal Component
-function Modal({ isOpen, onClose, title, children, size = 'lg' }) {
-  if (!isOpen) return null
-  const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-xl',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl'
-  }
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className={`bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
+import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 
 // Default designation options for contacts
 const DEFAULT_DESIGNATIONS = [
@@ -46,6 +24,7 @@ const DEFAULT_DESIGNATIONS = [
 
 // Contact Mini Form for adding/editing contacts within customer form
 function ContactMiniForm({ contact, onSave, onCancel, customerId, designations = [] }) {
+  const toast = useToast()
   const [formData, setFormData] = useState({
     firstName: contact?.firstName || '',
     middleName: contact?.middleName || '',
@@ -69,7 +48,7 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
     e.preventDefault()
     const fullName = [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(' ')
     if (!formData.firstName && !fullName) {
-      alert('First name is required')
+      toast.error('First name is required')
       return
     }
     onSave({
@@ -223,6 +202,7 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
 
 // Customer Form Component
 function CustomerForm({ customer, onSubmit, onCancel, loading }) {
+  const toast = useToast()
   const [formData, setFormData] = useState({
     // Personal Details
     softwareId: customer?.softwareId || '',
@@ -541,12 +521,13 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
             ...prev,
             [field]: response.data.url
           }))
+          toast.success('File uploaded successfully')
         } else {
-          alert(response.message || 'Failed to upload file')
+          toast.error(response.message || 'Failed to upload file')
         }
       } catch (error) {
         console.error('Upload error:', error)
-        alert('Failed to upload file')
+        toast.error('Failed to upload file')
       }
     }
   }
@@ -570,12 +551,13 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
 
             return { ...prev, documents: docs }
           })
+          toast.success('File uploaded successfully')
         } else {
-          alert(response.message || 'Failed to upload document')
+          toast.error(response.message || 'Failed to upload document')
         }
       } catch (error) {
         console.error('Upload error:', error)
-        alert('Failed to upload document')
+        toast.error('Failed to upload document')
       }
     }
   }
@@ -1838,6 +1820,7 @@ function CustomerViewModal({ customer, onClose }) {
 }
 
 export default function Customers() {
+  const toast = useToast()
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -1935,11 +1918,12 @@ export default function Customers() {
         fetchCustomers(currentPage)
         setShowModal(false)
         setSelectedCustomer(null)
+        toast.success('Customer created successfully')
       } else {
-        alert(response.message || 'Failed to create customer')
+        toast.error(response.message || 'Failed to create customer')
       }
     } catch (err) {
-      alert('Failed to create customer')
+      toast.error('Failed to create customer')
     } finally {
       setFormLoading(false)
     }
@@ -1978,13 +1962,14 @@ export default function Customers() {
         setCustomers((prev) =>
           prev.map((c) => (c._id === selectedCustomer._id ? response.data : c))
         )
+        toast.success('Customer updated successfully')
         setShowModal(false)
         setSelectedCustomer(null)
       } else {
-        alert(response.message || 'Failed to update customer')
+        toast.error(response.message || 'Failed to update customer')
       }
     } catch (err) {
-      alert('Failed to update customer')
+      toast.error('Failed to update customer')
     } finally {
       setFormLoading(false)
     }
@@ -1995,6 +1980,7 @@ export default function Customers() {
     try {
       const response = await deleteAdminCustomer(selectedCustomer._id)
       if (response.success) {
+        toast.success('Customer deleted successfully')
         // Refresh current page or go to previous if current page is empty
         if (customers.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1)
@@ -2005,10 +1991,10 @@ export default function Customers() {
         setShowDeleteModal(false)
         setSelectedCustomer(null)
       } else {
-        alert(response.message || 'Failed to delete customer')
+        toast.error(response.message || 'Failed to delete customer')
       }
     } catch (err) {
-      alert('Failed to delete customer')
+      toast.error('Failed to delete customer')
     } finally {
       setFormLoading(false)
     }

@@ -5,6 +5,8 @@ import {
 } from 'lucide-react'
 import { getContacts, getContactById, createContact, updateContact, deleteContact, getAdminCustomers, getContactDesignations, uploadImage } from '../services/adminApi'
 import Pagination from '../components/Pagination'
+import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 
 // Default designation options
 const DEFAULT_DESIGNATIONS = [
@@ -19,32 +21,9 @@ const DEFAULT_DESIGNATIONS = [
   'Staff'
 ]
 
-// Modal Component
-function Modal({ isOpen, onClose, title, children, size = 'md' }) {
-  if (!isOpen) return null
-  const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-xl',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl'
-  }
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className={`bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
-
 // Contact Form Component
 function ContactForm({ contact, onSubmit, onCancel, loading, customers, designations: propDesignations }) {
+  const toast = useToast()
   // Support both old single customer and new customers array
   const getInitialCustomers = () => {
     if (contact?.customers && Array.isArray(contact.customers)) {
@@ -198,13 +177,13 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file')
+      toast.error('Please select an image file')
       return
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image size should be less than 5MB')
+      toast.error('Image size should be less than 5MB')
       return
     }
 
@@ -216,11 +195,12 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
           ...prev,
           photo: response.data.url
         }))
+        toast.success('Photo uploaded successfully')
       } else {
-        alert(response.message || 'Failed to upload photo')
+        toast.error(response.message || 'Failed to upload photo')
       }
     } catch (err) {
-      alert('Failed to upload photo')
+      toast.error('Failed to upload photo')
     } finally {
       setUploading(false)
     }
@@ -232,13 +212,13 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
 
     // Validate file type (image or PDF)
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-      alert('Please select an image or PDF file')
+      toast.error('Please select an image or PDF file')
       return
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size should be less than 5MB')
+      toast.error('File size should be less than 5MB')
       return
     }
 
@@ -250,11 +230,12 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
           ...prev,
           aadharCard: response.data.url
         }))
+        toast.success('Document uploaded successfully')
       } else {
-        alert(response.message || 'Failed to upload Aadhar card')
+        toast.error(response.message || 'Failed to upload Aadhar card')
       }
     } catch (err) {
-      alert('Failed to upload Aadhar card')
+      toast.error('Failed to upload Aadhar card')
     } finally {
       setUploadingAadhar(false)
     }
@@ -266,13 +247,13 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
 
     // Validate file type (image or PDF)
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-      alert('Please select an image or PDF file')
+      toast.error('Please select an image or PDF file')
       return
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size should be less than 5MB')
+      toast.error('File size should be less than 5MB')
       return
     }
 
@@ -284,11 +265,12 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
           ...prev,
           panCard: response.data.url
         }))
+        toast.success('Document uploaded successfully')
       } else {
-        alert(response.message || 'Failed to upload PAN card')
+        toast.error(response.message || 'Failed to upload PAN card')
       }
     } catch (err) {
-      alert('Failed to upload PAN card')
+      toast.error('Failed to upload PAN card')
     } finally {
       setUploadingPan(false)
     }
@@ -1059,6 +1041,7 @@ function ContactViewModal({ contact, onClose }) {
 }
 
 export default function Contacts() {
+  const toast = useToast()
   const [contacts, setContacts] = useState([])
   const [customers, setCustomers] = useState([])
   const [designations, setDesignations] = useState([])
@@ -1179,14 +1162,15 @@ export default function Contacts() {
     try {
       const response = await createContact(data)
       if (response.success) {
+        toast.success('Contact created successfully')
         fetchContacts(currentPage)
         setShowModal(false)
         setSelectedContact(null)
       } else {
-        alert(response.message || 'Failed to create contact')
+        toast.error(response.message || 'Failed to create contact')
       }
     } catch (err) {
-      alert('Failed to create contact')
+      toast.error('Failed to create contact')
     } finally {
       setFormLoading(false)
     }
@@ -1197,16 +1181,17 @@ export default function Contacts() {
     try {
       const response = await updateContact(selectedContact._id, data)
       if (response.success) {
+        toast.success('Contact updated successfully')
         setContacts((prev) =>
           prev.map((c) => (c._id === selectedContact._id ? response.data : c))
         )
         setShowModal(false)
         setSelectedContact(null)
       } else {
-        alert(response.message || 'Failed to update contact')
+        toast.error(response.message || 'Failed to update contact')
       }
     } catch (err) {
-      alert('Failed to update contact')
+      toast.error('Failed to update contact')
     } finally {
       setFormLoading(false)
     }
@@ -1217,6 +1202,7 @@ export default function Contacts() {
     try {
       const response = await deleteContact(selectedContact._id)
       if (response.success) {
+        toast.success('Contact deleted successfully')
         if (contacts.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1)
           fetchContacts(currentPage - 1)
@@ -1226,10 +1212,10 @@ export default function Contacts() {
         setShowDeleteModal(false)
         setSelectedContact(null)
       } else {
-        alert(response.message || 'Failed to delete contact')
+        toast.error(response.message || 'Failed to delete contact')
       }
     } catch (err) {
-      alert('Failed to delete contact')
+      toast.error('Failed to delete contact')
     } finally {
       setFormLoading(false)
     }

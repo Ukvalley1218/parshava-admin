@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Search, Plus, Edit2, Trash2, X, Loader, AlertCircle, Package, RefreshCw, Eye, Save, XCircle, ChevronLeft, ChevronRight, Columns, Check } from 'lucide-react'
+import { useToast } from '../components/Toast'
 import {
   getAdminProducts,
   createAdminProduct,
@@ -33,7 +34,7 @@ function Modal({ isOpen, onClose, title, children, size = 'md' }) {
     full: 'max-w-[95vw]'
   }
   return createPortal(
-    <div className="fixed inset-0 bg-black/50 flex items-start justify-center overflow-y-auto z-[9999]" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-start justify-center overflow-y-auto z-50" onClick={onClose}>
       <div className={`bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-xl animate-fadeIn mt-2 sm:mt-4 mb-4 mx-2 sm:mx-4`}
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
@@ -371,7 +372,7 @@ function QuickAddModal({ isOpen, onClose, title, fields, onSubmit, loading }) {
 
   // Use portal to render outside parent modal's DOM hierarchy
   return createPortal(
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
       <div className="bg-white rounded-xl w-full max-w-md shadow-xl animate-fadeIn" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <h3 className="font-semibold text-gray-900">{title}</h3>
@@ -478,6 +479,7 @@ function FormGstInput({ formData, setFormData, baseField, gstRate, isBase = fals
 
 // Product Form Component
 function ProductForm({ product, onSubmit, onCancel, loading, brands, categories: propCategories, subcategories: propSubcategories, series: propSeries, onRefreshBrands, onRefreshCategories }) {
+  const toast = useToast()
   const [categories, setCategories] = useState(propCategories || [])
   const [allCategories, setAllCategories] = useState(propCategories || []) // Cache all categories
   const [subcategories, setSubcategories] = useState(propSubcategories || [])
@@ -857,16 +859,17 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     const response = await uploadFile('productImage', file)
 
     if (response.success) {
+      toast.success('Image uploaded successfully')
       setFormData(prev => ({
         ...prev,
         imageUrl: response.data.url
       }))
     } else {
-      alert(response.message || 'Upload failed')
+      toast.error(response.message || 'Upload failed')
     }
 
   } catch (error) {
-    alert('Failed to upload image')
+    toast.error('Failed to upload image')
   } finally {
     setUploadingImage(false)
   }
@@ -2524,6 +2527,7 @@ function EditableDiscount({ productId, field, disIndex, value, type: typeVal, ed
 }
 
 export default function Products() {
+  const toast = useToast()
   const [products, setProducts] = useState([])
   const [brands, setBrands] = useState([])
   const [categories, setCategories] = useState([])
@@ -2804,14 +2808,14 @@ export default function Products() {
         const message = failed > 0
           ? `Synced ${synced} of ${total} products. ${failed} failed.`
           : `Successfully synced ${synced} products from AccountGST.`
-        alert(message)
+        toast.success(message)
         fetchProducts(currentPage)
         fetchBrands()
       } else {
-        alert(response.message || 'Failed to sync products')
+        toast.error(response.message || 'Failed to sync products')
       }
     } catch (err) {
-      alert('Failed to sync products')
+      toast.error('Failed to sync products')
     } finally {
       setSyncing(false)
     }
@@ -2822,14 +2826,15 @@ export default function Products() {
     try {
       const response = await createAdminProduct(data)
       if (response.success !== false) {
+        toast.success('Product created successfully')
         fetchProducts(currentPage)
         setShowModal(false)
         setSelectedProduct(null)
       } else {
-        alert(response.message || 'Failed to create product')
+        toast.error(response.message || 'Failed to create product')
       }
     } catch (err) {
-      alert('Failed to create product')
+      toast.error('Failed to create product')
     } finally {
       setFormLoading(false)
     }
@@ -2840,14 +2845,15 @@ export default function Products() {
     try {
       const response = await updateAdminProduct(selectedProduct._id, data)
       if (response.success !== false) {
+        toast.success('Product updated successfully')
         setProducts(prev => prev.map(p => p._id === selectedProduct._id ? response.data : p))
         setShowModal(false)
         setSelectedProduct(null)
       } else {
-        alert(response.message || 'Failed to update product')
+        toast.error(response.message || 'Failed to update product')
       }
     } catch (err) {
-      alert('Failed to update product')
+      toast.error('Failed to update product')
     } finally {
       setFormLoading(false)
     }
@@ -2858,6 +2864,7 @@ export default function Products() {
     try {
       const response = await deleteAdminProduct(id)
       if (response.success !== false) {
+        toast.success('Product deleted successfully')
         if (products.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1)
           fetchProducts(currentPage - 1)
@@ -2865,10 +2872,10 @@ export default function Products() {
           fetchProducts(currentPage)
         }
       } else {
-        alert(response.message || 'Failed to delete product')
+        toast.error(response.message || 'Failed to delete product')
       }
     } catch (err) {
-      alert('Failed to delete product')
+      toast.error('Failed to delete product')
     }
   }
 
@@ -2878,12 +2885,13 @@ export default function Products() {
     try {
       const response = await updateAdminProduct(productId, { active: newStatus })
       if (response.success !== false) {
+        toast.success('Product status updated successfully')
         setProducts(prev => prev.map(p => p._id === productId ? { ...p, active: newStatus } : p))
       } else {
-        alert(response.message || 'Failed to update status')
+        toast.error(response.message || 'Failed to update status')
       }
     } catch (err) {
-      alert('Failed to update status')
+      toast.error('Failed to update status')
     }
   }
 
@@ -2923,13 +2931,14 @@ export default function Products() {
 
       const response = await bulkUpdateProducts(filters, updates)
       if (response.success !== false) {
+        toast.success('Products updated successfully')
         // Refresh products to show updated values
         fetchProducts(currentPage)
       } else {
-        alert(response.message || 'Failed to update products')
+        toast.error(response.message || 'Failed to update products')
       }
     } catch (err) {
-      alert('Failed to update products')
+      toast.error('Failed to update products')
     } finally {
       setBulkUpdating(false)
     }
@@ -3058,13 +3067,14 @@ export default function Products() {
 
       const response = await updateAdminProduct(product._id, updateData)
       if (response.success !== false) {
+        toast.success('Product updated successfully')
         setProducts(prev => prev.map(p => p._id === product._id ? { ...p, ...updateData } : p))
       } else {
-        alert(response.message || 'Failed to update')
+        toast.error(response.message || 'Failed to update')
       }
     } catch (err) {
       console.error('Failed to save:', err)
-      alert('Failed to save changes')
+      toast.error('Failed to save changes')
     } finally {
       setSavingFields(prev => {
         const newState = { ...prev }
@@ -3175,13 +3185,14 @@ export default function Products() {
 
       const response = await updateAdminProduct(productId, updateData)
       if (response.success !== false) {
+        toast.success('Product updated successfully')
         setProducts(prev => prev.map(p => p._id === productId ? { ...p, ...updateData } : p))
       } else {
-        alert(response.message || 'Failed to update')
+        toast.error(response.message || 'Failed to update')
       }
     } catch (err) {
       console.error('Failed to save type:', err)
-      alert('Failed to save changes')
+      toast.error('Failed to save changes')
     } finally {
       setSavingFields(prev => {
         const newState = { ...prev }
@@ -3303,14 +3314,15 @@ export default function Products() {
 
       const response = await updateAdminProduct(productId, updateData)
       if (response.success !== false) {
+        toast.success('Product updated successfully')
         setProducts(prev => prev.map(p => p._id === productId ? { ...p, ...updateData } : p))
       } else {
-        alert(response.message || 'Failed to update')
+        toast.error(response.message || 'Failed to update')
       }
 
     } catch (err) {
       console.error('Failed to save:', err)
-      alert('Failed to save changes')
+      toast.error('Failed to save changes')
     } finally {
       setSavingField(false)
       setEditingField(null)

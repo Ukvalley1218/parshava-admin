@@ -93,7 +93,7 @@ body {
 
 /* Modal Overlay */
 .modal-overlay {
-  @apply fixed inset-[-26px] bg-black/50 flex items-center justify-center z-50 p-4;
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4;
 }
 
 /* Sidebar Navigation */

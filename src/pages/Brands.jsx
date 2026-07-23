@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Plus, Edit2, Trash2, X, Loader, AlertCircle, Tag } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, Loader, AlertCircle, Tag } from 'lucide-react'
 import {
   getBrands,
   createBrand,
@@ -7,26 +7,8 @@ import {
   deleteBrand
 } from '../services/adminApi'
 import Pagination from '../components/Pagination'
-
-// Modal Component
-function Modal({ isOpen, onClose, title, children, size = 'md' }) {
-  if (!isOpen) return null
-  const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-4xl' }
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className={`bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto`}
-        onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
+import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 
 // Brand Form Component
 function BrandForm({ brand, onSubmit, onCancel, loading }) {
@@ -100,6 +82,7 @@ function BrandForm({ brand, onSubmit, onCancel, loading }) {
 }
 
 export default function Brands() {
+  const toast = useToast()
   const [brands, setBrands] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -169,11 +152,12 @@ export default function Brands() {
         fetchBrands(currentPage)
         setShowModal(false)
         setSelectedBrand(null)
+        toast.success('Brand created successfully')
       } else {
-        alert(response.message || 'Failed to create brand')
+        toast.error(response.message || 'Failed to create brand')
       }
     } catch (err) {
-      alert('Failed to create brand')
+      toast.error('Failed to create brand')
     } finally {
       setFormLoading(false)
     }
@@ -187,11 +171,12 @@ export default function Brands() {
         setBrands(prev => prev.map(b => b._id === selectedBrand._id ? response.data : b))
         setShowModal(false)
         setSelectedBrand(null)
+        toast.success('Brand updated successfully')
       } else {
-        alert(response.message || 'Failed to update brand')
+        toast.error(response.message || 'Failed to update brand')
       }
     } catch (err) {
-      alert('Failed to update brand')
+      toast.error('Failed to update brand')
     } finally {
       setFormLoading(false)
     }
@@ -203,11 +188,12 @@ export default function Brands() {
       const response = await deleteBrand(id)
       if (response.success !== false) {
         fetchBrands(currentPage)
+        toast.success('Brand deleted successfully')
       } else {
-        alert(response.message || 'Failed to delete brand')
+        toast.error(response.message || 'Failed to delete brand')
       }
     } catch (err) {
-      alert('Failed to delete brand')
+      toast.error('Failed to delete brand')
     }
   }
 
@@ -266,10 +252,10 @@ export default function Brands() {
               <table className="w-full min-w-[500px]">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Name</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Status</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Created</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Name</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Status</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Created</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">

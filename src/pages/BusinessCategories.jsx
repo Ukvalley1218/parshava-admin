@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, Edit2, Trash2, X, Loader, AlertCircle } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, Loader, AlertCircle } from 'lucide-react'
 import {
   getBusinessCategories,
   createBusinessCategory,
@@ -7,26 +7,11 @@ import {
   deleteBusinessCategory
 } from '../services/adminApi'
 import Pagination from '../components/Pagination'
-
-// Modal Component
-function Modal({ isOpen, onClose, title, children }) {
-  if (!isOpen) return null
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
+import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 
 export default function BusinessCategories() {
+  const toast = useToast()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -102,11 +87,12 @@ export default function BusinessCategories() {
         fetchCategories(currentPage)
         setShowModal(false)
         setSelectedCategory(null)
+        toast.success('Business category created successfully')
       } else {
-        alert(response.message || 'Failed to create business category')
+        toast.error(response.message || 'Failed to create business category')
       }
     } catch (err) {
-      alert('Failed to create business category')
+      toast.error('Failed to create business category')
     } finally {
       setFormLoading(false)
     }
@@ -120,11 +106,12 @@ export default function BusinessCategories() {
         setCategories(prev => prev.map(c => c._id === selectedCategory._id ? response.data : c))
         setShowModal(false)
         setSelectedCategory(null)
+        toast.success('Business category updated successfully')
       } else {
-        alert(response.message || 'Failed to update business category')
+        toast.error(response.message || 'Failed to update business category')
       }
     } catch (err) {
-      alert('Failed to update business category')
+      toast.error('Failed to update business category')
     } finally {
       setFormLoading(false)
     }
@@ -138,11 +125,12 @@ export default function BusinessCategories() {
         setCategories(prev => prev.filter(c => c._id !== selectedCategory._id))
         setShowDeleteModal(false)
         setSelectedCategory(null)
+        toast.success('Business category deleted successfully')
       } else {
-        alert(response.message || 'Failed to delete business category')
+        toast.error(response.message || 'Failed to delete business category')
       }
     } catch (err) {
-      alert('Failed to delete business category')
+      toast.error('Failed to delete business category')
     } finally {
       setFormLoading(false)
     }

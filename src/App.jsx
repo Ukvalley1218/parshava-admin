@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AdminAuthProvider } from './context/AdminAuthContext'
+import { ToastProvider } from './components/Toast'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminLayout from './layouts/AdminLayout'
 import Login from './pages/Login'
@@ -7,7 +8,7 @@ import Dashboard from './pages/Dashboard'
 import SalesUsers from './pages/SalesUsers'
 import Firms from './pages/Firms'
 import Contacts from './pages/Contacts'
-import Inquiries from './pages/Inquiries'
+import Quotations from './pages/Inquiries'
 import Enquiries from './pages/Enquiries'
 import Orders from './pages/Orders'
 import Products from './pages/Products'
@@ -23,6 +24,7 @@ import Settings from './pages/Settings'
 function App() {
   return (
     <AdminAuthProvider>
+      <ToastProvider>
       <Router>
         <Routes>
           {/* Login Route */}
@@ -39,7 +41,7 @@ function App() {
             <Route path="firms" element={<Firms />} />
             <Route path="customers" element={<Navigate to="/admin/firms" replace />} />
             <Route path="contacts" element={<Contacts />} />
-            <Route path="inquiries" element={<Inquiries />} />
+            <Route path="quotations" element={<Quotations />} />
             <Route path="enquiries" element={<Enquiries />} />
             <Route path="orders" element={<Orders />} />
             <Route path="products" element={<Products />} />
@@ -58,6 +60,7 @@ function App() {
           <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </Router>
+      </ToastProvider>
     </AdminAuthProvider>
   )
 }

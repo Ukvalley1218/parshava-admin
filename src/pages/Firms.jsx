@@ -10,6 +10,8 @@ import {
 import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, bulkUpdateCustomers, uploadFile, getBusinessCategories, getBrandCategoryList, getCustomerContacts, createContact, updateContact, deleteContact, getContactDesignations, uploadImage, getSalesUsers } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 import { INDIAN_STATES, getCitiesForState } from '../data/indianStatesCities'
+import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 
 // Default designation options for contacts
 const DEFAULT_DESIGNATIONS = [
@@ -26,6 +28,7 @@ const DEFAULT_DESIGNATIONS = [
 
 // Contact Mini Form for adding/editing contacts within account form
 function ContactMiniForm({ contact, onSave, onCancel, customerId, designations = [] }) {
+  const toast = useToast()
   const [formData, setFormData] = useState({
     firstName: contact?.firstName || '',
     middleName: contact?.middleName || '',
@@ -101,12 +104,12 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
     if (!file) return
 
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file')
+      toast.error('Please select an image file')
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image size should be less than 5MB')
+      toast.error('Image size should be less than 5MB')
       return
     }
 
@@ -115,11 +118,12 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
       const response = await uploadImage(file, 'contactPhoto')
       if (response.success && response.data?.url) {
         setFormData(prev => ({ ...prev, photo: response.data.url }))
+        toast.success('Photo uploaded successfully')
       } else {
-        alert(response.message || 'Failed to upload photo')
+        toast.error(response.message || 'Failed to upload photo')
       }
     } catch (err) {
-      alert('Failed to upload photo')
+      toast.error('Failed to upload photo')
     } finally {
       setUploading(false)
     }
@@ -131,12 +135,12 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
     if (!file) return
 
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-      alert('Please select an image or PDF file')
+      toast.error('Please select an image or PDF file')
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size should be less than 5MB')
+      toast.error('File size should be less than 5MB')
       return
     }
 
@@ -145,11 +149,12 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
       const response = await uploadImage(file, 'contactAadharCard')
       if (response.success && response.data?.url) {
         setFormData(prev => ({ ...prev, aadharCard: response.data.url }))
+        toast.success('Document uploaded successfully')
       } else {
-        alert(response.message || 'Failed to upload Aadhar card')
+        toast.error(response.message || 'Failed to upload Aadhar card')
       }
     } catch (err) {
-      alert('Failed to upload Aadhar card')
+      toast.error('Failed to upload Aadhar card')
     } finally {
       setUploadingAadhar(false)
     }
@@ -161,12 +166,12 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
     if (!file) return
 
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-      alert('Please select an image or PDF file')
+      toast.error('Please select an image or PDF file')
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size should be less than 5MB')
+      toast.error('File size should be less than 5MB')
       return
     }
 
@@ -175,11 +180,12 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
       const response = await uploadImage(file, 'contactPanCard')
       if (response.success && response.data?.url) {
         setFormData(prev => ({ ...prev, panCard: response.data.url }))
+        toast.success('Document uploaded successfully')
       } else {
-        alert(response.message || 'Failed to upload PAN card')
+        toast.error(response.message || 'Failed to upload PAN card')
       }
     } catch (err) {
-      alert('Failed to upload PAN card')
+      toast.error('Failed to upload PAN card')
     } finally {
       setUploadingPan(false)
     }
@@ -189,7 +195,7 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
     e.preventDefault()
     const fullName = [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(' ')
     if (!formData.firstName && !fullName) {
-      alert('First name is required')
+      toast.error('First name is required')
       return
     }
     onSave({
@@ -504,32 +510,9 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
   )
 }
 
-// Modal Component
-function Modal({ isOpen, onClose, title, children, size = 'lg' }) {
-  if (!isOpen) return null
-  const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-xl',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl'
-  }
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className={`bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
-
 // Account Form Component
 function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategories, brandCategories }) {
+  const toast = useToast()
   const [formData, setFormData] = useState({
     // Personal Details
     softwareId: customer?.softwareId || '',
@@ -692,9 +675,10 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
     try {
       await deleteContact(contactId)
       setContacts(contacts.filter(c => c._id !== contactId))
+      toast.success('Contact deleted successfully')
     } catch (error) {
       console.error('Error deleting contact:', error)
-      alert('Failed to delete contact')
+      toast.error('Failed to delete contact')
     }
   }
 
@@ -728,12 +712,13 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
         }
         setShowContactForm(false)
         setEditingContact(null)
+        toast.success('Contact saved successfully')
       } else {
-        alert(response.message || 'Failed to save contact')
+        toast.error(response.message || 'Failed to save contact')
       }
     } catch (error) {
       console.error('Error saving contact:', error)
-      alert('Failed to save contact')
+      toast.error('Failed to save contact')
     }
   }
 
@@ -964,17 +949,18 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
       try {
         const response = await uploadFile(field, file)
         if (response.success && response.data?.url) {
+          toast.success('File uploaded successfully')
           setFormData((prev) => ({
             ...prev,
             [field]: response.data.url,
             [`${field}Name`]: file.name
           }))
         } else {
-          alert(response.message || 'Failed to upload file')
+          toast.error(response.message || 'Failed to upload file')
         }
       } catch (error) {
         console.error('Upload error:', error)
-        alert('Failed to upload file')
+        toast.error('Failed to upload file')
       }
     }
   }
@@ -999,11 +985,11 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
             return { ...prev, documents: docs }
           })
         } else {
-          alert(response.message || 'Failed to upload document')
+          toast.error(response.message || 'Failed to upload document')
         }
       } catch (error) {
         console.error('Upload error:', error)
-        alert('Failed to upload document')
+        toast.error('Failed to upload document')
       }
     }
   }
@@ -1232,7 +1218,7 @@ function CustomerForm({ customer, onSubmit, onCancel, loading, businessCategorie
 
           {/* Contact Form Modal - Rendered using Portal to escape parent modal */}
           {showContactForm && createPortal(
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={() => { setShowContactForm(false); setEditingContact(null); }}>
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowContactForm(false); setEditingContact(null); }}>
               <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between p-4 border-b">
                   <h4 className="font-medium text-gray-900">
@@ -2162,9 +2148,10 @@ function CustomerViewModal({ customer, onClose }) {
     try {
       await deleteContact(contactId)
       setContacts(contacts.filter(c => c._id !== contactId))
+      toast.success('Contact deleted successfully')
     } catch (error) {
       console.error('Error deleting contact:', error)
-      alert('Failed to delete contact')
+      toast.error('Failed to delete contact')
     }
   }
 
@@ -2183,15 +2170,16 @@ function CustomerViewModal({ customer, onClose }) {
       }
 
       if (response.success) {
+        toast.success('Contact saved successfully')
         await fetchContacts(customer._id)
         setShowContactForm(false)
         setEditingContact(null)
       } else {
-        alert(response.message || 'Failed to save contact')
+        toast.error(response.message || 'Failed to save contact')
       }
     } catch (error) {
       console.error('Error saving contact:', error)
-      alert('Failed to save contact')
+      toast.error('Failed to save contact')
     }
   }
 
@@ -2714,7 +2702,7 @@ function CustomerViewModal({ customer, onClose }) {
 
       {/* Contact Form Modal */}
       {showContactForm && createPortal(
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={() => { setShowContactForm(false); setEditingContact(null); }}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowContactForm(false); setEditingContact(null); }}>
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b">
               <h4 className="font-medium text-gray-900">
@@ -2834,14 +2822,14 @@ export default function Firms() {
   const handleBulkUpdate = async (fieldKey) => {
     const value = bulkValues[fieldKey]
     if (!value || (Array.isArray(value) && value.length === 0)) {
-      alert('Please select a value to apply')
+      toast.error('Please select a value to apply')
       return
     }
 
     // Collect IDs of all currently visible (filtered) customers on this page
     const customerIds = filteredCustomers.map(c => c._id)
     if (customerIds.length === 0) {
-      alert('No accounts visible to update')
+      toast.error('No accounts visible to update')
       return
     }
 
@@ -2866,7 +2854,7 @@ export default function Firms() {
       const response = await bulkUpdateCustomers(customerIds, updates)
       if (response.success !== false) {
         const modified = response.modified || 0
-        alert(`${modified} account(s) updated successfully`)
+        toast.success(`${modified} account(s) updated successfully`)
         // Reset the bulk value for this field
         setBulkValues(prev => ({
           ...prev,
@@ -2875,10 +2863,10 @@ export default function Firms() {
         // Refresh the list
         fetchCustomers(currentPage, pagination.limit, debouncedSearch)
       } else {
-        alert(response.message || 'Failed to update accounts')
+        toast.error(response.message || 'Failed to update accounts')
       }
     } catch (err) {
-      alert('Failed to update accounts')
+      toast.error('Failed to update accounts')
     } finally {
       setBulkUpdating(false)
     }
@@ -3007,11 +2995,12 @@ export default function Firms() {
         fetchCustomers(currentPage)
         setShowModal(false)
         setSelectedCustomer(null)
+        toast.success('Customer created successfully')
       } else {
-        alert(response.message || 'Failed to create customer')
+        toast.error(response.message || 'Failed to create customer')
       }
     } catch (err) {
-      alert('Failed to create customer')
+      toast.error('Failed to create customer')
     } finally {
       setFormLoading(false)
     }
@@ -3039,13 +3028,14 @@ export default function Firms() {
         setCustomers((prev) =>
           prev.map((c) => (c._id === selectedCustomer._id ? response.data : c))
         )
+        toast.success('Customer updated successfully')
         setShowModal(false)
         setSelectedCustomer(null)
       } else {
-        alert(response.message || 'Failed to update customer')
+        toast.error(response.message || 'Failed to update customer')
       }
     } catch (err) {
-      alert('Failed to update customer')
+      toast.error('Failed to update customer')
     } finally {
       setFormLoading(false)
     }
@@ -3056,6 +3046,7 @@ export default function Firms() {
     try {
       const response = await deleteAdminCustomer(selectedCustomer._id)
       if (response.success) {
+        toast.success('Customer deleted successfully')
         // Refresh current page or go to previous if current page is empty
         if (customers.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1)
@@ -3066,10 +3057,10 @@ export default function Firms() {
         setShowDeleteModal(false)
         setSelectedCustomer(null)
       } else {
-        alert(response.message || 'Failed to delete customer')
+        toast.error(response.message || 'Failed to delete customer')
       }
     } catch (err) {
-      alert('Failed to delete customer')
+      toast.error('Failed to delete customer')
     } finally {
       setFormLoading(false)
     }

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Search, Eye, Trash2, X, Loader, AlertCircle, ShoppingBag, Calendar, ChevronDown, Phone } from 'lucide-react'
 import { getAdminOrders, getAdminOrderById, updateOrderStatus, deleteAdminOrder } from '../services/adminApi'
 import Pagination from '../components/Pagination'
+import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 
 // WhatsApp SVG icon (since react-icons is not installed in admin panel)
 const WhatsAppIcon = ({ className }) => (
@@ -63,25 +65,6 @@ const generateOrderMessage = (order, withModelNo = true) => {
 }
 
 // Modal Component
-function Modal({ isOpen, onClose, title, children, size = 'md' }) {
-  if (!isOpen) return null
-  const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-4xl' }
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className={`bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto`}
-        onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
-
 // Order Detail Modal
 function OrderDetailModal({ order, onClose, onStatusChange, loading }) {
   if (!order) return null
@@ -97,7 +80,7 @@ function OrderDetailModal({ order, onClose, onStatusChange, loading }) {
 
   const handleWhatsAppShare = (withModelNo) => {
     if (!customerPhone) {
-      alert('Customer phone number not available')
+      toast.error('Customer phone number not available')
       return
     }
     const message = generateOrderMessage(order, withModelNo)
@@ -267,6 +250,7 @@ function OrderDetailModal({ order, onClose, onStatusChange, loading }) {
 }
 
 export default function Orders() {
+  const toast = useToast()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -348,11 +332,12 @@ export default function Orders() {
     try {
       const response = await updateOrderStatus(id, status)
       if (response.success) {
+        toast.success('Order status updated successfully')
         setOrders((prev) => prev.map((o) => o._id === id ? { ...o, status } : o))
         setSelectedOrder((prev) => prev._id === id ? { ...prev, status } : prev)
       }
     } catch (err) {
-      alert('Failed to update status')
+      toast.error('Failed to update order status')
     } finally {
       setActionLoading(false)
     }
@@ -363,6 +348,7 @@ export default function Orders() {
     try {
       const response = await deleteAdminOrder(id)
       if (response.success) {
+        toast.success('Order deleted successfully')
         if (orders.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1)
           fetchOrders(currentPage - 1)
@@ -371,7 +357,7 @@ export default function Orders() {
         }
       }
     } catch (err) {
-      alert('Failed to delete order')
+      toast.error('Failed to delete order')
     }
   }
 

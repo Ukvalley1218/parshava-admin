@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { useToast } from '../components/Toast'
 import {
   Search, Plus, X, Loader2, MessageSquare, Clock, CheckCircle,
   User, Building2, Phone, Mail, ChevronRight, Send, Eye, Trash
@@ -7,6 +9,7 @@ import {
   getEnquiries, getEnquiryById, createEnquiry, updateEnquiry,
   deleteEnquiry, getEnquiryCounts, getAdminCustomers, getAdminCustomerById
 } from '../services/adminApi'
+import Pagination from '../components/Pagination'
 
 const STATUS_CONFIG = {
   open: { label: 'Open', color: 'bg-blue-100 text-blue-700', icon: Clock },
@@ -24,10 +27,17 @@ const TABS = [
 ]
 
 export default function Enquiries() {
+  const toast = useToast()
   const [enquiries, setEnquiries] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pagination, setPagination] = useState({
+    total: 0,
+    totalPages: 1,
+    limit: 20
+  })
   const [counts, setCounts] = useState({ open: 0, inProgress: 0, quoted: 0, closed: 0 })
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedEnquiry, setSelectedEnquiry] = useState(null)
@@ -53,7 +63,8 @@ export default function Enquiries() {
   }, [])
 
   useEffect(() => {
-    fetchEnquiries()
+    setCurrentPage(1)
+    fetchEnquiries(1)
   }, [activeTab])
 
   // Click outside to close customer dropdown
@@ -67,14 +78,20 @@ export default function Enquiries() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const fetchEnquiries = async () => {
+  const fetchEnquiries = async (page = currentPage, limit = pagination.limit) => {
     setLoading(true)
     try {
-      const params = {}
+      const params = { page, limit }
       if (activeTab !== 'all') params.status = activeTab
       const response = await getEnquiries(params)
       if (response.success || response.data) {
         setEnquiries(response.data || [])
+        if (response.pagination) {
+          const total = response.pagination.total || 0
+          const pLimit = response.pagination.limit || limit
+          const computedTotalPages = Math.max(response.pagination.pages || response.pagination.totalPages || 0, Math.ceil(total / pLimit))
+          setPagination({ total, totalPages: computedTotalPages || 1, limit: pLimit })
+        }
       }
     } catch (err) {
       console.error('Error fetching enquiries:', err)
@@ -96,14 +113,29 @@ export default function Enquiries() {
 
   const searchCustomers = async (query) => {
     if (!query || query.trim().length < 2) {
-      setCustomerResults([])
+      // On focus with no query, load initial customers list
+      setSearchingCustomers(true)
+      try {
+        const response = await getAdminCustomers({ limit: 20 })
+        if (response.data) {
+          const customers = response.data.customers || response.data || []
+          setCustomerResults(customers)
+          setShowCustomerDropdown(customers.length > 0)
+        }
+      } catch (err) {
+        console.error('Error fetching customers:', err)
+      } finally {
+        setSearchingCustomers(false)
+      }
       return
     }
     setSearchingCustomers(true)
     try {
       const response = await getAdminCustomers({ search: query.trim(), limit: 20 })
       if (response.data) {
-        setCustomerResults(response.data.customers || response.data || [])
+        const customers = response.data.customers || response.data || []
+        setCustomerResults(customers)
+        setShowCustomerDropdown(customers.length > 0)
       }
     } catch (err) {
       console.error('Error searching customers:', err)
@@ -187,15 +219,18 @@ export default function Enquiries() {
         description: description.trim()
       })
       if (response.success || response.data) {
+        toast.success('Enquiry created successfully')
         setShowCreateModal(false)
         resetCreateForm()
-        fetchEnquiries()
+        fetchEnquiries(currentPage)
         fetchCounts()
       } else {
         setError(response.message || 'Failed to create enquiry')
+        toast.error(response.message || 'Failed to create enquiry')
       }
     } catch (err) {
       setError(err.message || 'Failed to create enquiry')
+      toast.error(err.message || 'Failed to create enquiry')
     } finally {
       setCreating(false)
     }
@@ -214,7 +249,8 @@ export default function Enquiries() {
     try {
       const response = await updateEnquiry(enquiryId, { status: newStatus })
       if (response.success || response.data) {
-        fetchEnquiries()
+        toast.success('Status updated successfully')
+        fetchEnquiries(currentPage)
         fetchCounts()
         // Refresh detail view if open
         if (selectedEnquiry?._id === enquiryId) {
@@ -224,6 +260,7 @@ export default function Enquiries() {
       }
     } catch (err) {
       console.error('Error updating status:', err)
+      toast.error('Failed to update status')
     }
   }
 
@@ -232,7 +269,14 @@ export default function Enquiries() {
     try {
       const response = await deleteEnquiry(enquiryId)
       if (response.success || response.data) {
-        fetchEnquiries()
+        toast.success('Enquiry deleted successfully')
+        // If last item on page, go to previous page
+        if (enquiries.length === 1 && currentPage > 1) {
+          setCurrentPage(currentPage - 1)
+          fetchEnquiries(currentPage - 1)
+        } else {
+          fetchEnquiries(currentPage)
+        }
         fetchCounts()
         if (selectedEnquiry?._id === enquiryId) {
           setSelectedEnquiry(null)
@@ -240,7 +284,13 @@ export default function Enquiries() {
       }
     } catch (err) {
       console.error('Error deleting enquiry:', err)
+      toast.error('Failed to delete enquiry')
     }
+  }
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+    fetchEnquiries(page)
   }
 
   const openDetail = async (enquiry) => {
@@ -277,10 +327,10 @@ export default function Enquiries() {
     const customer = selectedEnquiry.customerDetails || {}
     const cp = selectedEnquiry.contactPerson || {}
     const manager = selectedEnquiry.accountManager || selectedEnquiry.assignedTo || {}
-    const quotation = selectedEnquiry.relatedQuotation
+    const quotations = selectedEnquiry.relatedQuotations || (selectedEnquiry.relatedQuotation ? [selectedEnquiry.relatedQuotation] : [])
 
     return (
-      <div className="p-6 max-w-3xl mx-auto">
+      <div className="p-6 max-w-5xl mx-auto">
         <button
           onClick={() => setSelectedEnquiry(null)}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-5 transition"
@@ -304,12 +354,7 @@ export default function Enquiries() {
           </div>
 
           <div className="flex items-center gap-2">
-            {!quotation && selectedEnquiry.status !== 'closed' && (
-              <span className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm font-medium">
-                <Send className="w-3.5 h-3.5" />
-                Create Quotation
-              </span>
-            )}
+           
             {selectedEnquiry.status !== 'closed' && (
               <select
                 value={selectedEnquiry.status}
@@ -381,17 +426,32 @@ export default function Enquiries() {
           <p className="text-sm text-gray-800 whitespace-pre-wrap">{selectedEnquiry.description}</p>
         </div>
 
-        {/* Linked Quotation */}
-        {quotation && (
+        {/* Linked Quotations */}
+        {quotations.length > 0 && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-            <p className="text-xs text-green-700 font-semibold mb-1">Linked Quotation</p>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-green-900">{quotation.inquiryId || 'Quotation'}</p>
-                <p className="text-xs text-green-700">
-                  {quotation.items?.length || 0} items · ₹{((quotation.grandTotal || 0)).toLocaleString('en-IN')}
-                </p>
-              </div>
+            <p className="text-xs text-green-700 font-semibold mb-2">
+              Linked Quotation{quotations.length > 1 ? 's' : ''} ({quotations.length})
+            </p>
+            <div className="space-y-2">
+              {quotations.map((q, idx) => (
+                q && (
+                  <div key={q._id || idx} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-green-100">
+                    <div>
+                      <p className="font-medium text-green-900 text-sm">{q.inquiryId || `Quotation ${idx + 1}`}</p>
+                      <p className="text-xs text-green-700">
+                        {q.items?.length || 0} items · ₹{((q.grandTotal || 0)).toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      q.status === 'converted' ? 'bg-green-100 text-green-700' :
+                      q.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>
+                      {q.status || 'Draft'}
+                    </span>
+                  </div>
+                )
+              ))}
             </div>
           </div>
         )}
@@ -414,7 +474,7 @@ export default function Enquiries() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Enquiries</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{filtered.length} enquiries</p>
+          <p className="text-gray-500 text-sm mt-0.5">{pagination.total} enquiries</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -453,7 +513,7 @@ export default function Enquiries() {
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
               activeTab === tab.key ? 'bg-[#1F3A5F] text-white' : 'bg-gray-200 text-gray-500'
             }`}>
-              {tab.key === 'all' ? (counts.open + counts.inProgress + counts.quoted + counts.closed) :
+              {tab.key === 'all' ? (counts.open + counts.inProgress + counts.quoted) :
                tab.key === 'open' ? counts.open :
                tab.key === 'in_progress' ? counts.inProgress :
                tab.key === 'quoted' ? counts.quoted : counts.closed}
@@ -538,7 +598,7 @@ export default function Enquiries() {
                           title="Drop Enquiry"
                         >
                           <Trash className="w-3.5 h-3.5" />
-                          Drop
+                          Delete
                         </button>
                       </div>
                     </td>
@@ -547,13 +607,24 @@ export default function Enquiries() {
               })}
             </tbody>
           </table>
+
+          {/* Pagination */}
+          {!loading && filtered.length > 0 && pagination.total > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.total}
+              itemsPerPage={pagination.limit}
+              onPageChange={handlePageChange}
+            />
+          )}
         </div>
       )}
 
       {/* Create Enquiry Modal */}
-      {showCreateModal && (
+      {showCreateModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="font-bold text-lg text-gray-900">New Enquiry</h2>
               <button
@@ -604,7 +675,11 @@ export default function Enquiries() {
                           searchCustomers(e.target.value)
                         }}
                         onFocus={() => {
-                          if (customerResults.length > 0) setShowCustomerDropdown(true)
+                          if (customerResults.length > 0) {
+                            setShowCustomerDropdown(true)
+                          } else {
+                            searchCustomers(customerSearch)
+                          }
                         }}
                         className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1F3A5F]/20 focus:border-[#1F3A5F]"
                       />
@@ -744,7 +819,8 @@ export default function Enquiries() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

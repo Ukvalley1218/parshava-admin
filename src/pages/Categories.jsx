@@ -1,26 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Search, Plus, Edit2, Trash2, X, Loader, AlertCircle, FolderTree, ChevronDown, ChevronUp, Tag } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, Loader, AlertCircle, FolderTree, ChevronDown, ChevronUp, Tag } from 'lucide-react'
 import { getCategories, createCategory, updateCategory, deleteCategory, getBrands } from '../services/adminApi'
 import Pagination from '../components/Pagination'
-
-// Modal Component
-function Modal({ isOpen, onClose, title, children }) {
-  if (!isOpen) return null
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
+import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 
 // Category Form Component
 function CategoryForm({ category, onSubmit, onCancel, loading, brands }) {
@@ -172,6 +155,7 @@ function CategoryForm({ category, onSubmit, onCancel, loading, brands }) {
 }
 
 export default function Categories() {
+  const toast = useToast()
   const [categories, setCategories] = useState([])
   const [brands, setBrands] = useState([])
   const [loading, setLoading] = useState(true)
@@ -257,11 +241,12 @@ export default function Categories() {
         fetchCategories(currentPage)
         setShowModal(false)
         setSelectedCategory(null)
+        toast.success('Category created successfully')
       } else {
-        alert(response.message || 'Failed to create category')
+        toast.error(response.message || 'Failed to create category')
       }
     } catch (err) {
-      alert('Failed to create category')
+      toast.error('Failed to create category')
     } finally {
       setFormLoading(false)
     }
@@ -275,11 +260,12 @@ export default function Categories() {
         setCategories(prev => prev.map(c => c._id === selectedCategory._id ? response.data : c))
         setShowModal(false)
         setSelectedCategory(null)
+        toast.success('Category updated successfully')
       } else {
-        alert(response.message || 'Failed to update category')
+        toast.error(response.message || 'Failed to update category')
       }
     } catch (err) {
-      alert('Failed to update category')
+      toast.error('Failed to update category')
     } finally {
       setFormLoading(false)
     }
@@ -291,11 +277,12 @@ export default function Categories() {
       const response = await deleteCategory(id)
       if (response.success !== false) {
         fetchCategories(currentPage)
+        toast.success('Category deleted successfully')
       } else {
-        alert(response.message || 'Failed to delete category')
+        toast.error(response.message || 'Failed to delete category')
       }
     } catch (err) {
-      alert('Failed to delete category')
+      toast.error('Failed to delete category')
     }
   }
 
@@ -444,6 +431,7 @@ export default function Categories() {
         isOpen={showModal}
         onClose={() => { setShowModal(false); setSelectedCategory(null) }}
         title={selectedCategory ? 'Edit Category' : 'Add Category'}
+        size="lg"
       >
         <CategoryForm
           category={selectedCategory}

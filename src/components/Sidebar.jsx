@@ -14,7 +14,7 @@ const navItems = [
   { path: '/admin/firms', label: 'Accounts', icon: UserCircle },
   { path: '/admin/contacts', label: 'Contacts', icon: Mail },
   { path: '/admin/enquiries', label: 'Enquiries', icon: MessageSquare },
-  { path: '/admin/inquiries', label: 'Quotations', icon: FileText },
+  { path: '/admin/quotations', label: 'Quotations', icon: FileText },
   { path: '/admin/orders', label: 'Orders', icon: ShoppingBag },
   { path: '/admin/products', label: 'Products', icon: Package },
   { path: '/admin/brands', label: 'Brands', icon: Tag },

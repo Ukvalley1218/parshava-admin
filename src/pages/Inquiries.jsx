@@ -2,30 +2,12 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Search, Eye, Trash2, X, Loader, AlertCircle, FileText,
-  ShoppingBag, User, Calendar, ChevronDown, MoreVertical, UserPlus, FilePlus, Trash
+  ShoppingBag, User, Calendar, ChevronDown, MoreVertical, UserPlus, Trash
 } from 'lucide-react'
-import { getAdminInquiries, getAdminInquiryById, updateInquiryStatus, deleteAdminInquiry, convertInquiryToOrder, assignInquiryAdmin, getUsersForAssignmentAdmin } from '../services/adminApi'
+import { getAdminInquiries, getAdminInquiryById, updateInquiryStatus, deleteAdminInquiry, convertInquiryToOrder } from '../services/adminApi'
 import Pagination from '../components/Pagination'
-
-// Modal Component
-function Modal({ isOpen, onClose, title, children, size = 'md' }) {
-  if (!isOpen) return null
-  const sizeClasses = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-4xl' }
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className={`bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto`}
-        onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
+import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 
 // Inquiry Detail Modal
 function InquiryDetailModal({ inquiry, onClose, onConvert, onStatusChange, loading }) {
@@ -174,6 +156,7 @@ function InquiryDetailModal({ inquiry, onClose, onConvert, onStatusChange, loadi
 }
 
 export default function Inquiries() {
+  const toast = useToast()
   const [inquiries, setInquiries] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -182,12 +165,6 @@ export default function Inquiries() {
   const [showModal, setShowModal] = useState(false)
   const [selectedInquiry, setSelectedInquiry] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
-  const [showAssignModal, setShowAssignModal] = useState(false)
-  const [assigningInquiry, setAssigningInquiry] = useState(null)
-  const [assignUsers, setAssignUsers] = useState([])
-  const [assignSearch, setAssignSearch] = useState('')
-  const [assigningUserId, setAssigningUserId] = useState(null)
-  const [assigning, setAssigning] = useState(false)
   const [openActionMenu, setOpenActionMenu] = useState(null)
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 })
   const [actionMenuInquiry, setActionMenuInquiry] = useState(null)
@@ -196,7 +173,7 @@ export default function Inquiries() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState({
     total: 0,
-    totalPages: 0,
+    totalPages: 1,
     limit: 10,
   })
 
@@ -208,12 +185,11 @@ export default function Inquiries() {
       if (response.success !== false) {
         // Handle both paginated and non-paginated responses
         if (response.pagination) {
+          const total = response.pagination.totalItems || response.pagination.total || 0
+          const limit = response.pagination.itemsPerPage || response.pagination.limit || 10
+          const computedTotalPages = Math.max(response.pagination.totalPages || 0, Math.ceil(total / limit))
           setInquiries(response.data || [])
-          setPagination({
-            total: response.pagination.totalItems || response.pagination.total || 0,
-            totalPages: response.pagination.totalPages || 1,
-            limit: response.pagination.itemsPerPage || response.pagination.limit || 10,
-          })
+          setPagination({ total, totalPages: computedTotalPages || 1, limit })
         } else {
           // Fallback for non-paginated API response
           setInquiries(response.data || response.inquiries || [])
@@ -286,49 +262,6 @@ export default function Inquiries() {
     setShowModal(true)
   }
 
-  const handleAssign = async (inquiry) => {
-    setAssigningInquiry(inquiry)
-    setAssignSearch('')
-    setAssigningUserId(null)
-    try {
-      const response = await getUsersForAssignmentAdmin()
-      if (response.success) {
-        setAssignUsers(response.data || [])
-      }
-    } catch (err) {
-      console.error('Error fetching users:', err)
-    }
-    setShowAssignModal(true)
-  }
-
-  const handleAssignConfirm = async () => {
-    if (!assigningInquiry || !assigningUserId) return
-    setAssigning(true)
-    try {
-      const response = await assignInquiryAdmin(assigningInquiry._id, assigningUserId)
-      if (response.success) {
-        setInquiries((prev) => prev.map((i) =>
-          i._id === assigningInquiry._id
-            ? { ...i, assignedTo: response.data?.assignedTo, assignedBy: response.data?.assignedBy, assignedAt: response.data?.assignedAt }
-            : i
-        ))
-        setSelectedInquiry((prev) =>
-          prev._id === assigningInquiry._id
-            ? { ...prev, assignedTo: response.data?.assignedTo, assignedBy: response.data?.assignedBy, assignedAt: response.data?.assignedAt }
-            : prev
-        )
-        setShowAssignModal(false)
-        setAssigningInquiry(null)
-      } else {
-        alert(response.message || 'Failed to assign quotation')
-      }
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to assign quotation')
-    } finally {
-      setAssigning(false)
-    }
-  }
-
   const handleStatusChange = async (id, status) => {
     setActionLoading(true)
     try {
@@ -336,9 +269,10 @@ export default function Inquiries() {
       if (response.success) {
         setInquiries((prev) => prev.map((i) => i._id === id ? { ...i, status } : i))
         setSelectedInquiry((prev) => prev._id === id ? { ...prev, status } : prev)
+        toast.success('Status updated successfully')
       }
     } catch (err) {
-      alert('Failed to update status')
+      toast.error('Failed to update status')
     } finally {
       setActionLoading(false)
     }
@@ -351,12 +285,12 @@ export default function Inquiries() {
       if (response.success) {
         setInquiries((prev) => prev.map((i) => i._id === id ? { ...i, status: 'converted' } : i))
         setSelectedInquiry((prev) => prev._id === id ? { ...prev, status: 'converted' } : prev)
-        alert('Quotation converted to order successfully!')
+        toast.success('Quotation converted to order successfully!')
       } else {
-        alert(response.message || 'Failed to convert quotation')
+        toast.error(response.message || 'Failed to convert quotation')
       }
     } catch (err) {
-      alert('Failed to convert quotation')
+      toast.error('Failed to convert quotation')
     } finally {
       setActionLoading(false)
     }
@@ -367,6 +301,7 @@ export default function Inquiries() {
     try {
       const response = await deleteAdminInquiry(id)
       if (response.success) {
+        toast.success('Quotation deleted successfully')
         if (inquiries.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1)
           fetchInquiries(currentPage - 1)
@@ -375,7 +310,7 @@ export default function Inquiries() {
         }
       }
     } catch (err) {
-      alert('Failed to delete quotation')
+      toast.error('Failed to delete quotation')
     }
   }
 
@@ -533,69 +468,6 @@ export default function Inquiries() {
           onConvert={handleConvert} onStatusChange={handleStatusChange} loading={actionLoading} />
       </Modal>
 
-      {/* Assign User Modal */}
-      {showAssignModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="font-semibold text-lg text-gray-900">Assign Quotation</h3>
-              <button onClick={() => { setShowAssignModal(false); setAssigningInquiry(null); }} className="p-1.5 hover:bg-gray-100 rounded-full">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-            <div className="p-4">
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search users..."
-                  value={assignSearch}
-                  onChange={(e) => setAssignSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <div className="max-h-64 overflow-y-auto space-y-1.5">
-                {assignUsers.filter(u => {
-                  const q = assignSearch.toLowerCase()
-                  return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
-                }).length === 0 ? (
-                  <p className="text-center text-gray-400 py-4 text-sm">No users found</p>
-                ) : (
-                  assignUsers.filter(u => {
-                    const q = assignSearch.toLowerCase()
-                    return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
-                  }).map(user => (
-                    <button
-                      key={user._id}
-                      onClick={() => setAssigningUserId(user._id)}
-                      className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-colors text-left ${assigningUserId === user._id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'}`}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-[#1F3A5F] flex items-center justify-center text-white text-xs font-bold">
-                        {user.name?.charAt(0)?.toUpperCase() || '?'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-gray-900 truncate">{user.name}</p>
-                        <p className="text-xs text-gray-400 truncate">{user.email}</p>
-                      </div>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 capitalize">{user.role?.replace('_', ' ')}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-            <div className="p-4 border-t border-gray-100">
-              <button
-                onClick={handleAssignConfirm}
-                disabled={!assigningUserId || assigning}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1F3A5F] text-white rounded-xl font-medium hover:bg-[#162d47] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {assigning ? <><Loader className="w-4 h-4 animate-spin" /> Assigning...</> : <><UserPlus className="w-4 h-4" /> Assign</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Action Dropdown Portal — rendered outside table overflow containers */}
       {openActionMenu && actionMenuInquiry && createPortal(
         <div
@@ -604,25 +476,11 @@ export default function Inquiries() {
           style={{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px` }}
         >
           <button
-            onClick={() => { setOpenActionMenu(null); setActionMenuInquiry(null); }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 transition-colors"
-          >
-            <FilePlus className="w-4 h-4" />
-            Create Quotation
-          </button>
-          <button
             onClick={() => { setOpenActionMenu(null); setActionMenuInquiry(null); handleViewInquiry(actionMenuInquiry); }}
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <Eye className="w-4 h-4" />
             View Details
-          </button>
-          <button
-            onClick={() => { setOpenActionMenu(null); setActionMenuInquiry(null); handleAssign(actionMenuInquiry); }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
-          >
-            <UserPlus className="w-4 h-4" />
-            Assign
           </button>
           <div className="border-t border-gray-100 my-1" />
           <button
@@ -630,7 +488,7 @@ export default function Inquiries() {
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
           >
             <Trash className="w-4 h-4" />
-            Drop Inquiry
+            Drop Quotation
           </button>
         </div>,
         document.body

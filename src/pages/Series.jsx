@@ -1,26 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Search, Plus, Edit2, Trash2, X, Loader, AlertCircle, Layers, ChevronDown, ChevronUp, LayersIcon } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, Loader, AlertCircle, Layers, ChevronDown, ChevronUp, LayersIcon } from 'lucide-react'
 import { getSeries, createSeries, updateSeries, deleteSeries, getCategories, addSubSeries, updateSubSeries, deleteSubSeries } from '../services/adminApi'
 import Pagination from '../components/Pagination'
-
-// Modal Component
-function Modal({ isOpen, onClose, title, children }) {
-  if (!isOpen) return null
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn mx-4 max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
+import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 
 // Series Form Component
 function SeriesForm({ series, categories, onSubmit, onCancel, loading }) {
@@ -160,6 +143,7 @@ function SubSeriesForm({ onSubmit, onCancel, loading, nextCode }) {
 
 // Sub-Series List Component
 function SubSeriesList({ series, onRefresh, onLoadingChange }) {
+  const toast = useToast()
   const [expanded, setExpanded] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -173,13 +157,14 @@ function SubSeriesList({ series, onRefresh, onLoadingChange }) {
     try {
       const response = await addSubSeries(series._id, data)
       if (response.success !== false) {
+        toast.success('Sub-Series added successfully')
         onRefresh()
         setShowAddModal(false)
       } else {
-        alert(response.message || 'Failed to add sub-series')
+        toast.error(response.message || 'Failed to add sub-series')
       }
     } catch (err) {
-      alert('Failed to add sub-series')
+      toast.error('Failed to add sub-series')
     } finally {
       setLoading(false)
       onLoadingChange?.(false)
@@ -192,12 +177,13 @@ function SubSeriesList({ series, onRefresh, onLoadingChange }) {
     try {
       const response = await updateSubSeries(series._id, subSeries._id, { active: !subSeries.active })
       if (response.success !== false) {
+        toast.success('Sub-Series updated successfully')
         onRefresh()
       } else {
-        alert(response.message || 'Failed to update sub-series')
+        toast.error(response.message || 'Failed to update sub-series')
       }
     } catch (err) {
-      alert('Failed to update sub-series')
+      toast.error('Failed to update sub-series')
     } finally {
       setLoading(false)
       onLoadingChange?.(false)
@@ -211,12 +197,13 @@ function SubSeriesList({ series, onRefresh, onLoadingChange }) {
     try {
       const response = await deleteSubSeries(series._id, subSeries._id)
       if (response.success !== false) {
+        toast.success('Sub-Series deleted successfully')
         onRefresh()
       } else {
-        alert(response.message || 'Failed to delete sub-series')
+        toast.error(response.message || 'Failed to delete sub-series')
       }
     } catch (err) {
-      alert('Failed to delete sub-series')
+      toast.error('Failed to delete sub-series')
     } finally {
       setLoading(false)
       onLoadingChange?.(false)
@@ -308,6 +295,7 @@ function SubSeriesList({ series, onRefresh, onLoadingChange }) {
 }
 
 export default function Series() {
+  const toast = useToast()
   const [seriesList, setSeriesList] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -392,14 +380,15 @@ export default function Series() {
     try {
       const response = await createSeries(data)
       if (response.success !== false) {
+        toast.success('Series created successfully')
         fetchSeries(currentPage)
         setShowModal(false)
         setSelectedSeries(null)
       } else {
-        alert(response.message || 'Failed to create series')
+        toast.error(response.message || 'Failed to create series')
       }
     } catch (err) {
-      alert('Failed to create series')
+      toast.error('Failed to create series')
     } finally {
       setFormLoading(false)
     }
@@ -410,14 +399,15 @@ export default function Series() {
     try {
       const response = await updateSeries(selectedSeries._id, data)
       if (response.success !== false) {
+        toast.success('Series updated successfully')
         setSeriesList(prev => prev.map(s => s._id === selectedSeries._id ? response.data : s))
         setShowModal(false)
         setSelectedSeries(null)
       } else {
-        alert(response.message || 'Failed to update series')
+        toast.error(response.message || 'Failed to update series')
       }
     } catch (err) {
-      alert('Failed to update series')
+      toast.error('Failed to update series')
     } finally {
       setFormLoading(false)
     }
@@ -428,12 +418,13 @@ export default function Series() {
     try {
       const response = await deleteSeries(id)
       if (response.success !== false) {
+        toast.success('Series deleted successfully')
         fetchSeries(currentPage)
       } else {
-        alert(response.message || 'Failed to delete series')
+        toast.error(response.message || 'Failed to delete series')
       }
     } catch (err) {
-      alert('Failed to delete series')
+      toast.error('Failed to delete series')
     }
   }
 

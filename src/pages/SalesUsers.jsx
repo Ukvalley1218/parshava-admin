@@ -8,6 +8,7 @@ import {
   deleteSalesUser, toggleUserStatus, getDistinctBrandsFromProducts
 } from '../services/adminApi'
 import Pagination from '../components/Pagination'
+import { useToast } from '../components/Toast'
 
 // Brand Multi-Select Component
 function BrandMultiSelect({ selectedBrands, onChange, disabled }) {
@@ -151,12 +152,10 @@ function Modal({ isOpen, onClose, title, children }) {
   if (!isOpen) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-      {/* Backdrop - covers entire screen including navbar */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn mx-4 my-8 max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="relative bg-white rounded-2xl w-full max-w-md shadow-xl animate-fadeIn mx-4 my-8 max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
           <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
           <button
@@ -177,6 +176,7 @@ function Modal({ isOpen, onClose, title, children }) {
 
 // User Form Component
 function UserForm({ user, onSubmit, onCancel, loading }) {
+  const toast = useToast()
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -217,13 +217,13 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
     e.preventDefault()
      // Name validation
   if (!/^[a-zA-Z\s]+$/.test(formData.name)) {
-    alert('Name should contain only letters')
+    toast.error('Name should contain only letters')
     return
   }
 
   // Phone validation (optional but recommended)
   if (formData.phone && !/^\d{10}$/.test(formData.phone)) {
-    alert('Phone must be 10 digits')
+    toast.error('Phone must be 10 digits')
     return
   }
 
@@ -436,6 +436,7 @@ export default function SalesUsers() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
+  const toast = useToast()
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -505,14 +506,15 @@ export default function SalesUsers() {
     try {
       const response = await createSalesUser(data)
       if (response.success) {
+        toast.success('User created successfully')
         fetchUsers(currentPage)
         setShowModal(false)
         setSelectedUser(null)
       } else {
-        alert(response.message || 'Failed to create user')
+        toast.error(response.message || 'Failed to create user')
       }
     } catch (err) {
-      alert('Failed to create user')
+      toast.error('Failed to create user')
     } finally {
       setFormLoading(false)
     }
@@ -524,16 +526,17 @@ export default function SalesUsers() {
     try {
       const response = await updateSalesUser(selectedUser._id, data)
       if (response.success) {
+        toast.success('User updated successfully')
         setUsers((prev) =>
           prev.map((u) => (u._id === selectedUser._id ? response.data : u))
         )
         setShowModal(false)
         setSelectedUser(null)
       } else {
-        alert(response.message || 'Failed to update user')
+        toast.error(response.message || 'Failed to update user')
       }
     } catch (err) {
-      alert('Failed to update user')
+      toast.error('Failed to update user')
     } finally {
       setFormLoading(false)
     }
@@ -545,6 +548,7 @@ export default function SalesUsers() {
     try {
       const response = await deleteSalesUser(selectedUser._id)
       if (response.success) {
+        toast.success('User deleted successfully')
         if (users.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1)
           fetchUsers(currentPage - 1)
@@ -554,10 +558,10 @@ export default function SalesUsers() {
         setShowDeleteModal(false)
         setSelectedUser(null)
       } else {
-        alert(response.message || 'Failed to delete user')
+        toast.error(response.message || 'Failed to delete user')
       }
     } catch (err) {
-      alert('Failed to delete user')
+      toast.error('Failed to delete user')
     } finally {
       setFormLoading(false)
     }
@@ -568,6 +572,7 @@ export default function SalesUsers() {
     try {
       const response = await toggleUserStatus(user._id)
       if (response.success) {
+        toast.success('User status updated successfully')
         setUsers((prev) =>
           prev.map((u) =>
             u._id === user._id ? { ...u, isActive: !u.isActive } : u
@@ -575,7 +580,7 @@ export default function SalesUsers() {
         )
       }
     } catch (err) {
-      alert('Failed to toggle user status')
+      toast.error('Failed to toggle user status')
     }
   }
 
