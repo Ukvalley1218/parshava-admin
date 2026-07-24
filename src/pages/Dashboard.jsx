@@ -66,9 +66,9 @@ function RecentActivityCard({ title, items, type, loading }) {
             >
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  type === 'inquiries' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'
+                  type === 'quotations' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'
                 }`}>
-                  {type === 'inquiries' ? (
+                  {type === 'quotations' ? (
                     <FileText className="w-5 h-5" />
                   ) : (
                     <ShoppingBag className="w-5 h-5" />
@@ -76,7 +76,7 @@ function RecentActivityCard({ title, items, type, loading }) {
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">
-                    {item.customerDetails?.name || item.customer?.name || 'Unknown'}
+                    {item.customerDetails?.firmName || item.customerDetails?.name || item.customer?.firmName || item.customer?.name || 'Unknown'}
                   </p>
                   <p className="text-sm text-gray-500">
                     {item.items?.length || 0} items • ₹{(item.grandTotal || 0).toLocaleString('en-IN')}
@@ -236,7 +236,7 @@ export default function Dashboard() {
         <RecentActivityCard
           title="Recent Quotations"
           items={recentInquiries}
-          type="inquiries"
+          type="quotations"
           loading={loading}
         />
         <RecentActivityCard
@@ -266,7 +266,7 @@ export default function Dashboard() {
             <span className="text-sm font-medium text-gray-700">Add Customer</span>
           </a>
           <a
-            href="/admin/inquiries"
+            href="/admin/quotations"
             className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
           >
             <FileText className="w-6 h-6 text-amber-600" />

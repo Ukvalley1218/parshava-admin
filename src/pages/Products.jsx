@@ -56,6 +56,7 @@ function Modal({ isOpen, onClose, title, children, size = 'md' }) {
 function ColumnVisibilityPopup({ visibleColumns, onToggle, onClose }) {
   const allColumns = [
     // { key: 'status', label: 'Status', group: 'Basic' },
+    { key: 'productId', label: 'Product ID', group: 'Basic' },
     { key: 'stock', label: 'Stock', group: 'Basic' },
     { key: 'mrp', label: 'MRP', group: 'Prices' },
     { key: 'mop', label: 'MOP', group: 'Prices' },
@@ -2569,6 +2570,7 @@ export default function Products() {
   // Column visibility state - all columns visible by default
   const [showColumnPopup, setShowColumnPopup] = useState(false)
   const [visibleColumns, setVisibleColumns] = useState([
+    'productId',
     'stock', 'mrp', 'mop', 'base',
     'd1', 'd2', 'd3', 'd4', 'd5', 'nlc',
     'purchase', 'marketSI', 'marketReseller',
@@ -3546,6 +3548,7 @@ export default function Products() {
           <table className="w-full border-collapse" style={{ minWidth: '1800px' }}>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
+                {visibleColumns.includes('productId') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '90px' }}>Product ID</th>}
                 <th className="text-left px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '150px' }}>Product</th>
                 {/* {visibleColumns.includes('status') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Status</th>} */}
                 {visibleColumns.includes('stock') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Stock</th>}
@@ -3571,9 +3574,10 @@ export default function Products() {
               </tr>
               {/* Bulk Update Row */}
               <tr className="bg-yellow-50 border-b border-yellow-100">
+                {visibleColumns.includes('productId') && <th></th>}
                 <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 whitespace-nowrap">
                   <span className="text-yellow-700">Bulk ({pagination.total})</span>
-                 
+
                 </th>
                 {visibleColumns.includes('stock') && <th></th>}
                 {visibleColumns.includes('mrp') && <th></th>}
@@ -3759,6 +3763,13 @@ export default function Products() {
 
                   return (
                     <tr key={product._id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                      {/* Product ID (AccountGST) */}
+                      {visibleColumns.includes('productId') && (
+                        <td className="px-2 py-2 text-center">
+                          <span className="text-xs text-gray-600 font-mono">{product.accountgstProductId || '-'}</span>
+                        </td>
+                      )}
+
                       {/* Product Name */}
                       <td
                         className="px-3 py-2 bg-white cursor-pointer hover:bg-blue-50 transition-colors"
