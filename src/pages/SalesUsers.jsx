@@ -201,8 +201,8 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
     setFormData((prev) => ({
       ...prev,
       role: value,
-      // Clear assigned brands if role is admin/superadmin (they see all)
-      assignedBrands: (value === 'admin' || value === 'superadmin') ? [] : prev.assignedBrands,
+      // Clear assigned brands if role is not product_manager (only product_manager needs brands)
+      assignedBrands: value !== 'product_manager' ? [] : prev.assignedBrands,
     }))
   }
 
@@ -257,8 +257,8 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
       return
     }
 
-    // Assigned brands validation for product_manager/account_manager
-    if ((formData.role === 'product_manager' || formData.role === 'account_manager') && formData.assignedBrands.length === 0) {
+    // Assigned brands validation for product_manager only
+    if (formData.role === 'product_manager' && formData.assignedBrands.length === 0) {
       toast.error('Please assign at least one brand for this role')
       return
     }
@@ -367,15 +367,15 @@ function UserForm({ user, onSubmit, onCancel, loading }) {
           <option value="account_manager">Account Manager</option>
           <option value="admin">Admin</option>
         </select>
-        {(formData.role === 'product_manager' || formData.role === 'account_manager') && (
+        {formData.role === 'product_manager' && (
           <p className="text-xs text-gray-500 mt-1">
             Users with this role can only see products from their assigned brands.
           </p>
         )}
       </div>
 
-      {/* Assigned Brands - Show for product_manager and account_manager */}
-      {(formData.role === 'product_manager' || formData.role === 'account_manager') && (
+      {/* Assigned Brands - Show for product_manager only */}
+      {formData.role === 'product_manager' && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Assigned Brands *
@@ -685,13 +685,13 @@ export default function SalesUsers() {
           <table className="w-full min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">User</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Email</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Phone</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Role</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Created</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">User</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Email</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Phone</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Role</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Created</th>
+                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -741,7 +741,7 @@ export default function SalesUsers() {
                             ? 'Account Mgr'
                             : 'Sales'}
                         </span>
-                        {(user.role === 'product_manager' || user.role === 'account_manager') && (
+                        {user.role === 'product_manager' && (
                           <span className="text-xs text-gray-500">
                             {user.assignedBrands?.length || 0} brand{(user.assignedBrands?.length || 0) !== 1 ? 's' : ''}
                           </span>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Search, Plus, Edit2, Trash2, Loader, AlertCircle, FolderTree, ChevronDown, ChevronUp, Tag } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, Loader, AlertCircle, FolderTree, ChevronDown, ChevronUp, Tag,X } from 'lucide-react'
 import { getCategories, createCategory, updateCategory, deleteCategory, getBrands } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 import Modal from '../components/Modal'
@@ -33,10 +33,17 @@ function CategoryForm({ category, onSubmit, onCancel, loading, brands }) {
   const openDropdown = () => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect()
+      const viewportWidth = window.innerWidth
+      const dropdownWidth = Math.min(rect.width, viewportWidth - 32)
+      // Prevent dropdown from overflowing the right edge of the viewport
+      let left = rect.left
+      if (left + dropdownWidth > viewportWidth - 16) {
+        left = viewportWidth - dropdownWidth - 16
+      }
       setDropdownPos({
         top: rect.bottom + 4,
-        left: rect.left,
-        width: rect.width,
+        left: Math.max(16, left),
+        width: dropdownWidth,
       })
     }
     setShowBrandsDropdown(!showBrandsDropdown)
@@ -279,7 +286,8 @@ export default function Categories() {
         toast.error(response.message || 'Failed to create category')
       }
     } catch (err) {
-      toast.error('Failed to create category')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to create category')
     } finally {
       setFormLoading(false)
     }
@@ -298,7 +306,8 @@ export default function Categories() {
         toast.error(response.message || 'Failed to update category')
       }
     } catch (err) {
-      toast.error('Failed to update category')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to update category')
     } finally {
       setFormLoading(false)
     }

@@ -375,7 +375,7 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
       </div>
 
       {/* Name Fields */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             First Name <span className="text-red-500">*</span>
@@ -562,7 +562,7 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
       </div>
 
       {/* Landmark & City */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Landmark</label>
           <input
@@ -700,7 +700,7 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
       </div>
 
       {/* Aadhar & PAN Card Uploads */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Card</label>
           <div className="flex items-center gap-2">
@@ -778,8 +778,8 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
         />
       </div>
 
-      {/* Primary Contact Checkbox */}
-      <div className="flex flex-wrap gap-4">
+      {/* Primary Contact Checkbox & Status */}
+      <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
@@ -790,6 +790,20 @@ function ContactForm({ contact, onSubmit, onCancel, loading, customers, designat
           />
           <span className="text-sm text-gray-700">Set as Primary Contact</span>
         </label>
+
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">Status:</label>
+          <button
+            type="button"
+            onClick={() => setFormData(prev => ({ ...prev, status: prev.status === 'active' ? 'inactive' : 'active' }))}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#1F3A5F]/20 ${formData.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.status === 'active' ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+          <span className={`text-sm font-medium ${formData.status === 'active' ? 'text-green-600' : 'text-gray-500'}`}>
+            {formData.status === 'active' ? 'Active' : 'Inactive'}
+          </span>
+        </div>
       </div>
 
       {/* Actions */}
@@ -1293,11 +1307,11 @@ export default function Contacts() {
           <table className="w-full min-w-[700px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Contact</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Account</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Mobile</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Created</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Contact</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Account</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Mobile</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Created</th>
                 <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
               </tr>
             </thead>

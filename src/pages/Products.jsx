@@ -162,7 +162,7 @@ function ProductViewModal({ product, onClose }) {
         {/* Basic Info */}
         <div className="space-y-3 sm:space-y-4">
           <h4 className="font-semibold text-gray-800 border-b pb-2 text-sm sm:text-base">Basic Information</h4>
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
             <div><span className="text-gray-500">Name:</span><p className="font-medium truncate">{product.name}</p></div>
             <div><span className="text-gray-500">Part Number:</span><p className="font-medium">{product.partNumber || '-'}</p></div>
             <div><span className="text-gray-500">Brand:</span><p className="font-medium">{product.brand || '-'}</p></div>
@@ -226,7 +226,7 @@ function ProductViewModal({ product, onClose }) {
 
           {/* NLC & Profit */}
           <div className="bg-blue-50 p-2 sm:p-3 rounded-lg">
-            <div className="grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
               <div>
                 <span className="text-gray-500">NLC (After GST & Discounts):</span>
                 <p className="font-bold text-blue-700 text-sm sm:text-lg">{formatPrice(product.nlc)}</p>
@@ -473,7 +473,7 @@ function FormGstInput({ formData, setFormData, baseField, gstRate, isBase = fals
         placeholder="+GST"
       />
       <div className="text-[9px] text-gray-500 text-center">+ {gstRate}% GST</div>
-      {isBase && <div className="text-[9px] text-blue-600 font-medium text-center">Base</div>}
+      
     </div>
   )
 }
@@ -1561,7 +1561,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
             Base Price (excl. GST)
           </h5>
           <div className="overflow-x-auto -mx-3 sm:mx-0">
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 min-w-[400px] px-3 sm:px-0">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 px-3 sm:px-0">
               <div>
                 <label className="block text-xs text-gray-600 mb-1">Base Type</label>
                 <select
@@ -1671,7 +1671,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
             Discounts (Applied Sequentially)
           </h5>
           <div className="overflow-x-auto -mx-3 sm:mx-0">
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 min-w-[500px] px-3 sm:px-0">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 px-3 sm:px-0">
               {[
                 { field: 'dis1', label: 'Disc 1' },
                 { field: 'dis2', label: 'Disc 2' },
@@ -1772,7 +1772,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
           <div className="mb-4">
             <h6 className="text-xs font-semibold text-gray-600 mb-2">System Integrator</h6>
             <div className="overflow-x-auto -mx-3 sm:mx-0">
-              <div className="grid grid-cols-4 gap-2 sm:gap-3 min-w-[400px] px-3 sm:px-0">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 px-3 sm:px-0">
                 {/* Market Price (SI) - Input */}
                 <div className="bg-yellow-50 rounded-lg p-2 sm:p-3 text-center">
                   <label className="block text-xs text-gray-500 mb-1">Market Price (SI)</label>
@@ -1893,7 +1893,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
           <div>
             <h6 className="text-xs font-semibold text-gray-600 mb-2">Reseller</h6>
             <div className="overflow-x-auto -mx-3 sm:mx-0">
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 min-w-[300px] px-3 sm:px-0">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 px-3 sm:px-0">
                 {/* Market Price (Reseller) - Input */}
                 <div className="bg-yellow-50 rounded-lg p-2 sm:p-3 text-center">
                   <label className="block text-xs text-gray-500 mb-1">Market Price (Reseller)</label>
@@ -2123,9 +2123,7 @@ function InlineGstPrice({ product, baseField, gstRate, onSave, savingFields, isB
         step="any"
         placeholder="+GST"
       />
-      {isBase && (
-        <div className="text-[9px] text-blue-600 font-medium text-center">Base</div>
-      )}
+      
     </div>
   )
 }
@@ -2222,7 +2220,7 @@ function InlinePriceValue({ product, field, value, onSave, savingFields }) {
 }
 
 // Inline Discount Component - Value + Type (e.g., 10% or ₹100)
-function InlineDiscount({ product, disIndex, field, value, type: typeVal, onSave, onSaveType, savingFields }) {
+function InlineDiscount({ product, disIndex, field, value, type: typeVal, onSave, onSaveType, savingFields, priceAfter, priceAfterWithGst }) {
   // Determine field name - use disIndex for discount fields, otherwise use field prop
   const valueField = disIndex ? `dis${disIndex}` : field
   const typeField = disIndex ? `dis${disIndex}Type` : `${field}Type`
@@ -2284,32 +2282,62 @@ function InlineDiscount({ product, disIndex, field, value, type: typeVal, onSave
     }
   }
 
+  const formatSmallPrice = (price) => {
+    if (price === null || price === undefined) return null
+    const num = Number(price)
+    if (isNaN(num)) return null
+    return num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+  }
+
   return (
-    <div className="flex items-center gap-1">
-      <input
-        type="number"
-        value={localValue}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        className="w-14 px-2 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-        disabled={isSaving}
-        min="0"
-        step="any"
-      />
-      <button
-        type="button"
-        onClick={handleToggleType}
-        className={`w-10 h-6 text-xs font-medium border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-          currentType === 'percent'
-            ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
-            : 'bg-green-50 text-green-700 border-green-300 hover:bg-green-100'
-        } ${isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-        disabled={isSaving}
-        title={`Click to change to ${otherLabel}`}
-      >
-        {typeLabel}
-      </button>
+    <div className="flex flex-col items-center gap-0.5">
+      <div className="flex items-center gap-1 w-full">
+        <input
+          type="number"
+          value={localValue}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          className="w-12 px-2 py-1 text-xs text-center border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          disabled={isSaving}
+          min="0"
+          step="any"
+        />
+        {priceAfter != null && (
+          <input
+            type="text"
+            value={`₹${formatSmallPrice(priceAfter)}`}
+            readOnly
+            className="w-14 px-1 py-1 text-[10px] text-center border border-blue-200 rounded bg-blue-50 cursor-default focus:outline-none"
+            title="Price after discount (without GST)"
+          />
+        )}
+       
+      </div>
+      <div className="flex items-center gap-1 w-full">
+         <button
+          type="button"
+          onClick={handleToggleType}
+          className={`w-12 h-6 text-xs font-medium border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+            currentType === 'percent'
+              ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+              : 'bg-green-50 text-green-700 border-green-300 hover:bg-green-100'
+          } ${isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          disabled={isSaving}
+          title={`Click to change to ${otherLabel}`}
+        >
+          {typeLabel}
+        </button>
+        {priceAfterWithGst != null && (
+          <input
+            type="text"
+            value={`₹${formatSmallPrice(priceAfterWithGst)}`}
+            readOnly
+            className="w-14 px-1 py-1 text-[9px] text-center border border-green-200 rounded bg-green-50 text-green-700 cursor-default focus:outline-none"
+            title="Price after discount (including GST)"
+          />
+        )}
+      </div>
     </div>
   )
 }
@@ -2547,6 +2575,7 @@ export default function Products() {
   const [subcategoryFilterId, setSubcategoryFilterId] = useState('')
   const [seriesFilter, setSeriesFilter] = useState('')
   const [seriesFilterId, setSeriesFilterId] = useState('')
+  const [showBulkEdit, setShowBulkEdit] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -2558,7 +2587,7 @@ export default function Products() {
   const [pagination, setPagination] = useState({
     total: 0,
     totalPages: 0,
-    limit: 10,
+    limit: 50,
   })
 
   // Inline editing state - for individual field auto-save
@@ -2591,6 +2620,15 @@ export default function Products() {
     opT1: { value: '', type: 'percent' },
   })
   const [bulkUpdating, setBulkUpdating] = useState(false)
+
+  // Bulk edit values for the horizontal bulk edit row (Brand, Category, Subcategory, Series, GST Rate)
+  const [bulkEditValues, setBulkEditValues] = useState({
+    brand: '',
+    category: '',
+    subcategory: '',
+    series: '',
+    gstRate: '',
+  })
 
   // Close column popup when clicking outside
   useEffect(() => {
@@ -2704,7 +2742,7 @@ export default function Products() {
     }
   }, [])
 
-  const fetchProducts = useCallback(async (page = 1, limit = 10) => {
+  const fetchProducts = useCallback(async (page = 1, limit = 50) => {
     setLoading(true)
     setError(null)
     try {
@@ -2722,7 +2760,7 @@ export default function Products() {
           setPagination({
             total: response.pagination.totalItems || response.pagination.total || 0,
             totalPages: response.pagination.totalPages || 1,
-            limit: response.pagination.itemsPerPage || response.pagination.limit || 10,
+            limit: response.pagination.itemsPerPage || response.pagination.limit || 50,
           })
         } else {
           setProducts(response.data || response.products || [])
@@ -2754,6 +2792,28 @@ export default function Products() {
     fetchProducts(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Load all subcategories and series when bulk edit is toggled on
+  useEffect(() => {
+    if (showBulkEdit && subcategories.length === 0) {
+      getSubcategories({ limit: 1000 })
+        .then(res => {
+          if (res.success !== false) {
+            setSubcategories(res.data || [])
+          }
+        })
+        .catch(() => {})
+    }
+    if (showBulkEdit && series.length === 0) {
+      getSeries({ limit: 1000 })
+        .then(res => {
+          if (res.success !== false) {
+            setSeries(res.data || [])
+          }
+        })
+        .catch(() => {})
+    }
+  }, [showBulkEdit])
 
   // Fetch products when search or filters change
   useEffect(() => {
@@ -3204,6 +3264,130 @@ export default function Products() {
     }
   }
 
+  // Inline save for bulk edit dropdowns (Brand, Category, Subcategory, Series)
+  const handleInlineSave = async (product, field, newValue) => {
+    const fieldKey = `${product._id}-${field}`
+    if (savingFields[fieldKey]) return
+
+    setSavingFields(prev => ({ ...prev, [fieldKey]: true }))
+
+    try {
+      const updateData = {}
+      if (field === 'brand') {
+        updateData.brand = newValue
+        // Also update brandId if we can find it
+        const brandObj = brands.find(b => b.name === newValue)
+        if (brandObj) updateData.brandId = brandObj._id
+      } else if (field === 'category') {
+        updateData.category = newValue
+        // Find the category object to get its _id
+        const catObj = allCategories.find(c => c.name === newValue)
+        if (catObj) {
+          updateData.categoryId = catObj._id
+        } else {
+          // Try from the filtered categories
+          const filteredCat = categories.find(c => c.name === newValue)
+          if (filteredCat) updateData.categoryId = filteredCat._id
+        }
+      } else if (field === 'subcategory') {
+        updateData.subcategory = newValue
+        // Find subcategory object to get its _id
+        const subObj = subcategories.find(s => s.name === newValue)
+        if (subObj) updateData.subcategoryId = subObj._id
+      } else if (field === 'series') {
+        updateData.series = newValue
+        // Find series object to get its _id
+        const serObj = series.find(s => s.name === newValue)
+        if (serObj) updateData.seriesId = serObj._id
+      } else if (field === 'gstRate') {
+        updateData.gstRate = parseFloat(newValue) || 0
+      } else {
+        updateData[field] = newValue
+      }
+
+      const response = await updateAdminProduct(product._id, updateData)
+      if (response.success !== false && response.data) {
+        // Replace the entire product with the response data
+        setProducts(prev => prev.map(p => p._id === product._id ? response.data : p))
+        toast.success('Updated successfully')
+      } else {
+        toast.error(response.message || 'Failed to update')
+      }
+    } catch (err) {
+      console.error('Failed to save:', err)
+      toast.error('Failed to update')
+    } finally {
+      setSavingFields(prev => {
+        const next = { ...prev }
+        delete next[fieldKey]
+        return next
+      })
+    }
+  }
+
+  // Bulk edit apply - update only products on the current page
+  const handleBulkEditApply = async (field) => {
+    const value = bulkEditValues[field]
+    if (!value) {
+      toast.error('Please select a value to apply')
+      return
+    }
+
+    // Collect IDs of all products currently visible on this page
+    const productIds = products.map(p => p._id)
+    if (productIds.length === 0) {
+      toast.error('No products visible to update')
+      return
+    }
+
+    const updates = {}
+    if (field === 'brand') {
+      updates.brand = value
+      const brandObj = brands.find(b => b.name === value)
+      if (brandObj) updates.brandId = brandObj._id
+    } else if (field === 'category') {
+      updates.category = value
+      const catObj = allCategories.find(c => c.name === value)
+      if (catObj) updates.categoryId = catObj._id
+    } else if (field === 'subcategory') {
+      updates.subcategory = value
+      const subObj = subcategories.find(s => s.name === value)
+      if (subObj) updates.subcategoryId = subObj._id
+    } else if (field === 'series') {
+      updates.series = value
+      const serObj = series.find(s => s.name === value)
+      if (serObj) updates.seriesId = serObj._id
+    } else if (field === 'gstRate') {
+      updates.gstRate = parseFloat(value) || 0
+    }
+
+    if (Object.keys(updates).length === 0) return
+
+    setBulkUpdating(true)
+    try {
+      const response = await bulkUpdateProducts(null, updates, productIds)
+      if (response.success !== false) {
+        const modified = response.modified || response.data?.modified || 0
+        if (modified > 0) {
+          toast.success(`${modified} product(s) updated successfully`)
+        } else {
+          toast.info('No products were updated (values may already be set)')
+        }
+        // Reset the bulk edit value for this field
+        setBulkEditValues(prev => ({ ...prev, [field]: '' }))
+        // Refresh products
+        fetchProducts(currentPage)
+      } else {
+        toast.error(response.message || 'Failed to update products')
+      }
+    } catch (err) {
+      console.error('Bulk edit apply error:', err)
+      toast.error(err?.message || 'Failed to update products')
+    } finally {
+      setBulkUpdating(false)
+    }
+  }
+
   // Auto-save field on blur
   const saveFieldOnBlur = async (product) => {
     if (!editingField || savingField) return
@@ -3518,6 +3702,132 @@ export default function Products() {
         </div>
       </div>
 
+      {/* Bulk Edit Row - Horizontal apply bar */}
+      {showBulkEdit && (
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-indigo-200 shadow-sm overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-indigo-100">
+            <p className="text-xs text-gray-500">
+              Apply changes to the {products.length} product(s) on this page. Select a value and click Apply to update all visible products.
+            </p>
+          </div>
+          <div className="px-4 py-3 flex items-start gap-3 flex-wrap">
+            {/* Brand */}
+            <div className="flex items-center gap-2">
+              <select
+                value={bulkEditValues.brand}
+                onChange={(e) => setBulkEditValues(prev => ({ ...prev, brand: e.target.value }))}
+                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[160px]"
+              >
+                <option value="">Brand</option>
+                {brands.map(b => (
+                  <option key={b._id} value={b.name}>{b.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => handleBulkEditApply('brand')}
+                disabled={!bulkEditValues.brand || bulkUpdating}
+                className="px-3 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                Apply
+              </button>
+            </div>
+
+            {/* Category */}
+            <div className="flex items-center gap-2">
+              <select
+                value={bulkEditValues.category}
+                onChange={(e) => setBulkEditValues(prev => ({ ...prev, category: e.target.value }))}
+                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[160px]"
+              >
+                <option value="">Category</option>
+                {allCategories.map(c => (
+                  <option key={c._id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => handleBulkEditApply('category')}
+                disabled={!bulkEditValues.category || bulkUpdating}
+                className="px-3 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                Apply
+              </button>
+            </div>
+
+            {/* Subcategory */}
+            <div className="flex items-center gap-2">
+              <select
+                value={bulkEditValues.subcategory}
+                onChange={(e) => setBulkEditValues(prev => ({ ...prev, subcategory: e.target.value }))}
+                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[160px]"
+              >
+                <option value="">Subcategory</option>
+                {subcategories.map(s => (
+                  <option key={s._id} value={s.name}>{s.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => handleBulkEditApply('subcategory')}
+                disabled={!bulkEditValues.subcategory || bulkUpdating}
+                className="px-3 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                Apply
+              </button>
+            </div>
+
+            {/* Series */}
+            <div className="flex items-center gap-2">
+              <select
+                value={bulkEditValues.series}
+                onChange={(e) => setBulkEditValues(prev => ({ ...prev, series: e.target.value }))}
+                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[160px]"
+              >
+                <option value="">Series</option>
+                {series.map(s => (
+                  <option key={s._id} value={s.name}>{s.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => handleBulkEditApply('series')}
+                disabled={!bulkEditValues.series || bulkUpdating}
+                className="px-3 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                Apply
+              </button>
+            </div>
+
+            {/* GST Rate */}
+            <div className="flex items-center gap-2">
+              <select
+                value={bulkEditValues.gstRate}
+                onChange={(e) => setBulkEditValues(prev => ({ ...prev, gstRate: e.target.value }))}
+                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[120px]"
+              >
+                <option value="">GST Rate</option>
+                <option value="0">0%</option>
+                <option value="5">5%</option>
+                <option value="12">12%</option>
+                <option value="18">18%</option>
+                <option value="28">28%</option>
+              </select>
+              <button
+                onClick={() => handleBulkEditApply('gstRate')}
+                disabled={bulkEditValues.gstRate === '' || bulkUpdating}
+                className="px-3 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                Apply
+              </button>
+            </div>
+
+            {bulkUpdating && (
+              <div className="flex items-center gap-2">
+                <Loader className="w-4 h-4 animate-spin text-indigo-600" />
+                <span className="text-sm text-indigo-600">Updating products...</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Products Table */}
       <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {/* Table Header with Actions */}
@@ -3526,50 +3836,71 @@ export default function Products() {
             <span className="text-xs sm:text-sm font-medium text-gray-700">Pricing Table</span>
             <span className="hidden sm:inline text-xs text-gray-500">(Edit values directly - auto-saves)</span>
           </div>
-          <div className="relative" ref={columnPopupRef}>
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowColumnPopup(!showColumnPopup)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+              onClick={() => setShowBulkEdit(!showBulkEdit)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                showBulkEdit
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-600'
+              }`}
             >
-              <Columns className="w-4 h-4" />
-              <span className="hidden sm:inline">Columns</span>
+              {showBulkEdit ? 'Hide Bulk Edit' : 'Bulk Edit'}
             </button>
-            {showColumnPopup && (
-              <ColumnVisibilityPopup
-                visibleColumns={visibleColumns}
-                onToggle={toggleColumnVisibility}
-                onClose={() => setShowColumnPopup(false)}
-              />
-            )}
+            <div className="relative" ref={columnPopupRef}>
+              <button
+                onClick={() => setShowColumnPopup(!showColumnPopup)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+              >
+                <Columns className="w-4 h-4" />
+                <span className="hidden sm:inline">Columns</span>
+              </button>
+              {showColumnPopup && (
+                <ColumnVisibilityPopup
+                  visibleColumns={visibleColumns}
+                  onToggle={toggleColumnVisibility}
+                  onClose={() => setShowColumnPopup(false)}
+                />
+              )}
+            </div>
           </div>
         </div>
 
         <div className="overflow-x-auto overflow-y-visible -webkit-overflow-scrolling-touch" style={{ touchAction: 'pan-x' }}>
-          <table className="w-full border-collapse" style={{ minWidth: '1800px' }}>
+          <table className="w-full border-collapse" style={{ minWidth: showBulkEdit ? '900px' : '1800px' }}>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 {visibleColumns.includes('productId') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '90px' }}>Product ID</th>}
                 <th className="text-left px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '150px' }}>Product</th>
                 {/* {visibleColumns.includes('status') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Status</th>} */}
                 {visibleColumns.includes('stock') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Stock</th>}
-                {visibleColumns.includes('mrp') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MRP</th>}
-                {visibleColumns.includes('mop') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MOP</th>}
-                {visibleColumns.includes('base') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Base</th>}
-                {visibleColumns.includes('d1') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D1</th>}
-                {visibleColumns.includes('d2') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D2</th>}
-                {visibleColumns.includes('d3') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D3</th>}
-                {visibleColumns.includes('d4') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D4</th>}
-                {visibleColumns.includes('d5') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '75px' }}>D5</th>}
-                {visibleColumns.includes('nlc') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-100" style={{ minWidth: '85px' }}>NLC</th>}
+                {!showBulkEdit && visibleColumns.includes('mrp') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MRP</th>}
+                {!showBulkEdit && visibleColumns.includes('mop') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>MOP</th>}
+                {!showBulkEdit && visibleColumns.includes('base') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '50px' }}>Base</th>}
+                {!showBulkEdit && visibleColumns.includes('d1') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '80px' }}>D1</th>}
+                {!showBulkEdit && visibleColumns.includes('d2') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '80px' }}>D2</th>}
+                {!showBulkEdit && visibleColumns.includes('d3') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '80px' }}>D3</th>}
+                {!showBulkEdit && visibleColumns.includes('d4') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '80px' }}>D4</th>}
+                {!showBulkEdit && visibleColumns.includes('d5') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-50" style={{ minWidth: '80px' }}>D5</th>}
+                {!showBulkEdit && visibleColumns.includes('nlc') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-blue-100" style={{ minWidth: '85px' }}>NLC</th>}
                 {/* {visibleColumns.includes('profit') && <th className="text-center px-1 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '75px' }}>Profit</th>} */}
-                {visibleColumns.includes('purchase') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Purchase</th>}
-                {visibleColumns.includes('marketSI') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>Mkt(SI)</th>}
-                {visibleColumns.includes('si1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>SI1</th>}
-                {visibleColumns.includes('si2') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>SI2</th>}
-                {visibleColumns.includes('c1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>C1</th>}
-                {visibleColumns.includes('marketReseller') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>Mkt(Reseller)</th>}
-                {visibleColumns.includes('t1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T1</th>}
-                {visibleColumns.includes('t2') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T2</th>}
+                {!showBulkEdit && visibleColumns.includes('purchase') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '85px' }}>Purchase</th>}
+                {!showBulkEdit && visibleColumns.includes('marketSI') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>Mkt(SI)</th>}
+                {!showBulkEdit && visibleColumns.includes('si1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>SI1</th>}
+                {!showBulkEdit && visibleColumns.includes('si2') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>SI2</th>}
+                {!showBulkEdit && visibleColumns.includes('c1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>C1</th>}
+                {!showBulkEdit && visibleColumns.includes('marketReseller') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>Mkt(Reseller)</th>}
+                {!showBulkEdit && visibleColumns.includes('t1') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T1</th>}
+                {!showBulkEdit && visibleColumns.includes('t2') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-green-50" style={{ minWidth: '85px' }}>T2</th>}
+                {showBulkEdit && (
+                  <>
+                    <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-indigo-50" style={{ minWidth: '120px' }}>Brand</th>
+                    <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-indigo-50" style={{ minWidth: '120px' }}>Category</th>
+                    <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-indigo-50" style={{ minWidth: '120px' }}>Subcategory</th>
+                    <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-indigo-50" style={{ minWidth: '120px' }}>Series</th>
+                    <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-indigo-50" style={{ minWidth: '90px' }}>GST %</th>
+                  </>
+                )}
                 <th className="text-center px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Actions</th>
               </tr>
               {/* Bulk Update Row */}
@@ -3580,10 +3911,10 @@ export default function Products() {
 
                 </th>
                 {visibleColumns.includes('stock') && <th></th>}
-                {visibleColumns.includes('mrp') && <th></th>}
-                {visibleColumns.includes('mop') && <th></th>}
-                {visibleColumns.includes('base') && <th></th>}
-                {visibleColumns.includes('d1') && (
+                {!showBulkEdit && visibleColumns.includes('mrp') && <th></th>}
+                {!showBulkEdit && visibleColumns.includes('mop') && <th></th>}
+                {!showBulkEdit && visibleColumns.includes('base') && <th></th>}
+                {!showBulkEdit && visibleColumns.includes('d1') && (
                   <th className="px-1 py-1 bg-blue-50">
                     <div className="flex items-center gap-1 justify-center">
                       <input
@@ -3606,7 +3937,7 @@ export default function Products() {
                     </div>
                   </th>
                 )}
-                {visibleColumns.includes('d2') && (
+                {!showBulkEdit && visibleColumns.includes('d2') && (
                   <th className="px-1 py-1 bg-blue-50">
                     <div className="flex items-center gap-1 justify-center">
                       <input
@@ -3629,7 +3960,7 @@ export default function Products() {
                     </div>
                   </th>
                 )}
-                {visibleColumns.includes('d3') && (
+                {!showBulkEdit && visibleColumns.includes('d3') && (
                   <th className="px-1 py-1 bg-blue-50">
                     <div className="flex items-center gap-1 justify-center">
                       <input
@@ -3652,7 +3983,7 @@ export default function Products() {
                     </div>
                   </th>
                 )}
-                {visibleColumns.includes('d4') && (
+                {!showBulkEdit && visibleColumns.includes('d4') && (
                   <th className="px-1 py-1 bg-blue-50">
                     <div className="flex items-center gap-1 justify-center">
                       <input
@@ -3675,7 +4006,7 @@ export default function Products() {
                     </div>
                   </th>
                 )}
-                {visibleColumns.includes('d5') && (
+                {!showBulkEdit && visibleColumns.includes('d5') && (
                   <th className="px-1 py-1 bg-blue-50">
                     <div className="flex items-center gap-1 justify-center">
                       <input
@@ -3698,10 +4029,10 @@ export default function Products() {
                     </div>
                   </th>
                 )}
-                {visibleColumns.includes('nlc') && <th></th>}
-                {visibleColumns.includes('purchase') && <th></th>}
-                {visibleColumns.includes('marketSI') && <th></th>}
-                {visibleColumns.includes('si1') && (
+                {!showBulkEdit && visibleColumns.includes('nlc') && <th></th>}
+                {!showBulkEdit && visibleColumns.includes('purchase') && <th></th>}
+                {!showBulkEdit && visibleColumns.includes('marketSI') && <th></th>}
+                {!showBulkEdit && visibleColumns.includes('si1') && (
                   <th className="px-2 py-1 bg-green-50">
                     <input
                       type="number"
@@ -3715,14 +4046,14 @@ export default function Products() {
                     <span className="text-[10px] text-gray-400 ml-0.5">%</span>
                   </th>
                 )}
-                {visibleColumns.includes('si2') && (
+                {!showBulkEdit && visibleColumns.includes('si2') && (
                   <th className="px-2 py-1 bg-green-50"></th>
                 )}
-                {visibleColumns.includes('c1') && (
+                {!showBulkEdit && visibleColumns.includes('c1') && (
                   <th className="px-2 py-1 bg-green-50"></th>
                 )}
-                {visibleColumns.includes('marketReseller') && <th></th>}
-                {visibleColumns.includes('t1') && (
+                {!showBulkEdit && visibleColumns.includes('marketReseller') && <th></th>}
+                {!showBulkEdit && visibleColumns.includes('t1') && (
                   <th className="px-2 py-1 bg-green-50">
                     <input
                       type="number"
@@ -3736,8 +4067,17 @@ export default function Products() {
                     <span className="text-[10px] text-gray-400 ml-0.5">%</span>
                   </th>
                 )}
-                {visibleColumns.includes('t2') && (
+                {!showBulkEdit && visibleColumns.includes('t2') && (
                   <th className="px-2 py-1 bg-green-50"></th>
+                )}
+                {showBulkEdit && (
+                  <>
+                    <th className="px-2 py-1 bg-indigo-50"></th>
+                    <th className="px-2 py-1 bg-indigo-50"></th>
+                    <th className="px-2 py-1 bg-indigo-50"></th>
+                    <th className="px-2 py-1 bg-indigo-50"></th>
+                    <th className="px-2 py-1 bg-indigo-50"></th>
+                  </>
                 )}
                 <th></th>
               </tr>
@@ -3745,14 +4085,14 @@ export default function Products() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 2} className="text-center py-12">
+                  <td colSpan={visibleColumns.length + 2 + (showBulkEdit ? 5 : 0)} className="text-center py-12">
                     <Loader className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
                     <p className="text-gray-500">Loading products...</p>
                   </td>
                 </tr>
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 2} className="text-center py-12">
+                  <td colSpan={visibleColumns.length + 2 + (showBulkEdit ? 5 : 0)} className="text-center py-12">
                     <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500">No products found</p>
                   </td>
@@ -3825,7 +4165,7 @@ export default function Products() {
                       )}
 
                       {/* MRP */}
-                      {visibleColumns.includes('mrp') && (
+                      {!showBulkEdit && visibleColumns.includes('mrp') && (
                         <td className="px-2 py-2 text-right">
                           <InlineInput
                             product={product}
@@ -3849,7 +4189,7 @@ export default function Products() {
                       )}
 
                       {/* MOP */}
-                      {visibleColumns.includes('mop') && (
+                      {!showBulkEdit && visibleColumns.includes('mop') && (
                         <td className="px-2 py-2 text-right">
                           <InlineInput
                             product={product}
@@ -3874,7 +4214,7 @@ export default function Products() {
                       )}
 
                       {/* Base Type */}
-                      {visibleColumns.includes('base') && (
+                      {!showBulkEdit && visibleColumns.includes('base') && (
                         <td className="px-2 py-2 text-center">
                           <InlineSelect
                             product={product}
@@ -3891,25 +4231,51 @@ export default function Products() {
                         </td>
                       )}
 
-                      {/* Discounts D1-D5 */}
-                      {[1, 2, 3, 4, 5].map(i => (
-                        visibleColumns.includes(`d${i}`) && (
-                          <td key={`dis${i}`} className="px-1 py-2 text-center bg-blue-50">
-                            <InlineDiscount
-                              product={product}
-                              disIndex={i}
-                              value={product[`dis${i}`] || 0}
-                              type={product[`dis${i}Type`] || 'percent'}
-                              onSave={saveFieldDirectly}
-                              onSaveType={saveTypeDirectly}
-                              savingFields={savingFields}
-                            />
-                          </td>
-                        )
-                      ))}
+                      {/* Discounts D1-D5 with price-after-discount display */}
+                      {!showBulkEdit && (() => {
+                        // Calculate running price after each discount (GST-inclusive, then derive without GST)
+                        const gstRate = parseFloat(product.gstRate) || 0
+                        let basePriceWithoutGst = 0
+                        if (product.basePriceType === 'mop') basePriceWithoutGst = parseFloat(product.mop) || 0
+                        else if (product.basePriceType === 'purchase') basePriceWithoutGst = parseFloat(product.purchasePrice) || 0
+                        else basePriceWithoutGst = parseFloat(product.marketPrice) || 0
+                        let runningPriceWithGst = basePriceWithoutGst * (1 + gstRate / 100)
+                        const priceAfterDiscount = [0] // without GST
+                        const priceAfterDiscountWithGst = [runningPriceWithGst] // with GST, index 0 = before any discount
+                        for (let d = 1; d <= 5; d++) {
+                          const discountVal = parseFloat(product[`dis${d}`]) || 0
+                          const discountType = product[`dis${d}Type`] || 'percent'
+                          if (discountType === 'percent') {
+                            runningPriceWithGst = runningPriceWithGst - (runningPriceWithGst * discountVal / 100)
+                          } else {
+                            runningPriceWithGst = runningPriceWithGst - discountVal
+                          }
+                          runningPriceWithGst = Math.max(0, Math.round(runningPriceWithGst * 100) / 100)
+                          priceAfterDiscountWithGst.push(runningPriceWithGst)
+                          // Without GST = GST-inclusive price / (1 + gstRate/100)
+                          priceAfterDiscount.push(gstRate > 0 ? Math.round((runningPriceWithGst / (1 + gstRate / 100)) * 100) / 100 : runningPriceWithGst)
+                        }
+                        return [1, 2, 3, 4, 5].map(i => (
+                          visibleColumns.includes(`d${i}`) && (
+                            <td key={`dis${i}`} className="px-1 py-2 text-center bg-blue-50">
+                              <InlineDiscount
+                                product={product}
+                                disIndex={i}
+                                value={product[`dis${i}`] || 0}
+                                type={product[`dis${i}Type`] || 'percent'}
+                                onSave={saveFieldDirectly}
+                                onSaveType={saveTypeDirectly}
+                                savingFields={savingFields}
+                                priceAfter={priceAfterDiscount[i]}
+                                priceAfterWithGst={gstRate > 0 ? priceAfterDiscountWithGst[i] : null}
+                              />
+                            </td>
+                          )
+                        ))
+                      })()}
 
                       {/* NLC - Display Only */}
-                      {visibleColumns.includes('nlc') && (
+                      {!showBulkEdit && visibleColumns.includes('nlc') && (
                         <td className="px-2 py-2 text-right bg-blue-100">
                           <div className="text-xs font-semibold text-blue-700">{formatPrice(product.nlc)}</div>
                           {product.gstRate > 0 && product.nlc > 0 && (
@@ -3920,7 +4286,7 @@ export default function Products() {
                                 readOnly
                                 className="w-20 px-2 py-1 text-xs text-right border border-blue-200 rounded bg-blue-50 cursor-default focus:outline-none"
                               />
-                              <div className="text-[9px] text-blue-500 whitespace-nowrap">excl. GST</div>
+                              
                             </div>
                           )}
                         </td>
@@ -3943,7 +4309,7 @@ export default function Products() {
                       )} */}
 
                       {/* Purchase */}
-                      {visibleColumns.includes('purchase') && (
+                      {!showBulkEdit && visibleColumns.includes('purchase') && (
                         <td className="px-2 py-2 text-right">
                           <InlineInput
                             product={product}
@@ -3968,7 +4334,7 @@ export default function Products() {
                       )}
 
                       {/* Market Price (SI) */}
-                      {visibleColumns.includes('marketSI') && (
+                      {!showBulkEdit && visibleColumns.includes('marketSI') && (
                         <td className="px-2 py-2 text-right bg-green-50">
                           <InlineInput
                             product={product}
@@ -3990,7 +4356,7 @@ export default function Products() {
                           )}
                         </td>
                       )}
-                      {visibleColumns.includes('si1') && (
+                      {!showBulkEdit && visibleColumns.includes('si1') && (
                         <td className="px-2 py-2 text-right bg-green-50">
                           <InlineInput
                             product={product}
@@ -4009,12 +4375,12 @@ export default function Products() {
                                 readOnly
                                 className="w-20 px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-100 cursor-default focus:outline-none"
                               />
-                              <div className="text-[9px] text-green-600 whitespace-nowrap">+ {product.gstRate}% GST</div>
+                            
                             </div>
                           )}
                         </td>
                       )}
-                      {visibleColumns.includes('si2') && (
+                      {!showBulkEdit && visibleColumns.includes('si2') && (
                         <td className="px-2 py-2 text-right bg-green-50">
                           <span className="text-xs font-medium text-blue-600">{formatPrice(product.si2 || product.opSi2)}</span>
                           {product.gstRate > 0 && (product.si2 || product.opSi2) > 0 && (
@@ -4025,12 +4391,12 @@ export default function Products() {
                                 readOnly
                                 className="w-20 px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-100 cursor-default focus:outline-none"
                               />
-                              <div className="text-[9px] text-green-600 whitespace-nowrap">+ {product.gstRate}% GST</div>
+                        
                             </div>
                           )}
                         </td>
                       )}
-                      {visibleColumns.includes('c1') && (
+                      {!showBulkEdit && visibleColumns.includes('c1') && (
                         <td className="px-2 py-2 text-right bg-green-50">
                           <InlineInput
                             product={product}
@@ -4049,14 +4415,14 @@ export default function Products() {
                                 readOnly
                                 className="w-20 px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-100 cursor-default focus:outline-none"
                               />
-                              <div className="text-[9px] text-green-600 whitespace-nowrap">+ {product.gstRate}% GST</div>
+                             
                             </div>
                           )}
                         </td>
                       )}
 
                       {/* Market Price (Reseller) */}
-                      {visibleColumns.includes('marketReseller') && (
+                      {!showBulkEdit && visibleColumns.includes('marketReseller') && (
                         <td className="px-2 py-2 text-right bg-green-50">
                           <InlineInput
                             product={product}
@@ -4078,7 +4444,7 @@ export default function Products() {
                           )}
                         </td>
                       )}
-                      {visibleColumns.includes('t1') && (
+                      {!showBulkEdit && visibleColumns.includes('t1') && (
                         <td className="px-2 py-2 text-right bg-green-50">
                           <InlineInput
                             product={product}
@@ -4097,12 +4463,12 @@ export default function Products() {
                                 readOnly
                                 className="w-20 px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-100 cursor-default focus:outline-none"
                               />
-                              <div className="text-[9px] text-green-600 whitespace-nowrap">+ {product.gstRate}% GST</div>
+                             
                             </div>
                           )}
                         </td>
                       )}
-                      {visibleColumns.includes('t2') && (
+                      {!showBulkEdit && visibleColumns.includes('t2') && (
                         <td className="px-2 py-2 text-right bg-green-50">
                           <span className="text-xs font-medium text-blue-600">{formatPrice(product.t2 || product.opT2)}</span>
                           {product.gstRate > 0 && (product.t2 || product.opT2) > 0 && (
@@ -4113,12 +4479,131 @@ export default function Products() {
                                 readOnly
                                 className="w-20 px-2 py-1 text-xs text-right border border-green-200 rounded bg-green-100 cursor-default focus:outline-none"
                               />
-                              <div className="text-[9px] text-green-600 whitespace-nowrap">+ {product.gstRate}% GST</div>
+                             
                             </div>
                           )}
                         </td>
                       )}
 
+                      {/* Bulk Edit Columns */}
+                      {showBulkEdit && (
+                        <>
+                          {/* Brand */}
+                          <td className="px-2 py-2 bg-indigo-50/50">
+                            {(() => {
+                              const fieldKey = `${product._id}-brand`
+                              const isSaving = savingFields[fieldKey]
+                              return (
+                                <select
+                                  value={product.brand || ''}
+                                  onChange={(e) => handleInlineSave(product, 'brand', e.target.value)}
+                                  disabled={isSaving}
+                                  className="min-w-[100px] px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-wait"
+                                >
+                                  <option value="">-</option>
+                                  {brands.map(b => (
+                                    <option key={b._id} value={b.name}>{b.name}</option>
+                                  ))}
+                                </select>
+                              )
+                            })()}
+                          </td>
+                          {/* Category */}
+                          <td className="px-2 py-2 bg-indigo-50/50">
+                            {(() => {
+                              const fieldKey = `${product._id}-category`
+                              const isSaving = savingFields[fieldKey]
+                              return (
+                                <select
+                                  value={product.category || ''}
+                                  onChange={(e) => handleInlineSave(product, 'category', e.target.value)}
+                                  disabled={isSaving}
+                                  className="min-w-[100px] px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-wait"
+                                >
+                                  <option value="">-</option>
+                                  {allCategories.map(c => (
+                                    <option key={c._id} value={c.name}>{c.name}</option>
+                                  ))}
+                                </select>
+                              )
+                            })()}
+                          </td>
+                          {/* Subcategory */}
+                          <td className="px-2 py-2 bg-indigo-50/50">
+                            {(() => {
+                              const fieldKey = `${product._id}-subcategory`
+                              const isSaving = savingFields[fieldKey]
+                              // Show all subcategories; ensure current value is always an option
+                              const currentSub = product.subcategory
+                              const hasCurrentSub = currentSub && subcategories.some(s => s.name === currentSub)
+                              return (
+                                <select
+                                  value={product.subcategory || ''}
+                                  onChange={(e) => handleInlineSave(product, 'subcategory', e.target.value)}
+                                  disabled={isSaving}
+                                  className="min-w-[100px] px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-wait"
+                                >
+                                  <option value="">-</option>
+                                  {currentSub && !hasCurrentSub && (
+                                    <option value={currentSub}>{currentSub}</option>
+                                  )}
+                                  {subcategories.map(s => (
+                                    <option key={s._id} value={s.name}>{s.name}</option>
+                                  ))}
+                                </select>
+                              )
+                            })()}
+                          </td>
+                          {/* Series */}
+                          <td className="px-2 py-2 bg-indigo-50/50">
+                            {(() => {
+                              const fieldKey = `${product._id}-series`
+                              const isSaving = savingFields[fieldKey]
+                              // Show all series; ensure current value is always an option
+                              const currentSeries = product.series
+                              const hasCurrentSeries = currentSeries && series.some(s => s.name === currentSeries)
+                              return (
+                                <select
+                                  value={product.series || ''}
+                                  onChange={(e) => handleInlineSave(product, 'series', e.target.value)}
+                                  disabled={isSaving}
+                                  className="min-w-[100px] px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-wait"
+                                >
+                                  <option value="">-</option>
+                                  {currentSeries && !hasCurrentSeries && (
+                                    <option value={currentSeries}>{currentSeries}</option>
+                                  )}
+                                  {series.map(s => (
+                                    <option key={s._id} value={s.name}>{s.name}</option>
+                                  ))}
+                                </select>
+                              )
+                            })()}
+                          </td>
+                          {/* GST Rate */}
+                          <td className="px-2 py-2 bg-indigo-50/50">
+                            {(() => {
+                              const fieldKey = `${product._id}-gstRate`
+                              const isSaving = savingFields[fieldKey]
+                              return (
+                                <select
+                                  value={product.gstRate ?? ''}
+                                  onChange={(e) => handleInlineSave(product, 'gstRate', e.target.value)}
+                                  disabled={isSaving}
+                                  className="min-w-[70px] px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-wait"
+                                >
+                                  <option value="">-</option>
+                                  <option value="0">0%</option>
+                                  <option value="5">5%</option>
+                                  <option value="12">12%</option>
+                                  <option value="18">18%</option>
+                                  <option value="28">28%</option>
+                                </select>
+                              )
+                            })()}
+                          </td>
+                        </>
+                      )}
                       {/* Actions */}
                       <td className="px-2 py-2 bg-white">
                         <div className="flex items-center justify-center gap-1">

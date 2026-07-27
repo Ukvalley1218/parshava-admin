@@ -1,7 +1,7 @@
 
 
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Plus, Search, Edit2, Trash2, X, Loader, AlertCircle, Eye,
@@ -255,7 +255,7 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
       </div>
 
       {/* Name Fields */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">First Name *</label>
           <input
@@ -327,7 +327,7 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
       </div>
 
       {/* Landmark & City */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Landmark</label>
           <input
@@ -402,7 +402,7 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
       </div>
 
       {/* Aadhar & PAN Card Uploads */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Aadhar Card</label>
           <div className="flex items-center gap-2">
@@ -2287,7 +2287,7 @@ function CustomerViewModal({ customer, onClose }) {
 
       {/* Personal Details */}
       <DetailSection title="Personal Details">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <DetailRow label="Software ID" value={customer.softwareId} />
           <DetailRow label="Account Name" value={customer.firmName} />
         </div>
@@ -2563,11 +2563,11 @@ function CustomerViewModal({ customer, onClose }) {
               {customer.landmark && <p className="text-xs text-gray-500">Landmark: {customer.landmark}</p>}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 pl-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-6">
             <DetailRow label="City" value={customer.city} />
             <DetailRow label="State" value={customer.state} />
           </div>
-          <div className="grid grid-cols-2 gap-4 pl-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-6">
             <DetailRow label="Pincode" value={customer.pincode} />
             <DetailRow label="Country" value={customer.country || 'India'} />
           </div>
@@ -2584,7 +2584,7 @@ function CustomerViewModal({ customer, onClose }) {
       {/* Documents */}
       <DetailSection title="Documents">
         {customer.documents && customer.documents.length > 0 ? (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {customer.documents.map((doc, index) => (
               <a
                 key={index}
@@ -2609,7 +2609,7 @@ function CustomerViewModal({ customer, onClose }) {
 
       {/* Business Details */}
       <DetailSection title="Business Details">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <DetailRow label="GSTIN" value={customer.gstin} />
           <DetailRow label="PAN Number" value={customer.panNumber} />
           <DetailRow label="Shop Act" value={customer.shopActNumber} />
@@ -2619,7 +2619,7 @@ function CustomerViewModal({ customer, onClose }) {
 
       {/* Management */}
       <DetailSection title="Management">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-gray-500 mb-1">Business Categories</p>
             <div className="flex flex-wrap gap-1">
@@ -2663,7 +2663,7 @@ function CustomerViewModal({ customer, onClose }) {
       {/* Sync Status */}
       {(customer.accountgstId || customer.syncStatus || customer.outstanding) && (
         <DetailSection title="System Info">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {customer.accountgstId && (
               <DetailRow label="AccountGST ID" value={customer.accountgstId} />
             )}
@@ -2740,10 +2740,12 @@ function CustomerViewModal({ customer, onClose }) {
 }
 
 export default function Firms() {
+  const toast = useToast()
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -2772,40 +2774,14 @@ export default function Firms() {
     accountType: '',
     accountManager: []
   })
+  const [savingFields, setSavingFields] = useState({})
 
-  // Derived filter options from customers data
-  const filterOptions = useMemo(() => {
-    const cities = [...new Set(customers.map(c => c.city).filter(Boolean))].sort()
-    const priceLists = [...new Set(customers.map(c => c.priceListCategory).filter(Boolean))].sort()
-    const managers = [...new Set(customers.flatMap(c =>
-      Array.isArray(c.accountManager) ? c.accountManager.map(m => m?.name || m) : (c.accountManager?.name || c.accountManager ? [c.accountManager?.name || c.accountManager] : [])
-    ))].filter(Boolean).sort()
-    return { cities, priceLists, managers }
-  }, [customers])
-
-  // Filtered customers
-  const filteredCustomers = useMemo(() => {
-    return customers.filter(c => {
-      if (filterCity && c.city !== filterCity) return false
-      if (filterBusinessCategory) {
-        const cats = Array.isArray(c.businessCategory) ? c.businessCategory : []
-        if (!cats.includes(filterBusinessCategory)) return false
-      }
-      if (filterPriceList && c.priceListCategory !== filterPriceList) return false
-      if (filterAccountManager) {
-        const managers = Array.isArray(c.accountManager)
-          ? c.accountManager.map(m => m?.name || m)
-          : (c.accountManager?.name ? [c.accountManager.name] : [])
-        if (!managers.includes(filterAccountManager)) return false
-      }
-      if (filterBrandCategory) {
-        const brands = Array.isArray(c.brandCategory) ? c.brandCategory : []
-        if (!brands.includes(filterBrandCategory)) return false
-      }
-      if (filterAccountType && c.accountType !== filterAccountType) return false
-      return true
-    })
-  }, [customers, filterCity, filterBusinessCategory, filterPriceList, filterAccountManager, filterBrandCategory, filterAccountType])
+  // Server-provided filter options (from API response)
+  const [serverFilterOptions, setServerFilterOptions] = useState({
+    cities: [],
+    priceLists: [],
+    managers: []
+  })
 
   const hasActiveFilters = filterCity || filterBusinessCategory || filterPriceList || filterAccountManager || filterBrandCategory || filterAccountType
 
@@ -2816,6 +2792,7 @@ export default function Firms() {
     setFilterAccountManager('')
     setFilterBrandCategory('')
     setFilterAccountType('')
+    setCurrentPage(1)
   }
 
   // Handle bulk update for a specific field — applies only to currently visible (filtered) customers
@@ -2827,7 +2804,7 @@ export default function Firms() {
     }
 
     // Collect IDs of all currently visible (filtered) customers on this page
-    const customerIds = filteredCustomers.map(c => c._id)
+    const customerIds = customers.map(c => c._id)
     if (customerIds.length === 0) {
       toast.error('No accounts visible to update')
       return
@@ -2854,21 +2831,71 @@ export default function Firms() {
       const response = await bulkUpdateCustomers(customerIds, updates)
       if (response.success !== false) {
         const modified = response.modified || 0
-        toast.success(`${modified} account(s) updated successfully`)
+        const matched = response.matched || 0
+        if (modified > 0) {
+          toast.success(`${modified} account(s) updated successfully`)
+        } else if (matched > 0) {
+          toast.info(`${matched} account(s) matched but no changes were needed (values already set)`)
+        } else {
+          toast.info('No accounts were updated')
+        }
         // Reset the bulk value for this field
         setBulkValues(prev => ({
           ...prev,
           [fieldKey]: fieldKey === 'accountManager' ? [] : ''
         }))
         // Refresh the list
-        fetchCustomers(currentPage, pagination.limit, debouncedSearch)
+        setRefreshKey(k => k + 1)
       } else {
         toast.error(response.message || 'Failed to update accounts')
       }
     } catch (err) {
-      toast.error('Failed to update accounts')
+      console.error('Bulk update error:', err)
+      toast.error(err?.message || 'Failed to update accounts')
     } finally {
       setBulkUpdating(false)
+    }
+  }
+
+  // Inline auto-save for individual field changes
+  const handleInlineSave = async (customer, field, newValue) => {
+    const fieldKey = `${customer._id}-${field}`
+    if (savingFields[fieldKey]) return
+
+    setSavingFields(prev => ({ ...prev, [fieldKey]: true }))
+
+    try {
+      const updateData = {}
+      if (field === 'businessCategory') {
+        updateData.businessCategory = Array.isArray(newValue) ? newValue : (newValue ? [newValue] : [])
+      } else if (field === 'brandCategory') {
+        updateData.brandCategory = Array.isArray(newValue) ? newValue : (newValue ? [newValue] : [])
+      } else if (field === 'accountManager') {
+        updateData.accountManager = Array.isArray(newValue) ? newValue : (newValue ? [newValue] : [])
+      } else {
+        updateData[field] = newValue
+      }
+
+      const response = await updateAdminCustomer(customer._id, updateData)
+      if (response.success !== false && response.data) {
+        // Replace the entire customer with the fully populated response data
+        setCustomers(prev => prev.map(c => c._id === customer._id ? response.data : c))
+        toast.success('Updated successfully')
+      } else {
+        toast.error(response.message || 'Failed to update')
+        // Refetch to restore correct state
+        setRefreshKey(k => k + 1)
+      }
+    } catch (err) {
+      toast.error('Failed to update')
+      // Refetch to restore correct state
+      setRefreshKey(k => k + 1)
+    } finally {
+      setSavingFields(prev => {
+        const next = { ...prev }
+        delete next[fieldKey]
+        return next
+      })
     }
   }
 
@@ -2877,7 +2904,7 @@ export default function Firms() {
   const [pagination, setPagination] = useState({
     total: 0,
     totalPages: 0,
-    limit: 10,
+    limit: 50,
   })
 
   // Debounce search query
@@ -2892,11 +2919,20 @@ export default function Firms() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  const fetchCustomers = async (page = 1, limit = pagination.limit, search = '') => {
+  const fetchCustomers = async (page = 1, limit = pagination.limit, search = '', filters = {}) => {
     setLoading(true)
     setError(null)
     try {
-      const response = await getAdminCustomers({ page, limit, search: search || undefined })
+      const params = { page, limit, search: search || undefined }
+      // Add filter params
+      if (filters.city) params.city = filters.city
+      if (filters.businessCategory) params.businessCategory = filters.businessCategory
+      if (filters.priceListCategory) params.priceListCategory = filters.priceListCategory
+      if (filters.accountManager) params.accountManager = filters.accountManager
+      if (filters.brandCategory) params.brandCategory = filters.brandCategory
+      if (filters.accountType) params.accountType = filters.accountType
+
+      const response = await getAdminCustomers(params)
       if (response.success !== false) {
         // Handle both paginated and non-paginated responses
         if (response.pagination) {
@@ -2904,7 +2940,7 @@ export default function Firms() {
           setPagination({
             total: response.pagination.totalItems || response.pagination.total || 0,
             totalPages: response.pagination.totalPages || 1,
-            limit: response.pagination.itemsPerPage || response.pagination.limit || 10,
+            limit: response.pagination.itemsPerPage || response.pagination.limit || 50,
           })
         } else {
           // Fallback for non-paginated API response
@@ -2914,6 +2950,10 @@ export default function Firms() {
             totalPages: 1,
             limit: 9999,
           })
+        }
+        // Save server-provided filter options
+        if (response.filterOptions) {
+          setServerFilterOptions(response.filterOptions)
         }
       } else {
         setError(response.message || 'Failed to fetch customers')
@@ -2960,15 +3000,21 @@ export default function Firms() {
     fetchAccountManagers()
   }, [])
 
-  // Fetch customers when search or page changes
+  // Fetch customers when search, page, filters, or refresh change
   useEffect(() => {
-    fetchCustomers(currentPage, pagination.limit, debouncedSearch)
+    fetchCustomers(currentPage, pagination.limit, debouncedSearch, {
+      city: filterCity,
+      businessCategory: filterBusinessCategory,
+      priceListCategory: filterPriceList,
+      accountManager: filterAccountManager,
+      brandCategory: filterBrandCategory,
+      accountType: filterAccountType,
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, currentPage])
+  }, [debouncedSearch, currentPage, filterCity, filterBusinessCategory, filterPriceList, filterAccountManager, filterBrandCategory, filterAccountType, refreshKey])
 
   const handlePageChange = (page) => {
     setCurrentPage(page)
-    fetchCustomers(page, pagination.limit, debouncedSearch)
   }
 
   const handleCreate = async (data, newContacts = []) => {
@@ -2992,7 +3038,7 @@ export default function Firms() {
           }
         }
         // Refresh the current page
-        fetchCustomers(currentPage)
+        setRefreshKey(k => k + 1)
         setShowModal(false)
         setSelectedCustomer(null)
         toast.success('Customer created successfully')
@@ -3028,6 +3074,7 @@ export default function Firms() {
         setCustomers((prev) =>
           prev.map((c) => (c._id === selectedCustomer._id ? response.data : c))
         )
+        setRefreshKey(k => k + 1)
         toast.success('Customer updated successfully')
         setShowModal(false)
         setSelectedCustomer(null)
@@ -3050,10 +3097,8 @@ export default function Firms() {
         // Refresh current page or go to previous if current page is empty
         if (customers.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1)
-          fetchCustomers(currentPage - 1)
-        } else {
-          fetchCustomers(currentPage)
         }
+        setRefreshKey(k => k + 1)
         setShowDeleteModal(false)
         setSelectedCustomer(null)
       } else {
@@ -3115,11 +3160,11 @@ export default function Firms() {
           {/* City filter */}
           <select
             value={filterCity}
-            onChange={(e) => setFilterCity(e.target.value)}
+            onChange={(e) => { setFilterCity(e.target.value); setCurrentPage(1) }}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[130px]"
           >
             <option value="">City</option>
-            {filterOptions.cities.map(c => (
+            {serverFilterOptions.cities.map(c => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
@@ -3127,7 +3172,7 @@ export default function Firms() {
           {/* Business Category filter */}
           <select
             value={filterBusinessCategory}
-            onChange={(e) => setFilterBusinessCategory(e.target.value)}
+            onChange={(e) => { setFilterBusinessCategory(e.target.value); setCurrentPage(1) }}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[170px]"
           >
             <option value="">Business Category</option>
@@ -3139,7 +3184,7 @@ export default function Firms() {
           {/* Price List filter */}
           <select
             value={filterPriceList}
-            onChange={(e) => setFilterPriceList(e.target.value)}
+            onChange={(e) => { setFilterPriceList(e.target.value); setCurrentPage(1) }}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[120px]"
           >
             <option value="">Price List</option>
@@ -3153,19 +3198,19 @@ export default function Firms() {
           {/* Account Manager filter */}
           <select
             value={filterAccountManager}
-            onChange={(e) => setFilterAccountManager(e.target.value)}
+            onChange={(e) => { setFilterAccountManager(e.target.value); setCurrentPage(1) }}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[160px]"
           >
             <option value="">Account Manager</option>
-            {filterOptions.managers.map(m => (
-              <option key={m} value={m}>{m}</option>
+            {accountManagers.map(m => (
+              <option key={m._id} value={m._id}>{m.name}</option>
             ))}
           </select>
 
           {/* Brand Category filter */}
           <select
             value={filterBrandCategory}
-            onChange={(e) => setFilterBrandCategory(e.target.value)}
+            onChange={(e) => { setFilterBrandCategory(e.target.value); setCurrentPage(1) }}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[150px]"
           >
             <option value="">Brand Category</option>
@@ -3177,7 +3222,7 @@ export default function Firms() {
           {/* Account Type filter */}
           <select
             value={filterAccountType}
-            onChange={(e) => setFilterAccountType(e.target.value)}
+            onChange={(e) => { setFilterAccountType(e.target.value); setCurrentPage(1) }}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[120px]"
           >
             <option value="">Account Type</option>
@@ -3196,7 +3241,7 @@ export default function Firms() {
         {showBulkEdit && (
           <div className="border-t border-gray-100 pt-3">
             <p className="text-xs text-gray-500 mb-2">
-              Apply changes to the {filteredCustomers.length} account(s) currently visible. Select a value and click Apply to update.
+              Apply changes to the {customers.length} account(s) currently visible. Select a value and click Apply to update.
             </p>
             <div className="flex items-start gap-3 flex-wrap">
               {/* Business Category */}
@@ -3317,19 +3362,28 @@ export default function Firms() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px]">
+          <table className={`w-full ${showBulkEdit ? 'min-w-[900px]' : 'min-w-[1400px]'}`}>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Account</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Contact</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Location</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">GSTIN</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Created</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
+                <th className={`text-left px-4 py-4 text-sm font-semibold text-gray-600 ${showBulkEdit ? 'w-[200px] max-w-[200px]' : ''}`}>Account</th>
+                {!showBulkEdit && <th className="text-left px-4 py-4 text-sm font-semibold text-gray-600">Contact</th>}
+                {!showBulkEdit && <th className="text-left px-4 py-4 text-sm font-semibold text-gray-600">Location</th>}
+                {!showBulkEdit && <th className="text-left px-4 py-4 text-sm font-semibold text-gray-600">GSTIN</th>}
+                {!showBulkEdit && <th className="text-left px-4 py-4 text-sm font-semibold text-gray-600">Created</th>}
+                {showBulkEdit && (
+                  <>
+                    <th className="text-left px-3 py-4 text-sm font-semibold text-gray-600 w-[100px]">Price List</th>
+                    <th className="text-left px-3 py-4 text-sm font-semibold text-gray-600 w-[140px]">Business Cat.</th>
+                    <th className="text-left px-3 py-4 text-sm font-semibold text-gray-600 w-[140px]">Brand Cat.</th>
+                    <th className="text-left px-3 py-4 text-sm font-semibold text-gray-600 w-[110px]">Account Type</th>
+                    <th className="text-left px-3 py-4 text-sm font-semibold text-gray-600 w-[140px]">Manager</th>
+                  </>
+                )}
+                {!showBulkEdit && <th className="text-center px-4 py-4 text-sm font-semibold text-gray-600">Actions</th>}
               </tr>
             </thead>
             <tbody>
-              {filteredCustomers.length === 0 ? (
+              {customers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12">
                     <UserCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -3337,38 +3391,164 @@ export default function Firms() {
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map((customer) => (
+                customers.map((customer) => (
                   <tr key={customer._id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                    <td className="px-6 py-4">
+                    <td className={`px-4 py-4 ${showBulkEdit ? 'w-[200px] max-w-[200px]' : ''}`}>
                       <div>
                         <p className="font-medium text-gray-900">{customer.firmName || customer.name}</p>
                         {customer.firmName && <p className="text-sm text-gray-500">{customer.name}</p>}
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium mt-1 ${(customer.accountType || 'in_house') === 'in_house' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
-                          {(customer.accountType || 'in_house') === 'in_house' ? 'In House' : 'Shop'}
-                        </span>
+                        {!showBulkEdit && (
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium mt-1 ${(customer.accountType || 'in_house') === 'in_house' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+                            {(customer.accountType || 'in_house') === 'in_house' ? 'In House' : 'Shop'}
+                          </span>
+                        )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 hidden md:table-cell">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm text-gray-600 flex items-center gap-1">
-                          <Phone className="w-3.5 h-3.5" />{customer.mobile || '-'}
+                    {!showBulkEdit && (
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm text-gray-600 flex items-center gap-1">
+                            <Phone className="w-3.5 h-3.5" />{customer.mobile || '-'}
+                          </span>
+                          <span className="text-sm text-gray-500 flex items-center gap-1">
+                            <Mail className="w-3.5 h-3.5" />{customer.email || '-'}
+                          </span>
+                        </div>
+                      </td>
+                    )}
+                    {!showBulkEdit && (
+                      <td className="px-4 py-4">
+                        <span className="text-gray-600 flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                          {customer.city ? `${customer.city}, ${customer.state}` : customer.state || '-'}
                         </span>
-                        <span className="text-sm text-gray-500 flex items-center gap-1">
-                          <Mail className="w-3.5 h-3.5" />{customer.email || '-'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 hidden lg:table-cell">
-                      <span className="text-gray-600 flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                        {customer.city ? `${customer.city}, ${customer.state}` : customer.state || '-'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 hidden lg:table-cell text-gray-600">{customer.gstin || '-'}</td>
-                    <td className="px-6 py-4 hidden sm:table-cell text-gray-500 text-sm">
-                      {new Date(customer.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </td>
-                    <td className="px-6 py-4">
+                      </td>
+                    )}
+                    {!showBulkEdit && (
+                      <td className="px-4 py-4 text-gray-600">{customer.gstin || '-'}</td>
+                    )}
+                    {!showBulkEdit && (
+                      <td className="px-4 py-4 text-gray-500 text-sm">
+                        {new Date(customer.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </td>
+                    )}
+                    {showBulkEdit && (
+                      <>
+                        {/* Price List */}
+                        <td className="px-3 py-4 w-[100px]">
+                          {(() => {
+                            const fieldKey = `${customer._id}-priceListCategory`
+                            const isSaving = savingFields[fieldKey]
+                            return (
+                              <select
+                                value={customer.priceListCategory || 'T1'}
+                                onChange={(e) => handleInlineSave(customer, 'priceListCategory', e.target.value)}
+                                disabled={isSaving}
+                                className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-wait"
+                              >
+                                <option value="T1">T1</option>
+                                <option value="T2">T2</option>
+                                <option value="SI1">SI1</option>
+                                <option value="SI2">SI2</option>
+                                <option value="C1">C1</option>
+                              </select>
+                            )
+                          })()}
+                        </td>
+                        {/* Business Category */}
+                        <td className="px-3 py-4 w-[140px]">
+                          {(() => {
+                            const fieldKey = `${customer._id}-businessCategory`
+                            const isSaving = savingFields[fieldKey]
+                            const currentCatIds = Array.isArray(customer.businessCategory)
+                              ? customer.businessCategory.map(c => typeof c === 'object' ? c._id : c)
+                              : []
+                            const displayValue = currentCatIds.length > 0 ? currentCatIds[0] : ''
+                            return (
+                              <select
+                                value={displayValue}
+                                onChange={(e) => handleInlineSave(customer, 'businessCategory', e.target.value ? [e.target.value] : [])}
+                                disabled={isSaving}
+                                className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-wait"
+                              >
+                                <option value="">-</option>
+                                {businessCategories.map(cat => (
+                                  <option key={cat._id} value={cat._id}>{cat.name}</option>
+                                ))}
+                              </select>
+                            )
+                          })()}
+                        </td>
+                        {/* Brand Category */}
+                        <td className="px-3 py-4 w-[140px]">
+                          {(() => {
+                            const fieldKey = `${customer._id}-brandCategory`
+                            const isSaving = savingFields[fieldKey]
+                            const currentBrandIds = Array.isArray(customer.brandCategory)
+                              ? customer.brandCategory.map(c => typeof c === 'object' ? c._id : c)
+                              : []
+                            const displayValue = currentBrandIds.length > 0 ? currentBrandIds[0] : ''
+                            return (
+                              <select
+                                value={displayValue}
+                                onChange={(e) => handleInlineSave(customer, 'brandCategory', e.target.value ? [e.target.value] : [])}
+                                disabled={isSaving}
+                                className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-wait"
+                              >
+                                <option value="">-</option>
+                                {brandCategories.map(cat => (
+                                  <option key={cat._id} value={cat._id}>{cat.name}</option>
+                                ))}
+                              </select>
+                            )
+                          })()}
+                        </td>
+                        {/* Account Type */}
+                        <td className="px-3 py-4 w-[110px]">
+                          {(() => {
+                            const fieldKey = `${customer._id}-accountType`
+                            const isSaving = savingFields[fieldKey]
+                            return (
+                              <select
+                                value={customer.accountType || 'in_house'}
+                                onChange={(e) => handleInlineSave(customer, 'accountType', e.target.value)}
+                                disabled={isSaving}
+                                className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-wait"
+                              >
+                                <option value="in_house">In House</option>
+                                <option value="shop">Shop</option>
+                              </select>
+                            )
+                          })()}
+                        </td>
+                        {/* Account Manager */}
+                        <td className="px-3 py-4 w-[140px]">
+                          {(() => {
+                            const fieldKey = `${customer._id}-accountManager`
+                            const isSaving = savingFields[fieldKey]
+                            const currentManagerIds = Array.isArray(customer.accountManager)
+                              ? customer.accountManager.map(m => typeof m === 'object' ? m._id : m)
+                              : (customer.accountManager ? [typeof customer.accountManager === 'object' ? customer.accountManager._id : customer.accountManager] : [])
+                            const displayValue = currentManagerIds.length > 0 ? currentManagerIds[0] : ''
+                            return (
+                              <select
+                                value={displayValue}
+                                onChange={(e) => handleInlineSave(customer, 'accountManager', e.target.value ? [e.target.value] : [])}
+                                disabled={isSaving}
+                                className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-wait"
+                              >
+                                <option value="">-</option>
+                                {accountManagers.map(m => (
+                                  <option key={m._id} value={m._id}>{m.name}</option>
+                                ))}
+                              </select>
+                            )
+                          })()}
+                        </td>
+                      </>
+                    )}
+                    {!showBulkEdit && (
+                    <td className="px-4 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button onClick={() => { setSelectedCustomer(customer); setShowViewModal(true) }}
                           className="p-2 hover:bg-blue-50 rounded-lg transition-colors" title="View Details">
@@ -3384,6 +3564,7 @@ export default function Firms() {
                         </button>
                       </div>
                     </td>
+                    )}
                   </tr>
                 ))
               )}

@@ -92,7 +92,8 @@ export default function BusinessCategories() {
         toast.error(response.message || 'Failed to create business category')
       }
     } catch (err) {
-      toast.error('Failed to create business category')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to create business category')
     } finally {
       setFormLoading(false)
     }
@@ -111,7 +112,8 @@ export default function BusinessCategories() {
         toast.error(response.message || 'Failed to update business category')
       }
     } catch (err) {
-      toast.error('Failed to update business category')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to update business category')
     } finally {
       setFormLoading(false)
     }
@@ -130,7 +132,8 @@ export default function BusinessCategories() {
         toast.error(response.message || 'Failed to delete business category')
       }
     } catch (err) {
-      toast.error('Failed to delete business category')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to delete business category')
     } finally {
       setFormLoading(false)
     }

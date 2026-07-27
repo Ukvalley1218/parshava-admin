@@ -157,7 +157,8 @@ export default function Brands() {
         toast.error(response.message || 'Failed to create brand')
       }
     } catch (err) {
-      toast.error('Failed to create brand')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to create brand')
     } finally {
       setFormLoading(false)
     }
@@ -176,7 +177,8 @@ export default function Brands() {
         toast.error(response.message || 'Failed to update brand')
       }
     } catch (err) {
-      toast.error('Failed to update brand')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to update brand')
     } finally {
       setFormLoading(false)
     }

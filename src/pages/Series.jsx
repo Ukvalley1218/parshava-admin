@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Search, Plus, Edit2, Trash2, Loader, AlertCircle, Layers, ChevronDown, ChevronUp, LayersIcon } from 'lucide-react'
 import { getSeries, createSeries, updateSeries, deleteSeries, getCategories, addSubSeries, updateSubSeries, deleteSubSeries } from '../services/adminApi'
 import Pagination from '../components/Pagination'
@@ -305,6 +306,10 @@ export default function Series() {
   const [showModal, setShowModal] = useState(false)
   const [selectedSeries, setSelectedSeries] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+  const [categoryDropdownPos, setCategoryDropdownPos] = useState({ top: 0, left: 0, width: 0 })
+  const categoryDropdownRef = useRef(null)
+  const categoryButtonRef = useRef(null)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -321,6 +326,35 @@ export default function Series() {
     }, 300)
     return () => clearTimeout(timer)
   }, [searchQuery])
+
+  // Close category dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showCategoryDropdown && categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target) && categoryButtonRef.current && !categoryButtonRef.current.contains(e.target)) {
+        setShowCategoryDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showCategoryDropdown])
+
+  const openCategoryDropdown = () => {
+    if (categoryButtonRef.current) {
+      const rect = categoryButtonRef.current.getBoundingClientRect()
+      const viewportWidth = window.innerWidth
+      const dropdownWidth = Math.min(rect.width, viewportWidth - 32)
+      let left = rect.left
+      if (left + dropdownWidth > viewportWidth - 16) {
+        left = viewportWidth - dropdownWidth - 16
+      }
+      setCategoryDropdownPos({
+        top: rect.bottom + 4,
+        left: Math.max(16, left),
+        width: dropdownWidth,
+      })
+    }
+    setShowCategoryDropdown(!showCategoryDropdown)
+  }
 
   const fetchCategories = async () => {
     try {
@@ -466,18 +500,52 @@ export default function Series() {
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
-          <div className="relative sm:w-48">
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="input-field appearance-none pr-10 w-full"
+          <div className="relative sm:w-56">
+            <button
+              ref={categoryButtonRef}
+              type="button"
+              onClick={openCategoryDropdown}
+              className="input-field appearance-none pr-10 w-full text-left cursor-pointer flex items-center justify-between"
             >
-              <option value="">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat._id} value={cat._id}>{cat.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+              <span className={selectedCategory ? 'text-gray-900' : 'text-gray-400'}>
+                {selectedCategory
+                  ? categories.find(c => c._id === selectedCategory)?.name || 'All Categories'
+                  : 'All Categories'}
+              </span>
+              {showCategoryDropdown ? (
+                <ChevronUp className="w-4 h-4 text-gray-400" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              )}
+            </button>
+            {showCategoryDropdown && createPortal(
+              <div
+                ref={categoryDropdownRef}
+                className="fixed bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-[9999]"
+                style={{ top: `${categoryDropdownPos.top}px`, left: `${categoryDropdownPos.left}px`, width: `${categoryDropdownPos.width}px` }}
+              >
+                <div className="py-1">
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedCategory(''); setShowCategoryDropdown(false) }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${!selectedCategory ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                  >
+                    All Categories
+                  </button>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat._id}
+                      type="button"
+                      onClick={() => { setSelectedCategory(cat._id); setShowCategoryDropdown(false) }}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${selectedCategory === cat._id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              </div>,
+              document.body
+            )}
           </div>
         </div>
       </div>

@@ -186,7 +186,8 @@ export default function Subcategories() {
         toast.error(response.message || 'Failed to create subcategory')
       }
     } catch (err) {
-      toast.error('Failed to create subcategory')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to create subcategory')
     } finally {
       setFormLoading(false)
     }
@@ -205,7 +206,8 @@ export default function Subcategories() {
         toast.error(response.message || 'Failed to update subcategory')
       }
     } catch (err) {
-      toast.error('Failed to update subcategory')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to update subcategory')
     } finally {
       setFormLoading(false)
     }
@@ -222,7 +224,8 @@ export default function Subcategories() {
         toast.error(response.message || 'Failed to delete subcategory')
       }
     } catch (err) {
-      toast.error('Failed to delete subcategory')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to delete subcategory')
     }
   }
 
@@ -294,11 +297,11 @@ export default function Subcategories() {
               <table className="w-full min-w-[600px]">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Name</th>
-                    <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Category</th>
-                    <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
-                    <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Created</th>
-                    <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Name</th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Category</th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Created</th>
+                    <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">

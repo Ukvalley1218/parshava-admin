@@ -61,7 +61,7 @@ function ContactMiniForm({ contact, onSave, onCancel, customerId, designations =
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {/* Name Fields */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">First Name *</label>
           <input
@@ -1528,7 +1528,7 @@ function CustomerViewModal({ customer, onClose }) {
 
       {/* Personal Details */}
       <DetailSection title="Personal Details">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <DetailRow label="Software ID" value={customer.softwareId} />
           <DetailRow label="Account Name" value={customer.firmName} />
         </div>
@@ -1711,11 +1711,11 @@ function CustomerViewModal({ customer, onClose }) {
               {customer.landmark && <p className="text-xs text-gray-500">Landmark: {customer.landmark}</p>}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 pl-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-6">
             <DetailRow label="City" value={customer.city} />
             <DetailRow label="State" value={customer.state} />
           </div>
-          <div className="grid grid-cols-2 gap-4 pl-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-6">
             <DetailRow label="Pincode" value={customer.pincode} />
             <DetailRow label="Country" value={customer.country || 'India'} />
           </div>
@@ -1732,7 +1732,7 @@ function CustomerViewModal({ customer, onClose }) {
       {/* Documents */}
       <DetailSection title="Documents">
         {customer.documents && customer.documents.length > 0 ? (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {customer.documents.map((doc, index) => (
               <a
                 key={index}
@@ -1757,7 +1757,7 @@ function CustomerViewModal({ customer, onClose }) {
 
       {/* Business Details */}
       <DetailSection title="Business Details">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <DetailRow label="GSTIN" value={customer.gstin} />
           <DetailRow label="PAN Number" value={customer.panNumber} />
           <DetailRow label="Shop Act" value={customer.shopActNumber} />
@@ -1767,7 +1767,7 @@ function CustomerViewModal({ customer, onClose }) {
 
       {/* Management */}
       <DetailSection title="Management">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <DetailRow label="Account Type" value={(customer.accountType || 'in_house') === 'in_house' ? 'In House' : 'Shop'} icon={Building} />
           <DetailRow label="Account Manager" value={Array.isArray(customer.accountManager) ? customer.accountManager.map(m => m?.name || m).join(', ') || '-' : customer.accountManager?.name || customer.accountManager || '-'} icon={User} />
           <DetailRow label="Product Manager" value={customer.productManager} icon={User} />
@@ -1779,7 +1779,7 @@ function CustomerViewModal({ customer, onClose }) {
       {/* Sync Status */}
       {(customer.accountgstId || customer.syncStatus || customer.outstanding) && (
         <DetailSection title="System Info">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {customer.accountgstId && (
               <DetailRow label="AccountGST ID" value={customer.accountgstId} />
             )}
@@ -1829,6 +1829,10 @@ export default function Customers() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const [bulkMode, setBulkMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
+  const [bulkEdits, setBulkEdits] = useState({})
+  const [bulkSaving, setBulkSaving] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
 
   // Pagination state
@@ -2000,6 +2004,99 @@ export default function Customers() {
     }
   }
 
+  // Toggle bulk edit mode
+  const handleToggleBulkMode = () => {
+    setBulkMode(prev => !prev)
+    setSelectedIds([])
+    setBulkEdits({})
+  }
+
+  // Toggle a row's selection
+  const handleToggleSelect = (customerId) => {
+    setSelectedIds(prev => {
+      const next = prev.includes(customerId)
+        ? prev.filter(id => id !== customerId)
+        : [...prev, customerId]
+      // Remove from bulkEdits if deselected
+      if (prev.includes(customerId)) {
+        const { [customerId]: _, ...rest } = bulkEdits
+        setBulkEdits(rest)
+      }
+      return next
+    })
+  }
+
+  // Select/deselect all
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === filteredCustomers.length) {
+      setSelectedIds([])
+      setBulkEdits({})
+    } else {
+      setSelectedIds(filteredCustomers.map(c => c._id))
+      // Pre-populate bulkEdits with current values
+      const edits = {}
+      filteredCustomers.forEach(c => {
+        edits[c._id] = {
+          firmName: c.firmName || c.name || '',
+          priceListCategory: c.priceListCategory || 'T1',
+          customerType: c.customerType || 'customer',
+          accountType: c.accountType || 'in_house',
+          customerStatus: c.customerStatus || 'active',
+        }
+      })
+      setBulkEdits(edits)
+    }
+  }
+
+  // Update a single field in bulkEdits for a customer
+  const handleBulkFieldChange = (customerId, field, value) => {
+    setBulkEdits(prev => ({
+      ...prev,
+      [customerId]: {
+        ...(prev[customerId] || {}),
+        [field]: value
+      }
+    }))
+  }
+
+  // Save all bulk edits
+  const handleBulkSave = async () => {
+    if (selectedIds.length === 0) {
+      toast.error('No customers selected')
+      return
+    }
+    setBulkSaving(true)
+    let successCount = 0
+    let failCount = 0
+    for (const id of selectedIds) {
+      const edits = bulkEdits[id]
+      if (!edits) continue
+      try {
+        const response = await updateAdminCustomer(id, edits)
+        if (response.success) {
+          successCount++
+          // Update local state
+          setCustomers(prev => prev.map(c => c._id === id ? { ...c, ...edits } : c))
+        } else {
+          failCount++
+        }
+      } catch (err) {
+        failCount++
+      }
+    }
+    setBulkSaving(false)
+    if (successCount > 0) {
+      toast.success(`${successCount} customer${successCount > 1 ? 's' : ''} updated successfully`)
+    }
+    if (failCount > 0) {
+      toast.error(`${failCount} customer${failCount > 1 ? 's' : ''} failed to update`)
+    }
+    setBulkMode(false)
+    setSelectedIds([])
+    setBulkEdits({})
+    fetchCustomers(currentPage)
+  }
+
   // Only show full error state if we have no customers at all
   if (error && customers.length === 0) {
     return (
@@ -2018,11 +2115,56 @@ export default function Customers() {
           <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
           <p className="text-gray-500 mt-1">Manage your customer database</p>
         </div>
-        <button onClick={() => { setSelectedCustomer(null); setShowModal(true) }} className="btn-primary flex items-center gap-2 whitespace-nowrap">
-          <Plus className="w-5 h-5" />
-          Add Customer
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleToggleBulkMode}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              bulkMode
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {bulkMode ? 'Cancel Bulk Edit' : 'Bulk Edit'}
+          </button>
+          <button onClick={() => { setSelectedCustomer(null); setShowModal(true) }} className="btn-primary flex items-center gap-2 whitespace-nowrap">
+            <Plus className="w-5 h-5" />
+            Add Customer
+          </button>
+        </div>
       </div>
+
+      {/* Bulk edit action bar */}
+      {bulkMode && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-blue-800">
+              {selectedIds.length} customer{selectedIds.length !== 1 ? 's' : ''} selected
+            </span>
+            <button
+              onClick={handleToggleSelectAll}
+              className="text-sm text-blue-600 hover:text-blue-800 underline"
+            >
+              {selectedIds.length === filteredCustomers.length ? 'Deselect All' : 'Select All'}
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBulkSave}
+              disabled={selectedIds.length === 0 || bulkSaving}
+              className="btn-primary flex items-center gap-2 text-sm px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {bulkSaving && <Loader className="w-4 h-4 animate-spin" />}
+              {bulkSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+            <button
+              onClick={() => { setBulkMode(false); setSelectedIds([]); setBulkEdits({}) }}
+              className="px-4 py-2 text-sm border border-gray-300 rounded-xl hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
         <div className="relative">
@@ -2038,72 +2180,182 @@ export default function Customers() {
           <table className="w-full min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
+                {bulkMode && (
+                  <th className="text-center px-4 py-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.length === filteredCustomers.length && filteredCustomers.length > 0}
+                      onChange={handleToggleSelectAll}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 cursor-pointer"
+                    />
+                  </th>
+                )}
                 <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Customer</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Contact</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Location</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">GSTIN</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Created</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
+                {!bulkMode && <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Contact</th>}
+                {!bulkMode && <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">Location</th>}
+                {!bulkMode && <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden lg:table-cell">GSTIN</th>}
+                {!bulkMode && <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Created</th>}
+                {bulkMode && <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Price List</th>}
+                {bulkMode && <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Type</th>}
+                {bulkMode && <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Account Type</th>}
+                {bulkMode && <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Status</th>}
+                {!bulkMode && <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12">
+                  <td colSpan={bulkMode ? 7 : 6} className="text-center py-12">
                     <UserCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500">No customers found</p>
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map((customer) => (
-                  <tr key={customer._id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium text-gray-900">{customer.firmName || customer.name}</p>
-                        {customer.firmName && <p className="text-sm text-gray-500">{customer.name}</p>}
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium mt-1 ${(customer.accountType || 'in_house') === 'in_house' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
-                          {(customer.accountType || 'in_house') === 'in_house' ? 'In House' : 'Shop'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 hidden md:table-cell">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm text-gray-600 flex items-center gap-1">
-                          <Phone className="w-3.5 h-3.5" />{customer.mobile || '-'}
-                        </span>
-                        <span className="text-sm text-gray-500 flex items-center gap-1">
-                          <Mail className="w-3.5 h-3.5" />{customer.email || '-'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 hidden lg:table-cell">
-                      <span className="text-gray-600 flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                        {customer.city ? `${customer.city}, ${customer.state}` : customer.state || '-'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 hidden lg:table-cell text-gray-600">{customer.gstin || '-'}</td>
-                    <td className="px-6 py-4 hidden sm:table-cell text-gray-500 text-sm">
-                      {new Date(customer.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => { setSelectedCustomer(customer); setShowViewModal(true) }}
-                          className="p-2 hover:bg-blue-50 rounded-lg transition-colors" title="View Details">
-                          <Eye className="w-4 h-4 text-blue-500" />
-                        </button>
-                        <button onClick={() => { setSelectedCustomer(customer); setShowModal(true) }}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Edit">
-                          <Edit2 className="w-4 h-4 text-gray-500" />
-                        </button>
-                        <button onClick={() => { setSelectedCustomer(customer); setShowDeleteModal(true) }}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                filteredCustomers.map((customer) => {
+                  const isSelected = selectedIds.includes(customer._id)
+                  const editData = bulkEdits[customer._id] || {
+                    firmName: customer.firmName || customer.name || '',
+                    priceListCategory: customer.priceListCategory || 'T1',
+                    customerType: customer.customerType || 'customer',
+                    accountType: customer.accountType || 'in_house',
+                    customerStatus: customer.customerStatus || 'active',
+                  }
+                  return (
+                    <tr key={customer._id} className={`border-b border-gray-50 ${isSelected ? 'bg-blue-50/50' : 'hover:bg-gray-50/50'}`}>
+                      {bulkMode && (
+                        <td className="px-4 py-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelect(customer._id)}
+                            className="w-4 h-4 text-blue-600 rounded border-gray-300 cursor-pointer"
+                          />
+                        </td>
+                      )}
+                      <td className="px-6 py-4">
+                        <div>
+                          {bulkMode && isSelected ? (
+                            <input
+                              type="text"
+                              value={editData.firmName}
+                              onChange={(e) => handleBulkFieldChange(customer._id, 'firmName', e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                            />
+                          ) : (
+                            <>
+                              <p className="font-medium text-gray-900">{customer.firmName || customer.name}</p>
+                              {customer.firmName && <p className="text-sm text-gray-500">{customer.name}</p>}
+                              {!bulkMode && (
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium mt-1 ${(customer.accountType || 'in_house') === 'in_house' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+                                  {(customer.accountType || 'in_house') === 'in_house' ? 'In House' : 'Shop'}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                      {!bulkMode && (
+                        <td className="px-6 py-4 hidden md:table-cell">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-sm text-gray-600 flex items-center gap-1">
+                              <Phone className="w-3.5 h-3.5" />{customer.mobile || '-'}
+                            </span>
+                            <span className="text-sm text-gray-500 flex items-center gap-1">
+                              <Mail className="w-3.5 h-3.5" />{customer.email || '-'}
+                            </span>
+                          </div>
+                        </td>
+                      )}
+                      {!bulkMode && (
+                        <td className="px-6 py-4 hidden lg:table-cell">
+                          <span className="text-gray-600 flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                            {customer.city ? `${customer.city}, ${customer.state}` : customer.state || '-'}
+                          </span>
+                        </td>
+                      )}
+                      {!bulkMode && (
+                        <td className="px-6 py-4 hidden lg:table-cell text-gray-600">{customer.gstin || '-'}</td>
+                      )}
+                      {!bulkMode && (
+                        <td className="px-6 py-4 hidden sm:table-cell text-gray-500 text-sm">
+                          {new Date(customer.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </td>
+                      )}
+                      {bulkMode && (
+                        <td className="px-6 py-4">
+                          <select
+                            value={editData.priceListCategory}
+                            onChange={(e) => handleBulkFieldChange(customer._id, 'priceListCategory', e.target.value)}
+                            className="px-2 py-1 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                          >
+                            <option value="C1">C1</option>
+                            <option value="SI1">SI1</option>
+                            <option value="SI2">SI2</option>
+                            <option value="T1">T1</option>
+                            <option value="T2">T2</option>
+                          </select>
+                        </td>
+                      )}
+                      {bulkMode && (
+                        <td className="px-6 py-4">
+                          <select
+                            value={editData.customerType}
+                            onChange={(e) => handleBulkFieldChange(customer._id, 'customerType', e.target.value)}
+                            className="px-2 py-1 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                          >
+                            <option value="customer">Customer</option>
+                            <option value="system integrator">System Integrator</option>
+                            <option value="reseller">Reseller</option>
+                          </select>
+                        </td>
+                      )}
+                      {bulkMode && (
+                        <td className="px-6 py-4">
+                          <select
+                            value={editData.accountType}
+                            onChange={(e) => handleBulkFieldChange(customer._id, 'accountType', e.target.value)}
+                            className="px-2 py-1 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                          >
+                            <option value="in_house">In House</option>
+                            <option value="shop">Shop</option>
+                          </select>
+                        </td>
+                      )}
+                      {bulkMode && (
+                        <td className="px-6 py-4">
+                          <select
+                            value={editData.customerStatus}
+                            onChange={(e) => handleBulkFieldChange(customer._id, 'customerStatus', e.target.value)}
+                            className="px-2 py-1 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="blocked">Blocked</option>
+                          </select>
+                        </td>
+                      )}
+                      {!bulkMode && (
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button onClick={() => { setSelectedCustomer(customer); setShowViewModal(true) }}
+                              className="p-2 hover:bg-blue-50 rounded-lg transition-colors" title="View Details">
+                              <Eye className="w-4 h-4 text-blue-500" />
+                            </button>
+                            <button onClick={() => { setSelectedCustomer(customer); setShowModal(true) }}
+                              className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Edit">
+                              <Edit2 className="w-4 h-4 text-gray-500" />
+                            </button>
+                            <button onClick={() => { setSelectedCustomer(customer); setShowDeleteModal(true) }}
+                              className="p-2 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>

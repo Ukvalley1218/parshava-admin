@@ -218,8 +218,8 @@ export const syncProducts = async () => {
   return post('/admin/products/sync')
 }
 
-export const bulkUpdateProducts = async (filters, updates) => {
-  return post('/admin/products/bulk-update', { filters, updates })
+export const bulkUpdateProducts = async (filters, updates, productIds) => {
+  return post('/admin/products/bulk-update', { filters, updates, productIds })
 }
 
 // ============================================

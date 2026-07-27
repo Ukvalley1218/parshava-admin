@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom'
 import { useToast } from '../components/Toast'
 import {
   Search, Plus, X, Loader2, MessageSquare, Clock, CheckCircle,
-  User, Building2, Phone, Mail, ChevronRight, Send, Eye, Trash
+  User, Building2, Phone, Mail, ChevronRight, Send, Eye, Trash,
+  Delete,
+  DeleteIcon
 } from 'lucide-react'
 import {
   getEnquiries, getEnquiryById, createEnquiry, updateEnquiry,
@@ -36,7 +38,7 @@ export default function Enquiries() {
   const [pagination, setPagination] = useState({
     total: 0,
     totalPages: 1,
-    limit: 20
+    limit: 10
   })
   const [counts, setCounts] = useState({ open: 0, inProgress: 0, quoted: 0, closed: 0 })
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -213,9 +215,25 @@ export default function Enquiries() {
     setCreating(true)
     setError(null)
     try {
+      // Only send contactPerson if it has meaningful data
+      let contactPersonData = null
+      if (contactPerson) {
+        const hasData = contactPerson.name || contactPerson.mobile || contactPerson.email
+        if (hasData) {
+          contactPersonData = {
+            name: contactPerson.name || selectedCustomer.name || selectedCustomer.firmName || '',
+            designation: contactPerson.designation || '',
+            mobile: contactPerson.mobile || '',
+            email: contactPerson.email || '',
+            isPrimary: contactPerson.isPrimary || false,
+            isWhatsApp: contactPerson.isWhatsApp || false
+          }
+        }
+      }
+
       const response = await createEnquiry({
         customerId: selectedCustomer._id,
-        contactPerson: contactPerson || undefined,
+        contactPerson: contactPersonData || undefined,
         description: description.trim()
       })
       if (response.success || response.data) {
@@ -369,10 +387,10 @@ export default function Enquiries() {
             )}
             <button
               onClick={() => { handleDelete(selectedEnquiry._id); setSelectedEnquiry(null); }}
-              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+              className="p-2 text-red-500 border border-gray-300  hover:bg-red-50 rounded-lg transition px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               title="Delete"
             >
-              <X className="w-4 h-4" />
+             Delete
             </button>
           </div>
         </div>
@@ -538,7 +556,8 @@ export default function Enquiries() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3">ID</th>
@@ -547,7 +566,7 @@ export default function Enquiries() {
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3">Status</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3 hidden sm:table-cell">Manager</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase px-4 py-3 hidden lg:table-cell">Date</th>
-                <th className="text-right text-xs font-semibold text-gray-500 uppercase px-4 py-3"></th>
+                <th className="text-center text-xs font-semibold text-gray-500 uppercase px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -607,6 +626,7 @@ export default function Enquiries() {
               })}
             </tbody>
           </table>
+        </div>
 
           {/* Pagination */}
           {!loading && filtered.length > 0 && pagination.total > 0 && (
@@ -624,8 +644,8 @@ export default function Enquiries() {
       {/* Create Enquiry Modal */}
       {showCreateModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
               <h2 className="font-bold text-lg text-gray-900">New Enquiry</h2>
               <button
                 onClick={() => { setShowCreateModal(false); resetCreateForm(); }}
@@ -635,7 +655,7 @@ export default function Enquiries() {
               </button>
             </div>
 
-            <div className="p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {error && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
                   <p className="text-sm text-red-700">{error}</p>
@@ -648,8 +668,8 @@ export default function Enquiries() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Account (Customer) *</label>
                 {selectedCustomer ? (
                   <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                    <div>
-                      <p className="font-semibold text-gray-900 text-sm">{selectedCustomer.firmName || selectedCustomer.name}</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm truncate">{selectedCustomer.firmName || selectedCustomer.name}</p>
                       <p className="text-xs text-gray-500">
                         {selectedCustomer.mobile && <span>{selectedCustomer.mobile}</span>}
                         {selectedCustomer.city && <span> · {selectedCustomer.city}</span>}
@@ -657,7 +677,7 @@ export default function Enquiries() {
                     </div>
                     <button
                       onClick={() => { setSelectedCustomer(null); setContactPerson(null); }}
-                      className="text-xs text-[#1F3A5F] hover:underline"
+                      className="text-xs text-[#1F3A5F] hover:underline shrink-0 ml-2"
                     >
                       Change
                     </button>
@@ -688,7 +708,7 @@ export default function Enquiries() {
                       )}
                     </div>
                     {showCustomerDropdown && customerResults.length > 0 && (
-                      <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {customerResults.map(customer => (
                           <button
                             key={customer._id}
@@ -747,7 +767,7 @@ export default function Enquiries() {
                       </select>
                       {contactPerson && (
                         <div className="space-y-2 p-3 bg-gray-50 rounded-lg">
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
                               <p className="text-[10px] text-gray-400 mb-0.5">Name</p>
                               <input
@@ -767,7 +787,7 @@ export default function Enquiries() {
                               />
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
                               <p className="text-[10px] text-gray-400 mb-0.5">Mobile</p>
                               <input
@@ -807,8 +827,10 @@ export default function Enquiries() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1F3A5F]/20 focus:border-[#1F3A5F] resize-none"
                 />
               </div>
+            </div>
 
-              {/* Submit */}
+            {/* Submit - sticky at bottom */}
+            <div className="flex-shrink-0 p-4 border-t border-gray-100">
               <button
                 onClick={handleCreateEnquiry}
                 disabled={creating || !selectedCustomer || !description.trim()}

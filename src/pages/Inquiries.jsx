@@ -9,6 +9,9 @@ import Pagination from '../components/Pagination'
 import Modal from '../components/Modal'
 import { useToast } from '../components/Toast'
 
+// Round to nearest 5 (consistent with frontend and backend)
+const roundTo5 = (amount) => Math.round(amount / 5) * 5
+
 // Inquiry Detail Modal
 function InquiryDetailModal({ inquiry, onClose, onConvert, onStatusChange, loading }) {
   if (!inquiry) return null
@@ -27,6 +30,7 @@ function InquiryDetailModal({ inquiry, onClose, onConvert, onStatusChange, loadi
       await onConvert(inquiry._id)
     }
   }
+  
 
   return (
     <div className="p-4 md:p-6">
@@ -116,9 +120,19 @@ function InquiryDetailModal({ inquiry, onClose, onConvert, onStatusChange, loadi
             <span className="text-gray-900">₹{inquiry.gstTotal?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
           </div>
         )}
+        
+        {inquiry.roundingAdjustment && Math.abs(inquiry.roundingAdjustment) > 0.01 && (
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-gray-500">Round Off</span>
+            <span className="text-gray-900">{inquiry.roundingAdjustment > 0 ? '+' : ''}₹{Math.abs(inquiry.roundingAdjustment).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+          </div>
+        )}
+
         <div className="flex justify-between font-semibold text-lg pt-2 border-t border-gray-200">
           <span>Grand Total</span>
-          <span>₹{inquiry.grandTotal?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+          <span>
+  ₹{roundTo5(inquiry.grandTotal || 0).toLocaleString('en-IN')}
+</span>
         </div>
       </div>
 
@@ -215,6 +229,10 @@ export default function Inquiries() {
       setLoading(false)
     }
   }
+
+  const roundTo5 = (amount) => {
+  return Math.round(amount / 5) * 5;
+};
 
   useEffect(() => {
     fetchInquiries(1)
@@ -400,8 +418,11 @@ export default function Inquiries() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 hidden sm:table-cell">{inquiry.items?.length || 0} items</td>
                     <td className="px-6 py-4 font-medium text-gray-900">
-                      ₹{inquiry.grandTotal?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                    </td>
+  ₹{roundTo5(inquiry.grandTotal || 0).toLocaleString('en-IN')}
+
+
+
+</td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(inquiry.status)}`}>
                         {inquiry.status}

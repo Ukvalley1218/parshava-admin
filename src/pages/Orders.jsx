@@ -3,6 +3,9 @@ import { Search, Eye, Trash2, X, Loader, AlertCircle, ShoppingBag, Calendar, Che
 import { getAdminOrders, getAdminOrderById, updateOrderStatus, deleteAdminOrder } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 import Modal from '../components/Modal'
+
+// Round to nearest 5 (consistent with frontend and backend)
+const roundTo5 = (amount) => Math.round(amount / 5) * 5
 import { useToast } from '../components/Toast'
 
 // WhatsApp SVG icon (since react-icons is not installed in admin panel)
@@ -124,7 +127,7 @@ function OrderDetailModal({ order, onClose, onStatusChange, loading }) {
       )}
 
       {/* Order Info */}
-      <div className="mb-6 grid grid-cols-2 gap-4">
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-gray-50 rounded-xl p-4">
           <p className="text-xs text-gray-500 mb-1">Order ID</p>
           <p className="font-semibold text-gray-900">#{order.orderId || order._id?.slice(-8).toUpperCase()}</p>
@@ -218,9 +221,15 @@ function OrderDetailModal({ order, onClose, onStatusChange, loading }) {
             <span className="text-gray-900">₹{order.gstTotal?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
           </div>
         )}
+        {order.roundingAdjustment && Math.abs(order.roundingAdjustment) > 0.01 && (
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-gray-500">Round Off</span>
+            <span className="text-gray-900">{order.roundingAdjustment > 0 ? '+' : ''}₹{Math.abs(order.roundingAdjustment).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+          </div>
+        )}
         <div className="flex justify-between font-semibold text-lg pt-2 border-t border-gray-200">
           <span>Grand Total</span>
-          <span>₹{order.grandTotal?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+          <span>₹{roundTo5(order.grandTotal || 0).toLocaleString('en-IN')}</span>
         </div>
       </div>
 
@@ -417,13 +426,13 @@ export default function Orders() {
           <table className="w-full min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Order ID</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Customer</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Items</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Amount</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Date</th>
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Order ID</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Customer</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden sm:table-cell">Items</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Amount</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 hidden md:table-cell">Date</th>
+                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -449,7 +458,7 @@ export default function Orders() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 hidden sm:table-cell">{order.items?.length || 0} items</td>
                     <td className="px-6 py-4 font-medium text-gray-900">
-                      ₹{order.grandTotal?.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                      ₹{roundTo5(order.grandTotal || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>

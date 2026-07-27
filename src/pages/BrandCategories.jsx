@@ -93,7 +93,8 @@ export default function BrandCategories() {
         toast.error(response.message || 'Failed to create brand category')
       }
     } catch (err) {
-      toast.error('Failed to create brand category')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to create brand category')
     } finally {
       setFormLoading(false)
     }
@@ -112,7 +113,8 @@ export default function BrandCategories() {
         toast.error(response.message || 'Failed to update brand category')
       }
     } catch (err) {
-      toast.error('Failed to update brand category')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to update brand category')
     } finally {
       setFormLoading(false)
     }
@@ -131,7 +133,8 @@ export default function BrandCategories() {
         toast.error(response.message || 'Failed to delete brand category')
       }
     } catch (err) {
-      toast.error('Failed to delete brand category')
+      const message = typeof err === 'object' && err !== null ? err.message : err
+      toast.error(message || 'Failed to delete brand category')
     } finally {
       setFormLoading(false)
     }

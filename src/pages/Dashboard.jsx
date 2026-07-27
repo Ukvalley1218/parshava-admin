@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import {
   Users, UserCircle, FileText, ShoppingBag, TrendingUp,
-  DollarSign, Clock, ArrowUpRight, ArrowDownRight, Loader
+  DollarSign, Clock, ArrowUpRight, ArrowDownRight, Loader,
+  IndianRupee
 } from 'lucide-react'
 import { getDashboardStats, getRecentInquiries, getRecentOrders } from '../services/adminApi'
 
@@ -188,8 +189,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
          <StatCard
   title="Total Revenue"
-  value={`₹${Math.floor(stats.totalRevenue || 0).toLocaleString('en-IN')}`}
-  icon={DollarSign}
+  value={`${Math.floor(stats.totalRevenue || 0).toLocaleString('en-IN')}`}
+  icon={IndianRupee}
   change={2}
   changeType="up"
   color="purple"
