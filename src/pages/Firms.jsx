@@ -5,9 +5,9 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Plus, Search, Edit2, Trash2, X, Loader, AlertCircle, Eye,
-  UserCircle, Mail, Phone, MapPin, Building, Globe, FileText, Tag, User, Upload, Users, Camera
+  UserCircle, Mail, Phone, MapPin, Building, Globe, FileText, Tag, User, Upload, Users, Camera, RefreshCw
 } from 'lucide-react'
-import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, bulkUpdateCustomers, uploadFile, getBusinessCategories, getBrandCategoryList, getCustomerContacts, createContact, updateContact, deleteContact, getContactDesignations, uploadImage, getSalesUsers } from '../services/adminApi'
+import { getAdminCustomers, getAdminCustomerById, createAdminCustomer, updateAdminCustomer, deleteAdminCustomer, bulkUpdateCustomers, uploadFile, getBusinessCategories, getBrandCategoryList, getCustomerContacts, createContact, updateContact, deleteContact, getContactDesignations, uploadImage, getSalesUsers, syncCustomers } from '../services/adminApi'
 import Pagination from '../components/Pagination'
 import { INDIAN_STATES, getCitiesForState } from '../data/indianStatesCities'
 import Modal from '../components/Modal'
@@ -2764,6 +2764,9 @@ export default function Firms() {
   const [filterBrandCategory, setFilterBrandCategory] = useState('')
   const [filterAccountType, setFilterAccountType] = useState('')
 
+  // Sync state
+  const [syncing, setSyncing] = useState(false)
+
   // Bulk edit states
   const [showBulkEdit, setShowBulkEdit] = useState(false)
   const [bulkUpdating, setBulkUpdating] = useState(false)
@@ -2772,7 +2775,8 @@ export default function Firms() {
     brandCategory: '',
     priceListCategory: '',
     accountType: '',
-    accountManager: []
+    accountManager: [],
+    customerStatus: ''
   })
   const [savingFields, setSavingFields] = useState({})
 
@@ -2822,6 +2826,8 @@ export default function Firms() {
       updates.accountType = value
     } else if (fieldKey === 'accountManager') {
       updates.accountManager = Array.isArray(value) ? value : [value]
+    } else if (fieldKey === 'customerStatus') {
+      updates.customerStatus = value
     }
 
     if (Object.keys(updates).length === 0) return
@@ -2842,7 +2848,7 @@ export default function Firms() {
         // Reset the bulk value for this field
         setBulkValues(prev => ({
           ...prev,
-          [fieldKey]: fieldKey === 'accountManager' ? [] : ''
+          [fieldKey]: (fieldKey === 'accountManager') ? [] : ''
         }))
         // Refresh the list
         setRefreshKey(k => k + 1)
@@ -2854,6 +2860,28 @@ export default function Firms() {
       toast.error(err?.message || 'Failed to update accounts')
     } finally {
       setBulkUpdating(false)
+    }
+  }
+
+  // Sync customers from AccountGST
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      const response = await syncCustomers()
+      if (response.success) {
+        const { total, synced, failed } = response.data || {}
+        const message = failed > 0
+          ? `Synced ${synced} of ${total} customers. ${failed} failed.`
+          : `Successfully synced ${synced} customers from AccountGST.`
+        toast.success(message)
+        setRefreshKey(k => k + 1)
+      } else {
+        toast.error(response.message || 'Failed to sync customers')
+      }
+    } catch (err) {
+      toast.error('Failed to sync customers')
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -3130,6 +3158,25 @@ export default function Firms() {
           <p className="text-gray-500 mt-1">Manage your account database</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="btn-secondary flex items-center gap-2 whitespace-nowrap text-sm px-4 py-2"
+          >
+            {syncing ? (
+              <>
+                <Loader className="w-4 h-4 animate-spin" />
+                <span className="hidden sm:inline">Syncing...</span>
+                <span className="sm:hidden">Sync...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                <span className="hidden sm:inline">Sync from AccountGST</span>
+                <span className="sm:hidden">Sync</span>
+              </>
+            )}
+          </button>
           <button onClick={() => { setSelectedCustomer(null); setShowModal(true) }} className="btn-primary flex items-center gap-2 whitespace-nowrap">
             <Plus className="w-5 h-5" />
             Add Account
@@ -3349,6 +3396,27 @@ export default function Firms() {
                   Apply
                 </button>
               </div>
+
+              {/* Status */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={bulkValues.customerStatus}
+                  onChange={(e) => setBulkValues(prev => ({ ...prev, customerStatus: e.target.value }))}
+                  className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[120px]"
+                >
+                  <option value="">Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="blocked">Blocked</option>
+                </select>
+                <button
+                  onClick={() => handleBulkUpdate('customerStatus')}
+                  disabled={!bulkValues.customerStatus || bulkUpdating}
+                  className="px-3 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  Apply
+                </button>
+              </div>
             </div>
             {bulkUpdating && (
               <div className="flex items-center gap-2 mt-2">
@@ -3377,6 +3445,7 @@ export default function Firms() {
                     <th className="text-left px-3 py-4 text-sm font-semibold text-gray-600 w-[140px]">Brand Cat.</th>
                     <th className="text-left px-3 py-4 text-sm font-semibold text-gray-600 w-[110px]">Account Type</th>
                     <th className="text-left px-3 py-4 text-sm font-semibold text-gray-600 w-[140px]">Manager</th>
+                    <th className="text-left px-3 py-4 text-sm font-semibold text-gray-600 w-[100px]">Status</th>
                   </>
                 )}
                 {!showBulkEdit && <th className="text-center px-4 py-4 text-sm font-semibold text-gray-600">Actions</th>}
@@ -3541,6 +3610,25 @@ export default function Firms() {
                                 {accountManagers.map(m => (
                                   <option key={m._id} value={m._id}>{m.name}</option>
                                 ))}
+                              </select>
+                            )
+                          })()}
+                        </td>
+                        {/* Status */}
+                        <td className="px-3 py-4 w-[100px]">
+                          {(() => {
+                            const fieldKey = `${customer._id}-customerStatus`
+                            const isSaving = savingFields[fieldKey]
+                            return (
+                              <select
+                                value={customer.customerStatus || 'active'}
+                                onChange={(e) => handleInlineSave(customer, 'customerStatus', e.target.value)}
+                                disabled={isSaving}
+                                className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-wait"
+                              >
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="blocked">Blocked</option>
                               </select>
                             )
                           })()}

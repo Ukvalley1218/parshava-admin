@@ -218,6 +218,10 @@ export const syncProducts = async () => {
   return post('/admin/products/sync')
 }
 
+export const syncCustomers = async () => {
+  return post('/admin/customers/sync')
+}
+
 export const bulkUpdateProducts = async (filters, updates, productIds) => {
   return post('/admin/products/bulk-update', { filters, updates, productIds })
 }
@@ -552,6 +556,7 @@ export default {
   updateAdminProduct,
   deleteAdminProduct,
   syncProducts,
+  syncCustomers,
   bulkUpdateProducts,
   // Dashboard
   getDashboardStats,

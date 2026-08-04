@@ -163,7 +163,8 @@ function ProductViewModal({ product, onClose }) {
         <div className="space-y-3 sm:space-y-4">
           <h4 className="font-semibold text-gray-800 border-b pb-2 text-sm sm:text-base">Basic Information</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
-            <div><span className="text-gray-500">Name:</span><p className="font-medium truncate">{product.name}</p></div>
+            {product.productName && <div><span className="text-gray-500">Product Name:</span><p className="font-medium truncate">{product.productName}</p></div>}
+            <div><span className="text-gray-500">Model Name:</span><p className="font-medium truncate">{product.name}</p></div>
             <div><span className="text-gray-500">Part Number:</span><p className="font-medium">{product.partNumber || '-'}</p></div>
             <div><span className="text-gray-500">Brand:</span><p className="font-medium">{product.brand || '-'}</p></div>
             <div><span className="text-gray-500">Category:</span><p className="font-medium">{product.category || '-'}</p></div>
@@ -500,6 +501,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
     const p = productData || product
     const state = {
       name: p?.name || '',
+      productName: p?.productName || '',
       imageUrl: p?.imageUrl || '',
       partNumber: p?.partNumber || '',
       description: p?.description || '',
@@ -1397,6 +1399,17 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
         <h4 className="font-medium text-gray-800 mb-2 sm:mb-3 text-sm sm:text-base">Basic Information</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div>
+            <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-1">Product Name <span className="text-[10px] text-gray-400">(from AccountGST)</span></label>
+            <input
+              type="text"
+              value={formData.productName}
+              readOnly
+              placeholder="—"
+              className="input-field text-sm bg-gray-100 text-gray-600 cursor-not-allowed"
+              title="This field is auto-populated from AccountGST and cannot be edited"
+            />
+          </div>
+          <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Model Name <span className="text-red-500">*</span></label>
             <input
               type="text"
@@ -1405,7 +1418,7 @@ function ProductForm({ product, onSubmit, onCancel, loading, brands, categories:
               onChange={handleChange}
               onBlur={handleBlur}
               required
-              placeholder="Enter product name"
+              placeholder="Enter model name"
               className={`input-field text-sm ${errors.name && touched.name ? 'border-red-500 focus:ring-red-500' : ''}`}
             />
             {errors.name && touched.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
@@ -2621,13 +2634,14 @@ export default function Products() {
   })
   const [bulkUpdating, setBulkUpdating] = useState(false)
 
-  // Bulk edit values for the horizontal bulk edit row (Brand, Category, Subcategory, Series, GST Rate)
+  // Bulk edit values for the horizontal bulk edit row (Brand, Category, Subcategory, Series, GST Rate, Status)
   const [bulkEditValues, setBulkEditValues] = useState({
     brand: '',
     category: '',
     subcategory: '',
     series: '',
     gstRate: '',
+    active: '',
   })
 
   // Close column popup when clicking outside
@@ -3359,6 +3373,8 @@ export default function Products() {
       if (serObj) updates.seriesId = serObj._id
     } else if (field === 'gstRate') {
       updates.gstRate = parseFloat(value) || 0
+    } else if (field === 'active') {
+      updates.active = value === 'true'
     }
 
     if (Object.keys(updates).length === 0) return
@@ -3818,6 +3834,26 @@ export default function Products() {
               </button>
             </div>
 
+            {/* Status */}
+            <div className="flex items-center gap-2">
+              <select
+                value={bulkEditValues.active}
+                onChange={(e) => setBulkEditValues(prev => ({ ...prev, active: e.target.value }))}
+                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[120px]"
+              >
+                <option value="">Status</option>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+              <button
+                onClick={() => handleBulkEditApply('active')}
+                disabled={bulkEditValues.active === '' || bulkUpdating}
+                className="px-3 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                Apply
+              </button>
+            </div>
+
             {bulkUpdating && (
               <div className="flex items-center gap-2">
                 <Loader className="w-4 h-4 animate-spin text-indigo-600" />
@@ -3867,7 +3903,7 @@ export default function Products() {
         </div>
 
         <div className="overflow-x-auto overflow-y-visible -webkit-overflow-scrolling-touch" style={{ touchAction: 'pan-x' }}>
-          <table className="w-full border-collapse" style={{ minWidth: showBulkEdit ? '900px' : '1800px' }}>
+          <table className="w-full border-collapse" style={{ minWidth: showBulkEdit ? '1000px' : '1800px' }}>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 {visibleColumns.includes('productId') && <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '90px' }}>Product ID</th>}
@@ -3899,6 +3935,7 @@ export default function Products() {
                     <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-indigo-50" style={{ minWidth: '120px' }}>Subcategory</th>
                     <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-indigo-50" style={{ minWidth: '120px' }}>Series</th>
                     <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-indigo-50" style={{ minWidth: '90px' }}>GST %</th>
+                    <th className="text-center px-2 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap bg-indigo-50" style={{ minWidth: '90px' }}>Status</th>
                   </>
                 )}
                 <th className="text-center px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap" style={{ minWidth: '70px' }}>Actions</th>
@@ -4085,14 +4122,14 @@ export default function Products() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 2 + (showBulkEdit ? 5 : 0)} className="text-center py-12">
+                  <td colSpan={visibleColumns.length + 2 + (showBulkEdit ? 6 : 0)} className="text-center py-12">
                     <Loader className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
                     <p className="text-gray-500">Loading products...</p>
                   </td>
                 </tr>
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 2 + (showBulkEdit ? 5 : 0)} className="text-center py-12">
+                  <td colSpan={visibleColumns.length + 2 + (showBulkEdit ? 6 : 0)} className="text-center py-12">
                     <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500">No products found</p>
                   </td>
@@ -4118,7 +4155,7 @@ export default function Products() {
                         title="Click to edit product"
                       >
                         <p className="font-medium text-gray-900 text-s truncate max-w-[130px]">{product.brand}</p>
-                        {product.partNumber && <p className="text-[15px] text-gray-500 truncate">{product.partNumber}</p>}
+                        {/* {product.productName && <p className="text-[12px] text-gray-500 truncate" title={product.productName}>{product.productName}</p>} */}
                         <p className="text-[13px] text-gray-400" title={product.name}>{product.name}</p>
                       </td>
 
@@ -4598,6 +4635,24 @@ export default function Products() {
                                   <option value="12">12%</option>
                                   <option value="18">18%</option>
                                   <option value="28">28%</option>
+                                </select>
+                              )
+                            })()}
+                          </td>
+                          {/* Status */}
+                          <td className="px-2 py-2 bg-indigo-50/50">
+                            {(() => {
+                              const fieldKey = `${product._id}-active`
+                              const isSaving = savingFields[fieldKey]
+                              return (
+                                <select
+                                  value={product.active !== false ? 'true' : 'false'}
+                                  onChange={(e) => handleInlineSave(product, 'active', e.target.value === 'true')}
+                                  disabled={isSaving}
+                                  className="min-w-[70px] px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-wait"
+                                >
+                                  <option value="true">Active</option>
+                                  <option value="false">Inactive</option>
                                 </select>
                               )
                             })()}
