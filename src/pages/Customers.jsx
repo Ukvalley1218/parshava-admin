@@ -208,6 +208,7 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
     softwareId: customer?.softwareId || '',
     firmName: customer?.firmName || '',
     firmPhoto: customer?.firmPhoto || '',
+    contactPerson: customer?.contactPerson || '',
 
     // Address
     address: customer?.address || '',
@@ -303,6 +304,7 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
         try {
           const response = await getCustomerContacts(customer._id)
           if (response.success && response.data) {
+            console.log(response.data)
             setContacts(response.data)
           }
         } catch (err) {
@@ -631,6 +633,18 @@ function CustomerForm({ customer, onSubmit, onCancel, loading }) {
             {formData.firmPhoto && (
               <p className="text-xs text-green-600 mt-1">Shop photo uploaded</p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
+            <input
+              type="text"
+              name="contactPerson"
+              value={formData.contactPerson || ''}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="Enter contact person name"
+            />
           </div>
         </div>
       </div>
@@ -1531,6 +1545,7 @@ function CustomerViewModal({ customer, onClose }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <DetailRow label="Software ID" value={customer.softwareId} />
           <DetailRow label="Account Name" value={customer.firmName} />
+          <DetailRow label="Contact Person" value={customer.contactPerson} icon={User} />
         </div>
       </DetailSection>
 
@@ -1638,7 +1653,7 @@ function CustomerViewModal({ customer, onClose }) {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold text-gray-900">{customer.name || customer.firmName || 'Primary Contact'}</p>
+                    <p className="font-semibold text-gray-900">{customer.contactPerson || customer.name || customer.firmName || 'Primary Contact'}</p>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500 text-white">
                       Primary
                     </span>
@@ -2257,6 +2272,9 @@ export default function Customers() {
                       {!bulkMode && (
                         <td className="px-6 py-4 hidden md:table-cell">
                           <div className="flex flex-col gap-1">
+                            {customer.contactPerson && (
+                              <span className="text-sm font-medium text-gray-800">{customer.contactPerson}</span>
+                            )}
                             <span className="text-sm text-gray-600 flex items-center gap-1">
                               <Phone className="w-3.5 h-3.5" />{customer.mobile || '-'}
                             </span>
