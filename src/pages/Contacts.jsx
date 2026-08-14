@@ -1184,7 +1184,8 @@ export default function Contacts() {
         toast.error(response.message || 'Failed to create contact')
       }
     } catch (err) {
-      toast.error('Failed to create contact')
+      const message = err?.message || err || 'Failed to create contact'
+      toast.error(message)
     } finally {
       setFormLoading(false)
     }
@@ -1205,7 +1206,8 @@ export default function Contacts() {
         toast.error(response.message || 'Failed to update contact')
       }
     } catch (err) {
-      toast.error('Failed to update contact')
+      const message = err?.message || err || 'Failed to update contact'
+      toast.error(message)
     } finally {
       setFormLoading(false)
     }
@@ -1229,7 +1231,8 @@ export default function Contacts() {
         toast.error(response.message || 'Failed to delete contact')
       }
     } catch (err) {
-      toast.error('Failed to delete contact')
+      const message = err?.message || err || 'Failed to delete contact'
+      toast.error(message)
     } finally {
       setFormLoading(false)
     }
@@ -1360,10 +1363,24 @@ export default function Contacts() {
                       </td>
                       <td className="px-6 py-4 hidden md:table-cell">
                         <div className="flex flex-col">
-                          <p className="text-gray-600 truncate max-w-[150px]">
-                            {contact.customer?.firmName || contact.firmName || '-'}
-                          </p>
-                          {contact.customer && (
+                          {contact.customers && contact.customers.length > 0 ? (
+                            <div className="flex flex-col gap-0.5">
+                              {contact.customers.map((cust) => (
+                                <p key={cust._id} className="text-gray-600 truncate max-w-[150px]">
+                                  {cust.firmName || cust.name || '-'}
+                                </p>
+                              ))}
+                            </div>
+                          ) : contact.customer ? (
+                            <p className="text-gray-600 truncate max-w-[150px]">
+                              {contact.customer.firmName || contact.customer.name || '-'}
+                            </p>
+                          ) : (
+                            <p className="text-gray-600 truncate max-w-[150px]">
+                              {contact.firmName || '-'}
+                            </p>
+                          )}
+                          {(contact.customers && contact.customers.length > 0 || contact.customer) && (
                             <span className="text-xs text-blue-500">Linked</span>
                           )}
                         </div>
